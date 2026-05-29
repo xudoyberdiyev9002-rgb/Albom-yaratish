@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VinietkaLab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #16213e;
+  --ink2: #1a2a52;
+  --gold: #c9a84c;
+  --gold2: #e8c96d;
+  --gold-pale: #fdf5e0;
+  --cream: #faf8f3;
+  --cream2: #f0ebe0;
+  --cream3: #e8e1d0;
+  --muted: #7a7a9a;
+  --green: #2d7a4f;
+  --red: #c0392b;
+  --border: rgba(201,168,76,0.2);
+  --r: 12px;
+  --r-sm: 8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Golos Text',sans-serif;background:var(--cream);color:var(--ink)}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  height:56px;background:var(--ink);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  border-bottom:1px solid rgba(201,168,76,0.15);
+}
+.logo{font-family:'Unbounded',sans-serif;font-size:17px;color:var(--gold);letter-spacing:-0.5px}
+.logo span{color:#fff}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap{
+  position:fixed;top:56px;left:0;right:0;z-index:99;
+  background:var(--ink2);
+  padding:12px 32px;
+  display:flex;align-items:center;gap:0;
+  border-bottom:1px solid rgba(201,168,76,0.12);
+}
+.step-item{
+  display:flex;align-items:center;gap:8px;
+  flex:1;cursor:pointer;
+  opacity:0.45;transition:opacity 0.2s;
+}
+.step-item.done{opacity:0.7}
+.step-item.active{opacity:1}
+.step-num{
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;color:#fff;
+  flex-shrink:0;transition:all 0.25s;
+}
+.step-item.done .step-num{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.step-item.active .step-num{background:var(--gold);border-color:var(--gold);color:var(--ink);box-shadow:0 0 0 3px rgba(201,168,76,0.25)}
+.step-label{font-size:12px;color:#fff;font-weight:500;white-space:nowrap}
+.step-line{height:1px;background:rgba(255,255,255,0.15);flex:1;margin:0 8px;min-width:16px}
+.step-line.done{background:var(--gold)}
+
+/* ── MAIN ── */
+main{
+  margin-top:108px;
+  min-height:calc(100vh - 108px);
+  padding:32px 32px 80px;
+  max-width:960px;
+  margin-left:auto;margin-right:auto;
+}
+
+/* ── SCREENS ── */
+.screen{display:none;animation:fadeUp 0.3s ease}
+.screen.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SECTION HEADER ── */
+.sec-head{margin-bottom:28px}
+.sec-head h2{font-family:'Unbounded',sans-serif;font-size:22px;margin-bottom:6px}
+.sec-head p{font-size:14px;color:var(--muted);line-height:1.6}
+.sec-tag{
+  display:inline-block;
+  background:var(--gold-pale);color:var(--gold);
+  border:1px solid rgba(201,168,76,0.3);
+  font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+  padding:4px 12px;border-radius:100px;margin-bottom:14px;
+}
+
+/* ── TEMPLATE CARDS ── */
+.template-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:28px}
+.tpl-card{
+  background:#fff;border:2px solid var(--cream3);border-radius:14px;
+  cursor:pointer;overflow:hidden;transition:all 0.2s;
+  position:relative;
+}
+.tpl-card:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 8px 32px rgba(201,168,76,0.15)}
+.tpl-card.selected{border-color:var(--gold);box-shadow:0 0 0 4px rgba(201,168,76,0.18)}
+.tpl-preview{
+  height:200px;display:flex;align-items:center;justify-content:center;
+  background:var(--cream2);overflow:hidden;position:relative;
+}
+.tpl-preview canvas{max-width:100%;max-height:100%}
+.tpl-badge{
+  position:absolute;top:10px;right:10px;
+  background:var(--gold);color:var(--ink);
+  font-size:10px;font-weight:700;letter-spacing:0.5px;
+  padding:3px 10px;border-radius:100px;
+  display:none;
+}
+.tpl-card.selected .tpl-badge{display:block}
+.tpl-info{padding:14px 16px}
+.tpl-name{font-weight:600;font-size:14px;margin-bottom:4px}
+.tpl-desc{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ── TABS ── */
+.tab-row{display:flex;gap:4px;margin-bottom:24px;background:var(--cream2);border-radius:10px;padding:4px}
+.tab-btn{
+  flex:1;padding:9px 16px;border-radius:8px;border:none;
+  font-family:'Golos Text',sans-serif;font-size:13px;font-weight:500;
+  cursor:pointer;background:transparent;color:var(--muted);transition:all 0.15s;
+}
+.tab-btn.active{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+
+/* ── INFO FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0.3px;text-transform:uppercase}
+.form-group input,.form-group select{
+  padding:11px 14px;border:1.5px solid var(--cream3);border-radius:var(--r-sm);
+  font-family:'Golos Text',sans-serif;font-size:14px;
+  background:#fff;color:var(--ink);transition:border-color 0.2s;
+}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--gold)}
+
+/* ── STUDENTS SECTION ── */
+.students-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.students-header h3{font-size:15px;font-weight:600}
+.students-toolbar{display:flex;gap:8px}
+.btn-sm{
+  padding:7px 14px;border-radius:var(--r-sm);font-size:12px;font-weight:500;
+  font-family:'Golos Text',sans-serif;cursor:pointer;transition:all 0.15s;
+  display:flex;align-items:center;gap:5px;
+}
+.btn-sm.dark{background:var(--ink);color:#fff;border:none}
+.btn-sm.dark:hover{background:var(--ink2)}
+.btn-sm.outline{background:#fff;color:var(--ink);border:1.5px solid var(--cream3)}
+.btn-sm.outline:hover{border-color:var(--gold)}
+.btn-sm.gold{background:var(--gold);color:var(--ink);border:none;font-weight:600}
+.btn-sm.gold:hover{background:var(--gold2)}
+.btn-sm.danger{background:#fff;color:var(--red);border:1.5px solid #fdd;}
+.btn-sm.danger:hover{background:#fff5f5}
+
+/* Students grid */
+.students-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:10px;margin-bottom:16px;
+}
+.stu-card{
+  background:#fff;border:1.5px solid var(--cream3);border-radius:10px;
+  overflow:hidden;transition:all 0.15s;position:relative;
+}
+.stu-card:hover{border-color:var(--gold)}
+.stu-photo-box{
+  height:110px;background:var(--cream2);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;cursor:pointer;position:relative;
+}
+.stu-photo-box img{width:100%;height:100%;object-fit:cover}
+.stu-photo-box .add-photo{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--muted);font-size:11px;
+}
+.stu-photo-box .add-photo span{font-size:24px}
+.stu-photo-box:hover .add-photo{color:var(--gold)}
+.stu-name-box{padding:8px 8px 6px}
+.stu-num-badge{
+  font-size:10px;font-weight:700;color:var(--gold);
+  margin-bottom:2px;letter-spacing:0.3px;
+}
+.stu-name-input{
+  width:100%;border:none;outline:none;font-size:12px;font-weight:500;
+  font-family:'Golos Text',sans-serif;color:var(--ink);
+  background:transparent;padding:0;
+}
+.stu-name-input::placeholder{color:var(--muted)}
+.stu-del{
+  position:absolute;top:4px;right:4px;
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(192,57,43,0.85);color:#fff;
+  border:none;cursor:pointer;font-size:11px;
+  display:none;align-items:center;justify-content:center;
+}
+.stu-card:hover .stu-del{display:flex}
+.add-stu-card{
+  background:var(--cream2);border:2px dashed var(--cream3);border-radius:10px;
+  height:162px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;cursor:pointer;color:var(--muted);font-size:13px;
+  transition:all 0.15s;
+}
+.add-stu-card:hover{border-color:var(--gold);color:var(--gold)}
+.add-stu-card span{font-size:28px}
+
+/* ── MEMORIES SECTION ── */
+.memories-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:12px;margin-bottom:16px;
+}
+.mem-card{
+  background:#fff;border:1.5px solid var(--cream3);border-radius:10px;
+  overflow:hidden;position:relative;
+}
+.mem-card:hover{border-color:var(--gold)}
+.mem-photo-box{
+  height:130px;background:var(--cream2);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;cursor:pointer;
+}
+.mem-photo-box img{width:100%;height:100%;object-fit:cover}
+.mem-photo-box .add-photo{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:11px}
+.mem-photo-box .add-photo span{font-size:26px}
+.mem-caption-box{padding:8px}
+.mem-caption-input{
+  width:100%;border:none;outline:none;font-size:12px;
+  font-family:'Golos Text',sans-serif;color:var(--ink);
+  background:transparent;
+}
+.mem-caption-input::placeholder{color:var(--muted)}
+.mem-del{
+  position:absolute;top:4px;right:4px;
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(192,57,43,0.85);color:#fff;
+  border:none;cursor:pointer;font-size:11px;
+  display:none;align-items:center;justify-content:center;
+}
+.mem-card:hover .mem-del{display:flex}
+.add-mem-card{
+  background:var(--cream2);border:2px dashed var(--cream3);border-radius:10px;
+  height:162px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;cursor:pointer;color:var(--muted);font-size:13px;
+  transition:all 0.15s;
+}
+.add-mem-card:hover{border-color:var(--gold);color:var(--gold)}
+.add-mem-card span{font-size:28px}
+
+/* ── BOTTOM NAV ── */
+.bottom-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:#fff;border-top:1px solid var(--cream3);
+  padding:12px 32px;
+  display:flex;align-items:center;justify-content:space-between;
+  z-index:90;
+}
+.nav-hint{font-size:13px;color:var(--muted)}
+.nav-hint strong{color:var(--ink)}
+.bottom-btns{display:flex;gap:10px}
+.btn-back{
+  padding:11px 24px;border-radius:var(--r-sm);
+  background:#fff;color:var(--ink);border:1.5px solid var(--cream3);
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:500;
+  cursor:pointer;transition:all 0.15s;
+}
+.btn-back:hover{border-color:var(--gold)}
+.btn-next{
+  padding:11px 28px;border-radius:var(--r-sm);
+  background:var(--ink);color:#fff;border:none;
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:600;
+  cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:8px;
+}
+.btn-next:hover{background:var(--ink2);transform:translateY(-1px)}
+.btn-next.gold-btn{background:var(--gold);color:var(--ink)}
+.btn-next.gold-btn:hover{background:var(--gold2)}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:80px;right:24px;
+  background:var(--ink);color:#fff;
+  padding:11px 18px;border-radius:10px;
+  font-size:13px;z-index:999;
+  transform:translateY(60px);opacity:0;transition:all 0.25s;
+  border-left:3px solid var(--gold);pointer-events:none;
+}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* ── SUMMARY ── */
+.summary-box{
+  background:var(--gold-pale);border:1px solid rgba(201,168,76,0.3);
+  border-radius:12px;padding:20px 24px;margin-bottom:20px;
+}
+.summary-box h3{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--ink)}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(201,168,76,0.15)}
+.summary-row:last-child{border-bottom:none}
+.summary-key{font-size:13px;color:var(--muted)}
+.summary-val{font-size:13px;font-weight:600;color:var(--ink)}
+.summary-status{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:12px;font-weight:600;padding:3px 10px;border-radius:100px;
+}
+.status-ok{background:#e8f5ee;color:var(--green)}
+.status-warn{background:#fff8e6;color:#9a6800}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  nav{padding:0 16px}
+  .progress-wrap{padding:10px 16px}
+  main{padding:20px 16px 80px}
+  .form-grid{grid-template-columns:1fr}
+  .students-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+  .step-label{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Vinietka<span>Lab</span></div>
+  <div style="font-size:12px;color:rgba(255,255,255,0.4)">O'zbek tilida · Bepul</div>
+</nav>
+
+<!-- PROGRESS -->
+<div class="progress-wrap">
+  <div class="step-item active" id="step1" onclick="goStep(1)">
+    <div class="step-num">1</div>
+    <div class="step-label">Shablon</div>
+  </div>
+  <div class="step-line" id="line1"></div>
+  <div class="step-item" id="step2" onclick="goStep(2)">
+    <div class="step-num">2</div>
+    <div class="step-label">Ma'lumotlar</div>
+  </div>
+  <div class="step-line" id="line2"></div>
+  <div class="step-item" id="step3" onclick="goStep(3)">
+    <div class="step-num">3</div>
+    <div class="step-label">Rasmlar</div>
+  </div>
+  <div class="step-line" id="line3"></div>
+  <div class="step-item" id="step4" onclick="goStep(4)">
+    <div class="step-num">4</div>
+    <div class="step-label">Tasdiq</div>
+  </div>
+</div>
+
+<main>
+
+<!-- ══ SCREEN 1: SHABLON TANLASH ══ -->
+<div class="screen active" id="screen1">
+  <div class="sec-head">
+    <div class="sec-tag">Bosqich 1 / 4</div>
+    <h2>Shablon tanlang</h2>
+    <p>Vinietka va xotiralar beti uchun alohida shablon tanlaysiz</p>
+  </div>
+
+  <!-- Vinietka shablonlari -->
+  <div class="tab-row" style="margin-bottom:20px">
+    <button class="tab-btn active" onclick="switchTplTab('vinietka',this)">🎓 Vinietka shablonlari</button>
+    <button class="tab-btn" onclick="switchTplTab('memories',this)">📸 Xotiralar beti shablonlari</button>
+  </div>
+
+  <div id="vinTemplates">
+    <div class="template-grid">
+      <div class="tpl-card selected" onclick="selectTemplate('vin','classic',this)">
+        <div class="tpl-badge">Tanlandi ✓</div>
+        <div class="tpl-preview"><canvas id="prevVin1" width="220" height="160"></canvas></div>
+        <div class="tpl-info">
+          <div class="tpl-name">Klassik</div>
+          <div class="tpl-desc">Qoʻngʻir ton, oltin sarlavha. 4 ustunli joy. Eng mashhur variant.</div>
+        </div>
+      </div>
+      <div class="tpl-card" onclick="selectTemplate('vin','modern',this)">
+        <div class="tpl-badge">Tanlandi ✓</div>
+        <div class="tpl-preview"><canvas id="prevVin2" width="220" height="160"></canvas></div>
+        <div class="tpl-info">
+          <div class="tpl-name">Modern</div>
+          <div class="tpl-desc">Oq fon, ko'k sarlavha. Zamonaviy va toza ko'rinish.</div>
+        </div>
+      </div>
+      <div class="tpl-card" onclick="selectTemplate('vin','elegant',this)">
+        <div class="tpl-badge">Tanlandi ✓</div>
+        <div class="tpl-preview"><canvas id="prevVin3" width="220" height="160"></canvas></div>
+        <div class="tpl-info">
+          <div class="tpl-name">Elegant</div>
+          <div class="tpl-desc">To'q ko'k, kumush aksentlar. Rasmiy va nafis.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="memTemplates" style="display:none">
+    <div class="template-grid">
+      <div class="tpl-card selected" onclick="selectTemplate('mem','grid',this)">
+        <div class="tpl-badge">Tanlandi ✓</div>
+        <div class="tpl-preview"><canvas id="prevMem1" width="220" height="160"></canvas></div>
+        <div class="tpl-info">
+          <div class="tpl-name">Jadval</div>
+          <div class="tpl-desc">6-8 ta rasm bir xil katakchada, ism ostida.</div>
+        </div>
+      </div>
+      <div class="tpl-card" onclick="selectTemplate('mem','mosaic',this)">
+        <div class="tpl-badge">Tanlandi ✓</div>
+        <div class="tpl-preview"><canvas id="prevMem2" width="220" height="160"></canvas></div>
+        <div class="tpl-info">
+          <div class="tpl-name">Mozaika</div>
+          <div class="tpl-desc">Katta-kichik rasmlar, rang-barang kollaج.</div>
+        </div>
+      </div>
+      <div class="tpl-card" onclick="selectTemplate('mem','film',this)">
+        <div class="tpl-badge">Tanlandi ✓</div>
+        <div class="tpl-preview"><canvas id="prevMem3" width="220" height="160"></canvas></div>
+        <div class="tpl-info">
+          <div class="tpl-name">Filmstrip</div>
+          <div class="tpl-desc">Kinoplёnka uslubi, sariq chet. Nostalgik his.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 2: MA'LUMOTLAR ══ -->
+<div class="screen" id="screen2">
+  <div class="sec-head">
+    <div class="sec-tag">Bosqich 2 / 4</div>
+    <h2>Asosiy ma'lumotlar</h2>
+    <p>Maktab, sinf va yil haqida ma'lumot kiriting</p>
+  </div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Maktab nomi</label>
+      <input type="text" id="schoolName" placeholder="Toshkent sh. 100-maktab" value="">
+    </div>
+    <div class="form-group">
+      <label>O'quv yili</label>
+      <input type="text" id="schoolYear" placeholder="2025/2026" value="2025/2026">
+    </div>
+    <div class="form-group">
+      <label>Sinf / Guruh</label>
+      <input type="text" id="className" placeholder="7-B sinfi" value="">
+    </div>
+    <div class="form-group">
+      <label>Sinf rahbari</label>
+      <input type="text" id="teacherName" placeholder="Xolmatova Nilufar">
+    </div>
+    <div class="form-group full">
+      <label>Sahifa formati</label>
+      <select id="pageFormat">
+        <option value="595,842">A4 vertikal (297×210 mm)</option>
+        <option value="842,595">A4 gorizontal (210×297 mm)</option>
+        <option value="1191,842">A3 gorizontal (420×297 mm)</option>
+        <option value="850,1134">30×40 sm (maxsus)</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 3: RASMLAR ══ -->
+<div class="screen" id="screen3">
+  <div class="sec-head">
+    <div class="sec-tag">Bosqich 3 / 4</div>
+    <h2>Rasmlar va ismlar</h2>
+    <p>Har bir o'quvchi va xotira rasmlari uchun foto yuklang</p>
+  </div>
+
+  <div class="tab-row">
+    <button class="tab-btn active" id="tabStudentsBtn" onclick="switchPhotoTab('students',this)">👦 O'quvchilar rasmlari</button>
+    <button class="tab-btn" id="tabMemoriesBtn" onclick="switchPhotoTab('memories',this)">📸 Xotiralar rasmlari</button>
+  </div>
+
+  <!-- Students -->
+  <div id="studentsPanel">
+    <div class="students-header">
+      <h3 id="stuCountLabel">O'quvchilar: <strong id="stuCount">0</strong> ta</h3>
+      <div class="students-toolbar">
+        <button class="btn-sm outline" onclick="importCSV()">📥 CSV import</button>
+        <button class="btn-sm dark" onclick="addStudent()">+ Qo'shish</button>
+      </div>
+    </div>
+    <div class="students-grid" id="studentsGrid">
+      <div class="add-stu-card" onclick="addStudent()">
+        <span>+</span>
+        <div>O'quvchi qo'shish</div>
+      </div>
+    </div>
+    <input type="file" id="csvInput" accept=".csv,.txt" style="display:none" onchange="handleCSV(this)">
+    <input type="file" id="stuPhotoInput" accept="image/*" style="display:none">
+    <input type="file" id="memPhotoInput" accept="image/*" style="display:none">
+  </div>
+
+  <!-- Memories -->
+  <div id="memoriesPanel" style="display:none">
+    <div class="students-header">
+      <h3>Xotira rasmlari: <strong id="memCount">0</strong> ta <span style="color:var(--muted);font-weight:400;font-size:12px">(6-10 ta tavsiya)</span></h3>
+      <div class="students-toolbar">
+        <button class="btn-sm dark" onclick="addMemory()">+ Rasm qo'shish</button>
+      </div>
+    </div>
+    <div class="memories-grid" id="memoriesGrid">
+      <div class="add-mem-card" onclick="addMemory()">
+        <span>+</span>
+        <div>Rasm qo'shish</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 4: TASDIQ ══ -->
+<div class="screen" id="screen4">
+  <div class="sec-head">
+    <div class="sec-tag">Bosqich 4 / 4</div>
+    <h2>Tasdiqlash va davom etish</h2>
+    <p>Kiritilgan ma'lumotlarni tekshirib, editor sahifasiga o'ting</p>
+  </div>
+  <div class="summary-box">
+    <h3>📋 Loyiha xulosasi</h3>
+    <div class="summary-row"><span class="summary-key">Maktab</span><span class="summary-val" id="sumSchool">—</span></div>
+    <div class="summary-row"><span class="summary-key">Sinf</span><span class="summary-val" id="sumClass">—</span></div>
+    <div class="summary-row"><span class="summary-key">O'quv yili</span><span class="summary-val" id="sumYear">—</span></div>
+    <div class="summary-row"><span class="summary-key">Vinietka shabloni</span><span class="summary-val" id="sumVinTpl">—</span></div>
+    <div class="summary-row"><span class="summary-key">Xotiralar shabloni</span><span class="summary-val" id="sumMemTpl">—</span></div>
+    <div class="summary-row">
+      <span class="summary-key">O'quvchilar</span>
+      <span class="summary-val" id="sumStuCount">
+        <span class="summary-status status-ok" id="stuStatus">0 ta ✓</span>
+      </span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-key">Xotira rasmlari</span>
+      <span class="summary-val" id="sumMemCount">
+        <span class="summary-status status-warn" id="memStatus">0 ta</span>
+      </span>
+    </div>
+    <div class="summary-row"><span class="summary-key">Format</span><span class="summary-val" id="sumFormat">—</span></div>
+  </div>
+  <div style="background:#fff;border:1.5px solid var(--cream3);border-radius:12px;padding:20px 24px;">
+    <h3 style="font-size:14px;margin-bottom:12px;">✏️ Editorga o'tgach nima qilish mumkin?</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:20px">🔄</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">Har bir o'quvchini bosh o'ringa qo'yish</div><div style="font-size:12px;color:var(--muted)">Bir bosish — 30 nusxa avtomatik</div></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:20px">🎨</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">Rang va shrift sozlash</div><div style="font-size:12px;color:var(--muted)">Real vaqtda preview ko'rinadi</div></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:20px">📐</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">Joyni siljitish</div><div style="font-size:12px;color:var(--muted)">Rasmlar va matnni drag qilish</div></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="font-size:20px">💾</span>
+        <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">JPG + PDF eksport</div><div style="font-size:12px;color:var(--muted)">Barcha nusxalar ZIP da</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <div class="nav-hint" id="bottomHint">Vinietka va xotiralar beti uchun shablon tanlang</div>
+  <div class="bottom-btns">
+    <button class="btn-back" id="btnBack" style="display:none" onclick="prevStep()">← Ortga</button>
+    <button class="btn-next" id="btnNext" onclick="nextStep()">Davom etish →</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ STATE ══
+const state = {
+  currentStep: 1,
+  vinTemplate: 'classic',
+  memTemplate: 'grid',
+  students: [],
+  memories: [],
+  stuIdCounter: 0,
+  memIdCounter: 0
+};
+
+const TEMPLATES = {
+  vin: { classic:'Klassik', modern:'Modern', elegant:'Elegant' },
+  mem: { grid:'Jadval', mosaic:'Mozaika', film:'Filmstrip' }
+};
+const FORMATS = {
+  '595,842':'A4 vertikal','842,595':'A4 gorizontal',
+  '1191,842':'A3 gorizontal','850,1134':'30×40 sm'
+};
+
+// ══ STEP NAVIGATION ══
+function goStep(n) {
+  if (n > state.currentStep) {
+    if (!validateStep(state.currentStep)) return;
+    for (let i = state.currentStep; i < n; i++) {
+      if (!validateStep(i)) return;
+    }
+  }
+  state.currentStep = n;
+  renderStep();
+}
+
+function nextStep() {
+  if (!validateStep(state.currentStep)) return;
+  if (state.currentStep === 4) { openEditor(); return; }
+  state.currentStep++;
+  renderStep();
+}
+
+function prevStep() {
+  if (state.currentStep > 1) { state.currentStep--; renderStep(); }
+}
+
+function validateStep(n) {
+  if (n === 2) {
+    if (!document.getElementById('schoolName').value.trim()) {
+      showToast('Maktab nomini kiriting!'); return false;
+    }
+    if (!document.getElementById('className').value.trim()) {
+      showToast('Sinf nomini kiriting!'); return false;
+    }
+  }
+  return true;
+}
+
+function renderStep() {
+  const n = state.currentStep;
+  document.querySelectorAll('.screen').forEach((s,i) => s.classList.toggle('active', i+1 === n));
+
+  document.querySelectorAll('.step-item').forEach((el,i) => {
+    el.classList.remove('active','done');
+    if (i+1 === n) el.classList.add('active');
+    else if (i+1 < n) el.classList.add('done');
+  });
+  document.querySelectorAll('.step-line').forEach((el,i) => {
+    el.classList.toggle('done', i+1 < n);
+  });
+
+  document.getElementById('btnBack').style.display = n > 1 ? '' : 'none';
+
+  const btn = document.getElementById('btnNext');
+  if (n === 4) {
+    btn.textContent = ''; btn.innerHTML = '✅ Editorni ochish →';
+    btn.classList.add('gold-btn');
+  } else {
+    btn.innerHTML = 'Davom etish →';
+    btn.classList.remove('gold-btn');
+  }
+
+  const hints = [
+    'Vinietka va xotiralar beti uchun shablon tanlang',
+    'Maktab va sinf haqida to\'liq ma\'lumot kiriting',
+    'O\'quvchilar va xotira rasmlarini yuklang',
+    'Hamma narsa tayyor — editorni oching!'
+  ];
+  document.getElementById('bottomHint').textContent = hints[n-1];
+
+  if (n === 4) fillSummary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ══ TEMPLATE SELECTION ══
+function switchTplTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('vinTemplates').style.display = tab === 'vinietka' ? '' : 'none';
+  document.getElementById('memTemplates').style.display = tab === 'memories' ? '' : 'none';
+}
+
+function selectTemplate(type, name, card) {
+  const grid = type === 'vin' ? document.getElementById('vinTemplates') : document.getElementById('memTemplates');
+  grid.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  if (type === 'vin') state.vinTemplate = name;
+  else state.memTemplate = name;
+}
+
+// ══ TEMPLATE PREVIEWS ══
+function drawPreview(canvasId, type, style) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.clearRect(0,0,W,H);
+
+  if (type === 'vin') {
+    const schemes = {
+      classic: { bg:'#faf8f3', header:'#16213e', gold:'#c9a84c', text:'#fff' },
+      modern:  { bg:'#f0f4ff', header:'#1e3a8a', gold:'#60a5fa', text:'#fff' },
+      elegant: { bg:'#f4f4f6', header:'#2c2c3e', gold:'#a0a0c0', text:'#fff' }
+    };
+    const s = schemes[style];
+    ctx.fillStyle = s.bg; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = s.header; ctx.fillRect(0,0,W,28);
+    ctx.fillStyle = s.gold; ctx.fillRect(0,28,W,2);
+    ctx.fillStyle = s.text;
+    ctx.font = '600 10px Unbounded,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('7-B SINFI · 2025/2026', W/2, 14);
+    const cols = 4, cellW = (W-16)/cols, heroW = cellW*1.5, heroH = 80;
+    const cellH = 60;
+    drawMiniSlot(ctx, 8, 34, heroW, heroH, s.gold, s.header, '★ Jasur', true);
+    const names = ['Dilnoza','Bobur','Nilufar','Sardor','Zulfiya','Otabek','Barno','Sherzod'];
+    let ni = 0;
+    for (let r=0;r<2;r++) for(let c2=0;c2<3;c2++) {
+      drawMiniSlot(ctx, 8+heroW+4+c2*(cellW+2), 34+r*(cellH+2), cellW, cellH-4, s.gold, s.header, names[ni++]||'', false);
+    }
+    ctx.fillStyle = s.header; ctx.fillRect(0,H-18,W,18);
+    ctx.fillStyle = s.text; ctx.font='400 8px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('MAKTAB VINITKASI', W/2, H-9);
+  } else {
+    const schemes = {
+      grid:   { bg:'#faf8f3', header:'#16213e', accent:'#c9a84c' },
+      mosaic: { bg:'#fff5f0', header:'#7c2d12', accent:'#ea580c' },
+      film:   { bg:'#1a1a2e', header:'#000', accent:'#fbbf24' }
+    };
+    const s = schemes[style];
+    ctx.fillStyle = s.bg; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = s.header; ctx.fillRect(0,0,W,24);
+    ctx.fillStyle = '#fff'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('MAKTAB XOTIRALARI 2025/2026', W/2, 12);
+    ctx.fillStyle = s.accent; ctx.fillRect(0,24,W,2);
+    if (style === 'grid') {
+      const gw=(W-20)/3, gh=55;
+      for(let r=0;r<2;r++) for(let c2=0;c2<3;c2++) {
+        ctx.fillStyle='#e8e1d0'; ctx.beginPath(); ctx.roundRect(8+c2*(gw+2),30+r*(gh+6),gw,gh-8,3); ctx.fill();
+        ctx.fillStyle='#16213e'; ctx.beginPath(); ctx.roundRect(8+c2*(gw+2),30+r*(gh+6)+gh-16,gw,8,3); ctx.fill();
+        ctx.fillStyle=s.accent; ctx.font='500 6px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        const ns=['Dilnoza','Bobur','Nilufar','Sardor','Zulfiya','Otabek'];
+        ctx.fillText(ns[r*3+c2], 8+c2*(gw+2)+gw/2, 30+r*(gh+6)+gh-12);
+      }
+    } else if (style === 'mosaic') {
+      ctx.fillStyle='#f9d4c0'; ctx.beginPath(); ctx.roundRect(8,30,W/2-6,80,4); ctx.fill();
+      ctx.fillStyle='#f9d4c0'; ctx.beginPath(); ctx.roundRect(W/2+2,30,(W-W/2-10)/2-2,38,4); ctx.fill();
+      ctx.fillStyle='#f9d4c0'; ctx.beginPath(); ctx.roundRect(W/2+2,72,(W-W/2-10)/2-2,38,4); ctx.fill();
+      ctx.fillStyle='#f9d4c0'; ctx.beginPath(); ctx.roundRect(W/2+(W-W/2-10)/2+4,30,(W-W/2-10)/2-2,80,4); ctx.fill();
+    } else {
+      ctx.fillStyle='#111'; ctx.fillRect(4,28,W-8,H-36);
+      for(let i=0;i<6;i++) {
+        ctx.fillStyle='#2a2a2a'; ctx.fillRect(8+i*(30+4),32,30,H-46);
+        ctx.fillStyle='#fbbf24'; ctx.font='bold 5px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillText((i+1).toString(), 8+i*(30+4)+15, H-14);
+      }
+      ctx.fillStyle='#fbbf24'; ctx.fillRect(0,H-14,W,14);
+    }
+  }
+}
+
+function drawMiniSlot(ctx, x, y, w, h, gold, dark, name, isHero) {
+  ctx.fillStyle='#e8e1d0'; ctx.beginPath(); ctx.roundRect(x,y,w,h-12,3); ctx.fill();
+  ctx.fillStyle='👤'; ctx.font=`${isHero?18:14}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('👤', x+w/2, y+(h-12)/2);
+  if (isHero) { ctx.fillStyle=gold; ctx.font='bold 8px sans-serif'; ctx.fillText('★',x+w-5,y+5); }
+  ctx.fillStyle=dark; ctx.beginPath(); ctx.roundRect(x,y+h-12,w,12,[0,0,3,3]); ctx.fill();
+  ctx.fillStyle=gold; ctx.font=`500 ${isHero?7:6}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(name, x+w/2, y+h-6);
+}
+
+function initPreviews() {
+  drawPreview('prevVin1','vin','classic');
+  drawPreview('prevVin2','vin','modern');
+  drawPreview('prevVin3','vin','elegant');
+  drawPreview('prevMem1','mem','grid');
+  drawPreview('prevMem2','mem','mosaic');
+  drawPreview('prevMem3','mem','film');
+}
+
+// ══ PHOTO TAB ══
+function switchPhotoTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('studentsPanel').style.display = tab === 'students' ? '' : 'none';
+  document.getElementById('memoriesPanel').style.display = tab === 'memories' ? '' : 'none';
+}
+
+// ══ STUDENTS ══
+function addStudent(name) {
+  const id = ++state.stuIdCounter;
+  state.students.push({ id, name: name || '', photo: null });
+  renderStudents();
+  if (!name) {
+    setTimeout(() => {
+      const inp = document.getElementById('stu_name_'+id);
+      if (inp) inp.focus();
+    }, 50);
+  }
+}
+
+function deleteStudent(id) {
+  state.students = state.students.filter(s => s.id !== id);
+  renderStudents();
+}
+
+function updateStudentName(id, val) {
+  const stu = state.students.find(s => s.id === id);
+  if (stu) stu.name = val;
+}
+
+function triggerStuPhoto(id) {
+  const inp = document.getElementById('stuPhotoInput');
+  inp.onchange = (e) => {
+    if (!e.target.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const stu = state.students.find(s => s.id === id);
+      if (stu) {
+        stu.photo = ev.target.result;
+        renderStudents();
+      }
+    };
+    reader.readAsDataURL(e.target.files[0]);
+    inp.value = '';
+  };
+  inp.click();
+}
+
+function renderStudents() {
+  const grid = document.getElementById('studentsGrid');
+  document.getElementById('stuCount').textContent = state.students.length;
+  grid.innerHTML = state.students.map((s,i) => `
+    <div class="stu-card">
+      <button class="stu-del" onclick="deleteStudent(${s.id})">×</button>
+      <div class="stu-photo-box" onclick="triggerStuPhoto(${s.id})">
+        ${s.photo
+          ? `<img src="${s.photo}" alt="rasm">`
+          : `<div class="add-photo"><span>📷</span><div>Rasm yuklash</div></div>`}
+      </div>
+      <div class="stu-name-box">
+        <div class="stu-num-badge">#${i+1}</div>
+        <input class="stu-name-input" id="stu_name_${s.id}"
+          value="${s.name}" placeholder="Familiya Ism"
+          onchange="updateStudentName(${s.id},this.value)"
+          oninput="updateStudentName(${s.id},this.value)">
+      </div>
+    </div>
+  `).join('') + `
+    <div class="add-stu-card" onclick="addStudent()">
+      <span>+</span><div>Qo'shish</div>
+    </div>`;
+}
+
+// ══ MEMORIES ══
+function addMemory() {
+  if (state.memories.length >= 10) { showToast('Maksimal 10 ta rasm mumkin!'); return; }
+  const id = ++state.memIdCounter;
+  state.memories.push({ id, caption: '', photo: null });
+  renderMemories();
+}
+
+function deleteMemory(id) {
+  state.memories = state.memories.filter(m => m.id !== id);
+  renderMemories();
+}
+
+function updateCaption(id, val) {
+  const m = state.memories.find(m => m.id === id);
+  if (m) m.caption = val;
+}
+
+function triggerMemPhoto(id) {
+  const inp = document.getElementById('memPhotoInput');
+  inp.onchange = (e) => {
+    if (!e.target.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const mem = state.memories.find(m => m.id === id);
+      if (mem) {
+        mem.photo = ev.target.result;
+        renderMemories();
+      }
+    };
+    reader.readAsDataURL(e.target.files[0]);
+    inp.value = '';
+  };
+  inp.click();
+}
+
+function renderMemories() {
+  const grid = document.getElementById('memoriesGrid');
+  document.getElementById('memCount').textContent = state.memories.length;
+  const canAdd = state.memories.length < 10;
+  grid.innerHTML = state.memories.map((m,i) => `
+    <div class="mem-card">
+      <button class="mem-del" onclick="deleteMemory(${m.id})">×</button>
+      <div class="mem-photo-box" onclick="triggerMemPhoto(${m.id})">
+        ${m.photo
+          ? `<img src="${m.photo}" alt="xotira">`
+          : `<div class="add-photo"><span>🖼️</span><div>Rasm yuklash</div></div>`}
+      </div>
+      <div class="mem-caption-box">
+        <input class="mem-caption-input" placeholder="Ism yoki sarlavha..."
+          value="${m.caption}"
+          onchange="updateCaption(${m.id},this.value)"
+          oninput="updateCaption(${m.id},this.value)">
+      </div>
+    </div>
+  `).join('') + (canAdd ? `
+    <div class="add-mem-card" onclick="addMemory()">
+      <span>+</span><div>Rasm qo'shish</div>
+    </div>` : '');
+}
+
+// ══ CSV IMPORT ══
+function importCSV() { document.getElementById('csvInput').click(); }
+function handleCSV(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    let added = 0;
+    lines.forEach(line => {
+      const name = line.split(',')[0].trim().split('\t')[0].trim();
+      if (name && name.length > 1) { addStudent(name); added++; }
+    });
+    showToast(added + ' ta o\'quvchi import qilindi ✓');
+  };
+  reader.readAsText(input.files[0], 'UTF-8');
+  input.value = '';
+}
+
+// ══ SUMMARY ══
+function fillSummary() {
+  document.getElementById('sumSchool').textContent = document.getElementById('schoolName').value || '—';
+  document.getElementById('sumClass').textContent = document.getElementById('className').value || '—';
+  document.getElementById('sumYear').textContent = document.getElementById('schoolYear').value || '—';
+  document.getElementById('sumVinTpl').textContent = TEMPLATES.vin[state.vinTemplate];
+  document.getElementById('sumMemTpl').textContent = TEMPLATES.mem[state.memTemplate];
+  const fmt = document.getElementById('pageFormat').value;
+  document.getElementById('sumFormat').textContent = FORMATS[fmt] || fmt;
+
+  const sc = state.students.length;
+  const mc = state.memories.length;
+  const stuEl = document.getElementById('stuStatus');
+  stuEl.textContent = sc + ' ta ' + (sc > 0 ? '✓' : '⚠');
+  stuEl.className = 'summary-status ' + (sc > 0 ? 'status-ok' : 'status-warn');
+
+  const memEl = document.getElementById('memStatus');
+  memEl.textContent = mc + ' ta ' + (mc >= 6 ? '✓' : '(kamida 6 tavsiya)');
+  memEl.className = 'summary-status ' + (mc >= 6 ? 'status-ok' : 'status-warn');
+}
+
+// ══ OPEN EDITOR ══
+function openEditor() {
+  // State-ni localStorage ga saqlash — Part 2 editor o'qiydi
+  const projectData = {
+    schoolName: document.getElementById('schoolName').value,
+    className: document.getElementById('className').value,
+    schoolYear: document.getElementById('schoolYear').value,
+    teacherName: document.getElementById('teacherName').value,
+    pageFormat: document.getElementById('pageFormat').value,
+    vinTemplate: state.vinTemplate,
+    memTemplate: state.memTemplate,
+    students: state.students,
+    memories: state.memories
+  };
+  localStorage.setItem('vl_project', JSON.stringify(projectData));
+  showToast('Loyiha saqlandi — editor ochilmoqda... ⚡');
+  // Part 2 tayyor bo'lgach: window.location.href = 'editor.html';
+  setTimeout(() => {
+    showToast('✅ Qism 1 tugadi! Qism 2 (editor) tayyorlanmoqda...');
+  }, 1500);
+}
+
+// ══ TOAST ══
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ══ INIT ══
+window.addEventListener('load', () => {
+  initPreviews();
+  renderStudents();
+  renderMemories();
+});
+window.addEventListener('resize', initPreviews);
+</script>
+</body>
+</html>
