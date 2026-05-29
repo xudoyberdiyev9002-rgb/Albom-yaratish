@@ -5,6 +5,195 @@
 
 window.TEMPLATES = [
   // ============================================================
+  // 0. BITIRUVCHI ALBOM MUQOVASI (qora fon, vatermark, elegant)
+  //
+  // Tashqi muqova: Yuqorida "BITIRUVCHI ALBOM",
+  //  to'rtburchak rasm, ortida vatermark (yil/raqam),
+  //  past qismda yil + tuman + maktab + sinf
+  // ============================================================
+  {
+    id: 'bitiruvchi-cover',
+    type: 'vinyetka',
+    name: 'Bitiruvchi Albom',
+    desc: 'Qora muqova, vatermark, elegant',
+    emoji: '🎓',
+    defaultW: 600,
+    defaultH: 850,
+    bgColor1: '#000000',
+    bgColor2: '#0a0a0a',
+    accentColor: '#ffffff',
+    nameColor: '#ffffff',
+    schoolColor: '#e8e8e8',
+
+    draw(ctx, data, cfg) {
+      const {
+        w, h, photo,
+        nameColor   = '#ffffff',
+        schoolColor = '#e8e8e8',
+        bgColor1    = '#000000',
+        bgColor2    = '#0a0a0a',
+        accentColor = '#ffffff',
+        photoScale  = 100,
+        photoOffsetY = 0,
+      } = cfg;
+
+      // ── 1. QORA FON (gradient) ─────────────────────────────
+      const bg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
+      bg.addColorStop(0, bgColor2);
+      bg.addColorStop(1, bgColor1);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      // ── 2. VATERMARK (orqa fonda yirik raqamlar/№) ─────────
+      // Maktab raqamidan vatermark hosil qilamiz: "№65" yoki kerak bo'lsa yil
+      const wmText = (data.schoolNumber || '№65')
+        .replace(/maktab|школа|school|umumiy.*/gi, '')
+        .trim() || '№';
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.045)';
+      // 3 ta belgi (M, raqam1, raqam2) ni o'rtada ulkan qilib chizamiz
+      const wmFontSize = Math.round(h * 0.55);
+      ctx.font = `200 ${wmFontSize}px 'Times New Roman', Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Markazda – bitta yirik harf/belgi
+      const chars = wmText.split('');
+      // Agar 1 ta bo'lsa markazda, 2-3 ta bo'lsa yon-yonida
+      if (chars.length === 1) {
+        ctx.fillText(chars[0], w / 2, h / 2);
+      } else {
+        // Birinchisi chap, oxirgisi o'ng, o'rtadagilar markazda
+        const slots = chars.length;
+        for (let i = 0; i < slots; i++) {
+          const x = w * (0.18 + (i / Math.max(slots - 1, 1)) * 0.64);
+          // Vertikal joy ham ozgina farq qilsin (parallax effekti)
+          const y = h / 2 + (i % 2 === 0 ? -h * 0.08 : h * 0.08);
+          ctx.fillText(chars[i], x, y);
+        }
+      }
+      ctx.restore();
+
+      // ── 3. SARLAVHA "BITIRUVCHI ALBOM" ─────────────────────
+      const titleY = Math.round(h * 0.085);
+      ctx.fillStyle = nameColor;
+      ctx.font = `300 ${Math.round(h * 0.038)}px 'Inter', 'Helvetica Neue', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      drawSpacedText(ctx, 'BITIRUVCHI ALBOM', w / 2, titleY, Math.round(h * 0.012));
+
+      // ── 4. RASM TO'RTBURCHAK ───────────────────────────────
+      const photoTop    = Math.round(h * 0.14);
+      const photoBottom = Math.round(h * 0.65);
+      // Rasm o'lchamlari (foiz scale bilan)
+      const photoH = Math.round((photoBottom - photoTop) * (photoScale / 100));
+      const photoW = Math.round(photoH * 0.72); // 3:4 nisbat
+      const photoX = Math.round(w / 2 - photoW / 2);
+      const photoY = photoTop + photoOffsetY;
+
+      // Yengil oq border
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(photoX - 1, photoY - 1, photoW + 2, photoH + 2);
+
+      // Rasmni clipping bilan chizish
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(photoX, photoY, photoW, photoH);
+      ctx.clip();
+
+      if (photo && photo.complete && photo.naturalWidth > 0) {
+        const iw = photo.naturalWidth, ih = photo.naturalHeight;
+        const scale = Math.max(photoW / iw, photoH / ih);
+        const dw = iw * scale, dh = ih * scale;
+        const dx = photoX + (photoW - dw) / 2;
+        const dy = photoY + (photoH - dh) / 2;
+        ctx.drawImage(photo, dx, dy, dw, dh);
+      } else {
+        // Placeholder
+        const grad = ctx.createLinearGradient(photoX, photoY, photoX, photoY + photoH);
+        grad.addColorStop(0, '#1a1a1a');
+        grad.addColorStop(1, '#2a2a2a');
+        ctx.fillStyle = grad;
+        ctx.fillRect(photoX, photoY, photoW, photoH);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.font = `${Math.round(photoH * 0.25)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('👤', photoX + photoW / 2, photoY + photoH / 2);
+      }
+      ctx.restore();
+
+      // ── 5. YIL "2 0 2 6" (yirik, ingichka) ─────────────────
+      const yearText = (data.schoolYear || '2026').split('-')[0].trim();
+      const yearY    = photoY + photoH + Math.round(h * 0.06);
+
+      ctx.fillStyle = nameColor;
+      ctx.font = `200 ${Math.round(h * 0.075)}px 'Inter', 'Helvetica Neue', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      drawSpacedText(ctx, yearText.split('').join(' '), w / 2, yearY, Math.round(h * 0.005));
+
+      // ── 6. TUMAN (chiziqlar bilan) ─────────────────────────
+      const districtText = (data.cityName || '').toUpperCase();
+      const districtY    = yearY + Math.round(h * 0.052);
+
+      if (districtText) {
+        ctx.fillStyle = schoolColor;
+        ctx.font = `400 ${Math.round(h * 0.018)}px 'Inter', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Matn kengligini o'lchaymiz va yon chiziqlar chizamiz
+        const dWidth = ctx.measureText(districtText).width;
+        const lineLen = Math.round(h * 0.05);
+        const gap = Math.round(h * 0.014);
+        const cx = w / 2;
+
+        ctx.fillText(districtText, cx, districtY);
+
+        // Chap chiziq
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(cx - dWidth / 2 - gap, districtY);
+        ctx.lineTo(cx - dWidth / 2 - gap - lineLen, districtY);
+        ctx.stroke();
+
+        // O'ng chiziq
+        ctx.beginPath();
+        ctx.moveTo(cx + dWidth / 2 + gap, districtY);
+        ctx.lineTo(cx + dWidth / 2 + gap + lineLen, districtY);
+        ctx.stroke();
+      }
+
+      // ── 7. MAKTAB № (yirik, tantanali) ─────────────────────
+      const schoolText = (data.schoolNumber || '№ MAKTAB').toUpperCase();
+      const schoolY    = districtY + Math.round(h * 0.045);
+
+      ctx.fillStyle = nameColor;
+      ctx.font = `500 ${Math.round(h * 0.038)}px 'Inter', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      drawSpacedText(ctx, schoolText, w / 2, schoolY, Math.round(h * 0.003));
+
+      // ── 8. SINF (kichik) ───────────────────────────────────
+      const classText = (data.className || '').toUpperCase();
+      const classY    = schoolY + Math.round(h * 0.034);
+
+      if (classText) {
+        ctx.fillStyle = schoolColor;
+        ctx.font = `400 ${Math.round(h * 0.018)}px 'Inter', sans-serif`;
+        drawSpacedText(ctx,
+          classText.includes('SINF') ? classText : classText + ' SINF',
+          w / 2, classY, Math.round(h * 0.003));
+      }
+    }
+  },
+
+  // ============================================================
   // 1. KLASSIK VINYETKA – Ko'k gradient
   // ============================================================
   {
@@ -811,3 +1000,37 @@ function shiftHue(hex, deg) {
 window.buildOrderedStudents = buildOrderedStudents;
 window.wrapTextCentered     = wrapTextCentered;
 window.hexAlpha             = hexAlpha;
+
+/**
+ * Harflar orasiga bo'shliq qo'shib chizadi (letter-spacing emulyatsiyasi).
+ * Canvas API'da letter-spacing yo'q, shuning uchun har harfni alohida chizamiz.
+ */
+function drawSpacedText(ctx, text, x, y, spacing) {
+  if (!text) return;
+  const chars = text.split('');
+  // Avval umumiy kenglikni hisoblaymiz
+  let totalW = 0;
+  const widths = chars.map(ch => {
+    const w = ctx.measureText(ch).width;
+    totalW += w;
+    return w;
+  });
+  totalW += spacing * Math.max(0, chars.length - 1);
+
+  // Boshlang'ich x – align ga qarab
+  let curX;
+  if (ctx.textAlign === 'center')      curX = x - totalW / 2;
+  else if (ctx.textAlign === 'right')  curX = x - totalW;
+  else                                 curX = x;
+
+  // Har bir belgini left-align bilan chizamiz
+  const prevAlign = ctx.textAlign;
+  ctx.textAlign = 'left';
+  chars.forEach((ch, i) => {
+    ctx.fillText(ch, curX, y);
+    curX += widths[i] + spacing;
+  });
+  ctx.textAlign = prevAlign;
+}
+
+window.drawSpacedText = drawSpacedText;

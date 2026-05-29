@@ -137,6 +137,17 @@ function selectTemplate(card, tpl) {
     document.getElementById('photoShape').value = 'rounded';
   }
 
+  // Bitiruvchi muqovasi uchun maxsus defaultlar
+  if (tpl.id === 'bitiruvchi-cover') {
+    document.getElementById('photoShape').value = 'rect';
+    document.getElementById('photoScale').value = 100;
+    document.getElementById('photoScaleVal').textContent = '100%';
+    document.getElementById('nameFontSize').value = 24;
+    document.getElementById('nameFontSizeVal').textContent = '24px';
+    document.getElementById('schoolFontSize').value = 14;
+    document.getElementById('schoolFontSizeVal').textContent = '14px';
+  }
+
   document.getElementById('toStep2').disabled = false;
 }
 
