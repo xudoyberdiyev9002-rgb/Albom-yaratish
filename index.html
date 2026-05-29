@@ -1,430 +1,325 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TechVision – Innovatsion Yechimlar</title>
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <title>VinyetkaLab – Maktab Albom & Vinyetka Generator</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 </head>
 <body>
 
-  <!-- NAVBAR -->
-  <nav class="navbar" id="navbar">
-    <div class="container nav-inner">
-      <a href="#" class="logo">Tech<span>Vision</span></a>
-      <ul class="nav-links" id="navLinks">
-        <li><a href="#home">Bosh sahifa</a></li>
-        <li><a href="#services">Xizmatlar</a></li>
-        <li><a href="#about">Biz haqimizda</a></li>
-        <li><a href="#portfolio">Portfolio</a></li>
-        <li><a href="#contact">Aloqa</a></li>
-      </ul>
-      <a href="#contact" class="btn btn-nav">Bog'lanish</a>
-      <button class="hamburger" id="hamburger" aria-label="Menu">
-        <span></span><span></span><span></span>
-      </button>
+<!-- ========== HEADER ========== -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="url(#lg)"/>
+        <path d="M8 10h6v12H8zM18 10h6v5h-6zM18 19h6v3h-6z" fill="#fff" opacity=".9"/>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/>
+        </linearGradient></defs>
+      </svg>
+      <span>Vinyetka<strong>Lab</strong></span>
     </div>
-  </nav>
+    <nav class="header-nav">
+      <a href="#step-template" class="nav-link">Shablonlar</a>
+      <a href="#step-upload" class="nav-link">Yuklash</a>
+      <a href="#step-editor" class="nav-link">Tahrirlash</a>
+    </nav>
+  </div>
+</header>
 
-  <!-- HERO -->
-  <section class="hero" id="home">
-    <div class="hero-bg"></div>
-    <div class="container hero-content">
-      <p class="hero-tag">🚀 Yangi avlod texnologiyalari</p>
-      <h1>Biznesingizni <span class="gradient-text">Raqamli</span> Kelajakka Olib Boring</h1>
-      <p class="hero-sub">Biz zamonaviy veb-saytlar, mobil ilovalar va AI yechimlar orqali biznesingizni yangi bosqichga olib chiqamiz.</p>
-      <div class="hero-btns">
-        <a href="#services" class="btn btn-primary">Xizmatlarimiz</a>
-        <a href="#portfolio" class="btn btn-outline">Loyihalarni ko'rish</a>
-      </div>
-      <div class="hero-stats">
-        <div class="stat"><h3>500+</h3><p>Bajarilgan loyiha</p></div>
-        <div class="stat"><h3>200+</h3><p>Mamnun mijoz</p></div>
-        <div class="stat"><h3>8+</h3><p>Yil tajriba</p></div>
-      </div>
+<!-- ========== HERO ========== -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">✨ Avtomatik Vinyetka Generator</div>
+    <h1>Maktab Albomi &amp; Vinyetkalarini<br/><span class="grad">Soniyalarda Yarating</span></h1>
+    <p>30 ta o'quvchi rasmini yuklang → shablon tanlang → bir tugma bilan 30 ta tayyor vinyetka ZIP fayl sifatida yuklab oling.</p>
+    <a href="#step-template" class="btn-hero">Boshlash <span>→</span></a>
+  </div>
+  <div class="hero-visual">
+    <div class="hero-card card-1">
+      <div class="hc-photo"></div>
+      <div class="hc-lines"><div></div><div></div></div>
     </div>
-  </section>
+    <div class="hero-card card-2">
+      <div class="hc-photo"></div>
+      <div class="hc-lines"><div></div><div></div></div>
+    </div>
+    <div class="hero-card card-3">
+      <div class="hc-photo"></div>
+      <div class="hc-lines"><div></div><div></div></div>
+    </div>
+    <div class="hero-badge-float">
+      <span class="hbf-icon">🎓</span>
+      <div><strong>30 ta rasm</strong><small>Bir vaqtda</small></div>
+    </div>
+  </div>
+</section>
 
-  <!-- SERVICES -->
-  <section class="services" id="services">
-    <div class="container">
-      <div class="section-header">
-        <p class="section-tag">Nima qilamiz?</p>
-        <h2>Bizning <span class="gradient-text">Xizmatlarimiz</span></h2>
-        <p class="section-sub">Har bir biznes ehtiyojiga moslashtirilgan professional yechimlar.</p>
-      </div>
-      <div class="services-grid">
-        <div class="service-card" data-aos="fade-up">
-          <div class="service-icon" style="background: linear-gradient(135deg,#667eea,#764ba2)">
-            <i class="fas fa-globe"></i>
-          </div>
-          <h3>Veb Sayt Yaratish</h3>
-          <p>Zamonaviy, tez va SEO optimallashtirilgan veb-saytlar. Responsive dizayn bilan barcha qurilmalarda mukammal ko'rinish.</p>
-          <a href="#contact" class="service-link">Batafsil <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="service-card featured" data-aos="fade-up" data-aos-delay="100">
-          <div class="service-icon" style="background: linear-gradient(135deg,#f093fb,#f5576c)">
-            <i class="fas fa-mobile-alt"></i>
-          </div>
-          <span class="badge">Eng mashhur</span>
-          <h3>Mobil Ilovalar</h3>
-          <p>iOS va Android uchun native va cross-platform mobil ilovalar. Foydalanuvchi tajribasini birinchi o'ringa qo'yamiz.</p>
-          <a href="#contact" class="service-link">Batafsil <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="service-card" data-aos="fade-up" data-aos-delay="200">
-          <div class="service-icon" style="background: linear-gradient(135deg,#4facfe,#00f2fe)">
-            <i class="fas fa-robot"></i>
-          </div>
-          <h3>AI Yechimlar</h3>
-          <p>Sun'iy intellekt asosidagi avtomatlashtirish va tahlil tizimlari. Biznesingizni aqlli qiling.</p>
-          <a href="#contact" class="service-link">Batafsil <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="service-card" data-aos="fade-up" data-aos-delay="300">
-          <div class="service-icon" style="background: linear-gradient(135deg,#43e97b,#38f9d7)">
-            <i class="fas fa-chart-line"></i>
-          </div>
-          <h3>Digital Marketing</h3>
-          <p>SEO, SMM va reklama kampaniyalari orqali brend ko'rinishini oshiring va yangi mijozlarni jalb qiling.</p>
-          <a href="#contact" class="service-link">Batafsil <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="service-card" data-aos="fade-up" data-aos-delay="400">
-          <div class="service-icon" style="background: linear-gradient(135deg,#fa709a,#fee140)">
-            <i class="fas fa-shield-alt"></i>
-          </div>
-          <h3>Kiberxavfsizlik</h3>
-          <p>Saytingiz va ma'lumotlaringizni himoya qiling. Xavfsizlik auditi va doimiy monitoring xizmatlar.</p>
-          <a href="#contact" class="service-link">Batafsil <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="service-card" data-aos="fade-up" data-aos-delay="500">
-          <div class="service-icon" style="background: linear-gradient(135deg,#a18cd1,#fbc2eb)">
-            <i class="fas fa-cloud"></i>
-          </div>
-          <h3>Cloud Xizmatlar</h3>
-          <p>AWS, Google Cloud va Azure platformalarida biznesingizni bulutga ko'chiring. Xavfsiz va tejamkor.</p>
-          <a href="#contact" class="service-link">Batafsil <i class="fas fa-arrow-right"></i></a>
-        </div>
-      </div>
+<!-- ========== STEPS ========== -->
+<div class="steps-bar">
+  <div class="step active" id="sb-1"><span class="step-num">1</span><span class="step-label">Shablon</span></div>
+  <div class="step-line"></div>
+  <div class="step" id="sb-2"><span class="step-num">2</span><span class="step-label">Yuklash</span></div>
+  <div class="step-line"></div>
+  <div class="step" id="sb-3"><span class="step-num">3</span><span class="step-label">Tahrirlash</span></div>
+  <div class="step-line"></div>
+  <div class="step" id="sb-4"><span class="step-num">4</span><span class="step-label">Export</span></div>
+</div>
+
+<!-- ========== MAIN CONTENT ========== -->
+<main class="main">
+
+  <!-- STEP 1: TEMPLATE SELECTION -->
+  <section class="section active-section" id="step-template">
+    <div class="section-header">
+      <h2>Shablon Tanlang</h2>
+      <p>Vinyetka turi va dizaynini tanlang</p>
+    </div>
+
+    <div class="template-type-tabs">
+      <button class="tab-btn active" data-type="vinyetka">🎓 Vinyetka (tashqi)</button>
+      <button class="tab-btn" data-type="inner">📖 Albom ichki sahifa</button>
+      <button class="tab-btn" data-type="id-card">🪪 ID-Karta</button>
+    </div>
+
+    <div class="templates-grid" id="templatesGrid">
+      <!-- JS tomonidan to'ldiriladi -->
+    </div>
+
+    <div class="section-footer">
+      <button class="btn-next" id="toStep2" disabled>Keyingisi → Rasm yuklash</button>
     </div>
   </section>
 
-  <!-- ABOUT -->
-  <section class="about" id="about">
-    <div class="container about-inner">
-      <div class="about-visual">
-        <div class="about-img-wrap">
-          <div class="about-shape shape1"></div>
-          <div class="about-shape shape2"></div>
-          <div class="about-card-float">
-            <i class="fas fa-trophy"></i>
-            <div>
-              <strong>50+ Mukofot</strong>
-              <span>Xalqaro tanlovlar</span>
-            </div>
-          </div>
-          <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&q=80" alt="Jamoa" class="about-img"/>
-        </div>
-      </div>
-      <div class="about-text">
-        <p class="section-tag">Biz haqimizda</p>
-        <h2>Texnologiya va <span class="gradient-text">Ijodkorlikni</span> Birlashtirамиз</h2>
-        <p>TechVision – 2016-yildan buyon O'zbekiston va xalqaro bozorda raqamli yechimlar yetkazib berayotgan kompaniya. Bizning 50+ mutaxassisdan iborat jamoamiz har bir loyihaga ishtiyoq va professionallik bilan yondashadi.</p>
-        <ul class="about-list">
-          <li><i class="fas fa-check-circle"></i> Zamonaviy texnologiyalar bilan ishlash</li>
-          <li><i class="fas fa-check-circle"></i> O'z vaqtida yetkazib berish kafolati</li>
-          <li><i class="fas fa-check-circle"></i> 24/7 texnik yordam</li>
-          <li><i class="fas fa-check-circle"></i> Shaffof narx siyosati</li>
-        </ul>
-        <a href="#contact" class="btn btn-primary">Biz bilan ishlang</a>
-      </div>
+  <!-- STEP 2: UPLOAD -->
+  <section class="section" id="step-upload">
+    <div class="section-header">
+      <h2>Ma'lumotlar va Rasmlarni Yuklang</h2>
+      <p>Sinf ma'lumotlari va o'quvchilar rasmlarini kiriting</p>
     </div>
-  </section>
 
-  <!-- PORTFOLIO -->
-  <section class="portfolio" id="portfolio">
-    <div class="container">
-      <div class="section-header">
-        <p class="section-tag">Ishlarimiz</p>
-        <h2>So'nggi <span class="gradient-text">Loyihalar</span></h2>
-        <p class="section-sub">Mijozlarimiz uchun amalga oshirilgan muvaffaqiyatli loyihalar.</p>
-      </div>
-      <div class="portfolio-filter">
-        <button class="filter-btn active" data-filter="all">Barchasi</button>
-        <button class="filter-btn" data-filter="web">Veb</button>
-        <button class="filter-btn" data-filter="mobile">Mobil</button>
-        <button class="filter-btn" data-filter="ai">AI</button>
-      </div>
-      <div class="portfolio-grid" id="portfolioGrid">
-        <div class="portfolio-item" data-category="web">
-          <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80" alt="E-commerce"/>
-          <div class="portfolio-overlay">
-            <h4>E-commerce Platforma</h4>
-            <p>Veb loyiha</p>
-          </div>
-        </div>
-        <div class="portfolio-item" data-category="mobile">
-          <img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&q=80" alt="Mobile App"/>
-          <div class="portfolio-overlay">
-            <h4>Delivery Ilovasi</h4>
-            <p>Mobil loyiha</p>
-          </div>
-        </div>
-        <div class="portfolio-item" data-category="ai">
-          <img src="https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=400&q=80" alt="AI Dashboard"/>
-          <div class="portfolio-overlay">
-            <h4>AI Tahlil Tizimi</h4>
-            <p>AI loyiha</p>
-          </div>
-        </div>
-        <div class="portfolio-item" data-category="web">
-          <img src="https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=400&q=80" alt="Corporate"/>
-          <div class="portfolio-overlay">
-            <h4>Korporativ Sayt</h4>
-            <p>Veb loyiha</p>
-          </div>
-        </div>
-        <div class="portfolio-item" data-category="mobile">
-          <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&q=80" alt="Fintech"/>
-          <div class="portfolio-overlay">
-            <h4>Fintech Ilovasi</h4>
-            <p>Mobil loyiha</p>
-          </div>
-        </div>
-        <div class="portfolio-item" data-category="ai">
-          <img src="https://images.unsplash.com/photo-1518186285589-2f7649de83e0?w=400&q=80" alt="Data"/>
-          <div class="portfolio-overlay">
-            <h4>Ma'lumot Tahlili</h4>
-            <p>AI loyiha</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TESTIMONIALS -->
-  <section class="testimonials">
-    <div class="container">
-      <div class="section-header">
-        <p class="section-tag">Mijozlar fikri</p>
-        <h2>Ular <span class="gradient-text">Nimalar</span> Deydi?</h2>
-      </div>
-      <div class="testimonials-grid">
-        <div class="testimonial-card">
-          <div class="stars">⭐⭐⭐⭐⭐</div>
-          <p>"TechVision jamoasi bilan ishlash juda qulay edi. Loyihamiz o'z vaqtida va yuqori sifatda bajarildi. Tavsiya qilaman!"</p>
-          <div class="testimonial-author">
-            <img src="https://i.pravatar.cc/50?img=1" alt="Aziz"/>
-            <div>
-              <strong>Aziz Karimov</strong>
-              <span>CEO, AzizShop</span>
-            </div>
-          </div>
-        </div>
-        <div class="testimonial-card featured-t">
-          <div class="stars">⭐⭐⭐⭐⭐</div>
-          <p>"Mobil ilovamiz tufayli savdolarimiz 3 baravar oshdi. Professional jamoa, zo'r natija. Rahmat TechVision!"</p>
-          <div class="testimonial-author">
-            <img src="https://i.pravatar.cc/50?img=5" alt="Malika"/>
-            <div>
-              <strong>Malika Yusupova</strong>
-              <span>Founder, MalikaStore</span>
-            </div>
-          </div>
-        </div>
-        <div class="testimonial-card">
-          <div class="stars">⭐⭐⭐⭐⭐</div>
-          <p>"AI yechim bizning ish jarayonimizni avtomatlashtirib, xarajatlarimizni 40% kamaytirdi. Ajoyib tajriba!"</p>
-          <div class="testimonial-author">
-            <img src="https://i.pravatar.cc/50?img=8" alt="Jasur"/>
-            <div>
-              <strong>Jasur Toshmatov</strong>
-              <span>Director, TechCorp</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PRICING -->
-  <section class="pricing">
-    <div class="container">
-      <div class="section-header">
-        <p class="section-tag">Narxlar</p>
-        <h2>Sizga Mos <span class="gradient-text">Tarif</span></h2>
-        <p class="section-sub">Shaffof narxlar. Yashirin to'lovlar yo'q.</p>
-      </div>
-      <div class="pricing-grid">
-        <div class="pricing-card">
-          <h3>Starter</h3>
-          <div class="price"><span>$</span>499</div>
-          <p class="price-desc">Kichik biznes uchun</p>
-          <ul>
-            <li><i class="fas fa-check"></i> 5 sahifali veb-sayt</li>
-            <li><i class="fas fa-check"></i> Responsive dizayn</li>
-            <li><i class="fas fa-check"></i> SEO optimizatsiya</li>
-            <li><i class="fas fa-check"></i> 1 oy texnik yordam</li>
-            <li class="disabled"><i class="fas fa-times"></i> Mobil ilova</li>
-            <li class="disabled"><i class="fas fa-times"></i> AI integratsiya</li>
-          </ul>
-          <a href="#contact" class="btn btn-outline">Tanlash</a>
-        </div>
-        <div class="pricing-card featured-p">
-          <span class="popular-badge">Mashhur</span>
-          <h3>Professional</h3>
-          <div class="price"><span>$</span>1499</div>
-          <p class="price-desc">O'rta biznes uchun</p>
-          <ul>
-            <li><i class="fas fa-check"></i> Cheklanmagan sahifalar</li>
-            <li><i class="fas fa-check"></i> Responsive dizayn</li>
-            <li><i class="fas fa-check"></i> SEO + Analytics</li>
-            <li><i class="fas fa-check"></i> 6 oy texnik yordam</li>
-            <li><i class="fas fa-check"></i> Mobil ilova</li>
-            <li class="disabled"><i class="fas fa-times"></i> AI integratsiya</li>
-          </ul>
-          <a href="#contact" class="btn btn-primary">Tanlash</a>
-        </div>
-        <div class="pricing-card">
-          <h3>Enterprise</h3>
-          <div class="price"><span>$</span>3999</div>
-          <p class="price-desc">Yirik biznes uchun</p>
-          <ul>
-            <li><i class="fas fa-check"></i> To'liq echim</li>
-            <li><i class="fas fa-check"></i> Maxsus dizayn</li>
-            <li><i class="fas fa-check"></i> SEO + Analytics + Ads</li>
-            <li><i class="fas fa-check"></i> 12 oy texnik yordam</li>
-            <li><i class="fas fa-check"></i> Mobil ilova</li>
-            <li><i class="fas fa-check"></i> AI integratsiya</li>
-          </ul>
-          <a href="#contact" class="btn btn-outline">Tanlash</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CONTACT -->
-  <section class="contact" id="contact">
-    <div class="container contact-inner">
-      <div class="contact-info">
-        <p class="section-tag">Aloqa</p>
-        <h2>Loyihangizni <span class="gradient-text">Boshlaylik!</span></h2>
-        <p>Bepul konsultatsiya oling. Bizning mutaxassislar sizning ehtiyojlaringizni tahlil qilib, eng yaxshi yechimni taklif qiladi.</p>
-        <div class="contact-details">
-          <div class="contact-item">
-            <i class="fas fa-map-marker-alt"></i>
-            <div>
-              <strong>Manzil</strong>
-              <span>Toshkent, Yunusobod tumani, 17-kvartal</span>
-            </div>
-          </div>
-          <div class="contact-item">
-            <i class="fas fa-phone"></i>
-            <div>
-              <strong>Telefon</strong>
-              <span>+998 90 123 45 67</span>
-            </div>
-          </div>
-          <div class="contact-item">
-            <i class="fas fa-envelope"></i>
-            <div>
-              <strong>Email</strong>
-              <span>info@techvision.uz</span>
-            </div>
-          </div>
-        </div>
-        <div class="social-links">
-          <a href="#"><i class="fab fa-telegram"></i></a>
-          <a href="#"><i class="fab fa-instagram"></i></a>
-          <a href="#"><i class="fab fa-linkedin"></i></a>
-          <a href="#"><i class="fab fa-github"></i></a>
-        </div>
-      </div>
-      <form class="contact-form" id="contactForm">
-        <div class="form-row">
+    <div class="upload-layout">
+      <!-- CLASS INFO -->
+      <div class="upload-card">
+        <h3>🏫 Sinf Ma'lumotlari</h3>
+        <div class="form-grid">
           <div class="form-group">
-            <label>Ismingiz</label>
-            <input type="text" placeholder="John Doe" required />
+            <label>Maktab nomi</label>
+            <input type="text" id="schoolName" placeholder="1-son umumiy o'rta maktab" />
           </div>
           <div class="form-group">
-            <label>Telefon</label>
-            <input type="tel" placeholder="+998 90 000 00 00" required />
+            <label>Maktab raqami</label>
+            <input type="text" id="schoolNumber" placeholder="Maktab №1" />
+          </div>
+          <div class="form-group">
+            <label>Sinf</label>
+            <input type="text" id="className" placeholder="11-A" />
+          </div>
+          <div class="form-group">
+            <label>O'quv yili</label>
+            <input type="text" id="schoolYear" placeholder="2025-2026" />
+          </div>
+          <div class="form-group full">
+            <label>Shahar / Tuman</label>
+            <input type="text" id="cityName" placeholder="Toshkent shahri" />
+          </div>
+          <div class="form-group full">
+            <label>Sinf rahbari F.I.O</label>
+            <input type="text" id="teacherName" placeholder="Karimova Nodira Aliyevna" />
           </div>
         </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" placeholder="example@mail.com" required />
+      </div>
+
+      <!-- STUDENTS UPLOAD -->
+      <div class="upload-card">
+        <h3>👨‍🎓 O'quvchilar Rasmlarini Yuklang</h3>
+        <p class="upload-hint">Fayl nomi = <strong>Ism Familya</strong> bo'lishi kerak<br/><small>(masalan: <code>Sardor Karimov.jpg</code>)</small></p>
+
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">📁</div>
+          <p>Rasmlarni bu yerga tashlang yoki bosing</p>
+          <small>JPG, PNG, WEBP • Bir vaqtda 50 tagacha</small>
+          <input type="file" id="fileInput" multiple accept="image/*" hidden/>
         </div>
-        <div class="form-group">
-          <label>Xizmat turi</label>
-          <select required>
-            <option value="">Tanlang...</option>
-            <option>Veb sayt yaratish</option>
-            <option>Mobil ilova</option>
-            <option>AI yechimlar</option>
-            <option>Digital Marketing</option>
-            <option>Kiberxavfsizlik</option>
-            <option>Cloud xizmatlar</option>
-          </select>
+
+        <div class="students-list" id="studentsList">
+          <!-- O'quvchilar ro'yxati -->
         </div>
-        <div class="form-group">
-          <label>Xabar</label>
-          <textarea rows="4" placeholder="Loyihangiz haqida qisqacha yozing..."></textarea>
+
+        <div class="upload-stats" id="uploadStats" style="display:none">
+          <div class="stat-pill"><span id="countLoaded">0</span> ta rasm yuklandi</div>
+          <button class="btn-clear" id="clearAll">🗑 Tozalash</button>
         </div>
-        <button type="submit" class="btn btn-primary btn-full">
-          <i class="fas fa-paper-plane"></i> Xabar yuborish
+      </div>
+    </div>
+
+    <div class="section-footer">
+      <button class="btn-prev" id="backToStep1">← Orqaga</button>
+      <button class="btn-next" id="toStep3" disabled>Keyingisi → Tahrirlash</button>
+    </div>
+  </section>
+
+  <!-- STEP 3: EDITOR PREVIEW -->
+  <section class="section" id="step-editor">
+    <div class="section-header">
+      <h2>Tahrirlash va Ko'rish</h2>
+      <p>Birinchi o'quvchi namunasi — to'g'ri ko'rinsa generatsiyani boshlang</p>
+    </div>
+
+    <div class="editor-layout">
+      <!-- CONTROLS -->
+      <div class="editor-controls">
+        <div class="ec-card">
+          <h4>🔤 Matn Sozlamalari</h4>
+          <div class="ctrl-group">
+            <label>Ism shrift o'lchami</label>
+            <input type="range" id="nameFontSize" min="12" max="48" value="22" />
+            <span id="nameFontSizeVal">22px</span>
+          </div>
+          <div class="ctrl-group">
+            <label>Ism rangi</label>
+            <input type="color" id="nameColor" value="#1a1a2e" />
+          </div>
+          <div class="ctrl-group">
+            <label>Maktab matni o'lchami</label>
+            <input type="range" id="schoolFontSize" min="8" max="28" value="13" />
+            <span id="schoolFontSizeVal">13px</span>
+          </div>
+          <div class="ctrl-group">
+            <label>Maktab matni rangi</label>
+            <input type="color" id="schoolColor" value="#444466" />
+          </div>
+        </div>
+
+        <div class="ec-card">
+          <h4>🖼 Rasm Sozlamalari</h4>
+          <div class="ctrl-group">
+            <label>Rasm o'lchami</label>
+            <input type="range" id="photoScale" min="50" max="150" value="100" />
+            <span id="photoScaleVal">100%</span>
+          </div>
+          <div class="ctrl-group">
+            <label>Rasm vertikal pozitsiya</label>
+            <input type="range" id="photoOffsetY" min="-50" max="50" value="0" />
+            <span id="photoOffsetYVal">0px</span>
+          </div>
+          <div class="ctrl-group">
+            <label>Rasm shakli</label>
+            <select id="photoShape">
+              <option value="circle">Doira</option>
+              <option value="rounded">Yumaloq to'rtburchak</option>
+              <option value="rect">To'rtburchak</option>
+              <option value="oval">Oval</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ec-card">
+          <h4>🎨 Fon Sozlamalari</h4>
+          <div class="ctrl-group">
+            <label>Asosiy rang</label>
+            <input type="color" id="bgColor1" value="#f0f4ff" />
+          </div>
+          <div class="ctrl-group">
+            <label>Ikkinchi rang</label>
+            <input type="color" id="bgColor2" value="#e8edff" />
+          </div>
+          <div class="ctrl-group">
+            <label>Dekor rangi</label>
+            <input type="color" id="accentColor" value="#6366f1" />
+          </div>
+        </div>
+
+        <div class="ec-card">
+          <h4>📐 O'lcham</h4>
+          <div class="ctrl-group">
+            <label>Kenglik (px)</label>
+            <input type="number" id="canvasW" value="400" min="200" max="800" />
+          </div>
+          <div class="ctrl-group">
+            <label>Balandlik (px)</label>
+            <input type="number" id="canvasH" value="560" min="200" max="900" />
+          </div>
+          <div class="ctrl-group">
+            <label>Chiqarish sifati</label>
+            <select id="exportQuality">
+              <option value="1">Oddiy (1x)</option>
+              <option value="2" selected>Yuqori (2x)</option>
+              <option value="3">Ultra (3x)</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn-refresh-preview" id="refreshPreview">🔄 Preview yangilash</button>
+      </div>
+
+      <!-- PREVIEW CANVAS -->
+      <div class="editor-preview-wrap">
+        <div class="preview-label">Ko'rish (namuna – 1-o'quvchi)</div>
+        <div class="canvas-container">
+          <canvas id="previewCanvas"></canvas>
+        </div>
+        <div class="preview-nav">
+          <button id="prevStudent">←</button>
+          <span id="studentNav">1 / 1</span>
+          <button id="nextStudent">→</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-footer">
+      <button class="btn-prev" id="backToStep2">← Orqaga</button>
+      <button class="btn-next btn-generate" id="toStep4">⚡ Generatsiya Boshlash</button>
+    </div>
+  </section>
+
+  <!-- STEP 4: GENERATE & EXPORT -->
+  <section class="section" id="step-export">
+    <div class="section-header">
+      <h2>Generatsiya va Export</h2>
+      <p>Barcha o'quvchilar uchun vinyetkalar tayorlanmoqda...</p>
+    </div>
+
+    <div class="export-layout">
+      <div class="progress-card" id="progressCard">
+        <div class="progress-icon">⚡</div>
+        <h3 id="progressTitle">Generatsiya boshlandi...</h3>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progressBar" style="width:0%"></div>
+        </div>
+        <p id="progressText">0 / 0 tayyor</p>
+      </div>
+
+      <div class="export-done" id="exportDone" style="display:none">
+        <div class="done-icon">🎉</div>
+        <h3>Barcha vinyetkalar tayyor!</h3>
+        <p id="doneCount"></p>
+        <button class="btn-download" id="downloadZip">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          ZIP yuklab olish
         </button>
-      </form>
+        <button class="btn-restart" id="restartBtn">🔄 Qaytadan boshlash</button>
+      </div>
+
+      <!-- THUMBNAILS -->
+      <div class="thumbnails-grid" id="thumbnailsGrid"></div>
     </div>
   </section>
 
-  <!-- FOOTER -->
-  <footer class="footer">
-    <div class="container footer-inner">
-      <div class="footer-brand">
-        <a href="#" class="logo">Tech<span>Vision</span></a>
-        <p>Biznesingizni raqamli kelajakka olib boramiz. Innovatsiya va sifat – bizning ustuvorligimiz.</p>
-        <div class="social-links">
-          <a href="#"><i class="fab fa-telegram"></i></a>
-          <a href="#"><i class="fab fa-instagram"></i></a>
-          <a href="#"><i class="fab fa-linkedin"></i></a>
-        </div>
-      </div>
-      <div class="footer-links">
-        <h4>Xizmatlar</h4>
-        <ul>
-          <li><a href="#">Veb sayt</a></li>
-          <li><a href="#">Mobil ilova</a></li>
-          <li><a href="#">AI yechimlar</a></li>
-          <li><a href="#">Digital Marketing</a></li>
-        </ul>
-      </div>
-      <div class="footer-links">
-        <h4>Kompaniya</h4>
-        <ul>
-          <li><a href="#">Biz haqimizda</a></li>
-          <li><a href="#">Portfolio</a></li>
-          <li><a href="#">Blog</a></li>
-          <li><a href="#">Karyera</a></li>
-        </ul>
-      </div>
-      <div class="footer-links">
-        <h4>Yordam</h4>
-        <ul>
-          <li><a href="#">FAQ</a></li>
-          <li><a href="#">Aloqa</a></li>
-          <li><a href="#">Maxfiylik siyosati</a></li>
-          <li><a href="#">Foydalanish shartlari</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <p>© 2026 TechVision. Barcha huquqlar himoyalangan.</p>
-    </div>
-  </footer>
+</main>
 
-  <a href="#" class="scroll-top" id="scrollTop"><i class="fas fa-arrow-up"></i></a>
+<!-- ========== FOOTER ========== -->
+<footer class="footer">
+  <p>© 2026 VinyetkaLab · Maktab albom va vinyetka generatori</p>
+</footer>
 
-  <script src="script.js"></script>
+<!-- LIBS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="templates.js"></script>
+<script src="generator.js"></script>
+<script src="editor.js"></script>
 </body>
 </html>
