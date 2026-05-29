@@ -117,6 +117,27 @@ input,select,textarea,button{font-family:inherit}
 .upload-hint{font-size:13px;color:#7070a0;margin-bottom:16px;line-height:1.6}
 .upload-hint code{background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:6px;color:#a5b4fc;font-family:monospace}
 
+/* ===== SINF RAHBARI UPLOAD ===== */
+.teacher-upload-wrap{margin-bottom:18px}
+.teacher-drop-zone{
+  position:relative;border:2px dashed rgba(99,102,241,0.35);border-radius:14px;
+  padding:18px;text-align:center;cursor:pointer;transition:all .3s;
+  background:rgba(99,102,241,0.04);min-height:90px;
+  display:flex;align-items:center;justify-content:center;
+}
+.teacher-drop-zone:hover{border-color:#6366f1;background:rgba(99,102,241,0.1)}
+#teacherPlaceholder span{font-size:32px;display:block;margin-bottom:4px}
+#teacherPlaceholder p{color:#8080a0;font-size:13px;margin:0 0 2px}
+#teacherPlaceholder small{color:#5050a0;font-size:11px}
+#teacherPreviewImg{display:flex;align-items:center;gap:12px;width:100%}
+#teacherThumb{width:64px;height:80px;border-radius:10px;object-fit:cover;border:2px solid rgba(99,102,241,0.4)}
+#teacherRemove{
+  margin-left:auto;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.25);
+  color:#fca5a5;width:28px;height:28px;border-radius:50%;font-size:13px;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;
+}
+#teacherRemove:hover{background:rgba(248,113,113,0.3)}
+
 .drop-zone{border:2px dashed rgba(99,102,241,0.3);border-radius:14px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .3s;background:rgba(99,102,241,0.04)}
 .drop-zone:hover,.drop-zone.dragging{border-color:#6366f1;background:rgba(99,102,241,0.1)}
 .drop-icon{font-size:40px;margin-bottom:10px}
