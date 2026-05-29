@@ -138,6 +138,23 @@
         <h3>👨‍🎓 O'quvchilar Rasmlarini Yuklang</h3>
         <p class="upload-hint">Fayl nomi = <strong>Ism Familya</strong> bo'lishi kerak<br/><small>(masalan: <code>Sardor Karimov.jpg</code>)</small></p>
 
+        <!-- SINF RAHBARI rasmi (faqat inner shablon uchun ko'rinadi) -->
+        <div class="teacher-upload-wrap" id="teacherUploadWrap" style="display:none">
+          <div class="teacher-drop-zone" id="teacherDropZone">
+            <div id="teacherPreviewImg" style="display:none">
+              <img id="teacherThumb" src="" alt="Rahbar"/>
+              <button id="teacherRemove" title="O'chirish">✕</button>
+            </div>
+            <div id="teacherPlaceholder">
+              <span>👩‍🏫</span>
+              <p>Sinf rahbari rasmi</p>
+              <small>Bosing yoki tashlang</small>
+            </div>
+            <input type="file" id="teacherFileInput" accept="image/*" hidden/>
+          </div>
+          <p class="upload-hint" style="margin-top:8px">Sinf rahbari rasmi albom ichki sahifasida <strong>yuqorida</strong> ko'rinadi</p>
+        </div>
+
         <div class="drop-zone" id="dropZone">
           <div class="drop-icon">📁</div>
           <p>Rasmlarni bu yerga tashlang yoki bosing</p>
