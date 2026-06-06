@@ -485,7 +485,7 @@ window.TEMPLATES = [
   },
 
   // ============================================================
-  // 5. ALBOM ICHKI SAHIFA – Sinf rahbari yuqori + barcha o'quvchilar grid
+  // 5. ALBOM ICHKI SAHIFA – O'qituvchi yuqorida katta + bola birinchi o'rinda
   //
   // cfg.allStudents  = barcha o'quvchilar massivi [{name, img}]
   // cfg.ownerIndex   = shu vinyetka egasining indeksi (0-based)
@@ -495,157 +495,243 @@ window.TEMPLATES = [
     id: 'album-inner',
     type: 'inner',
     name: 'Albom Ichki',
-    desc: 'Rahbar + barcha o\'quvchilar qatori',
+    desc: 'O\'qituvchi katta + bola 1-o\'rinda',
     emoji: '📖',
-    defaultW: 800,
-    defaultH: 1100,
-    bgColor1: '#ffffff',
+    defaultW: 900,
+    defaultH: 1200,
+    bgColor1: '#fafbff',
     bgColor2: '#eef2ff',
-    accentColor: '#4f46e5',
-    nameColor: '#1a1a2e',
-    schoolColor: '#4040a0',
+    accentColor: '#3730a3',
+    nameColor: '#1e1b4b',
+    schoolColor: '#4338ca',
 
     draw(ctx, data, cfg) {
       const {
         w, h,
-        allStudents = [],   // barcha o'quvchilar
-        ownerIndex  = 0,    // egasi indeksi
-        teacherImg  = null, // rahbar rasmi
-        nameFontSize   = 14,
-        schoolFontSize = 13,
-        nameColor, schoolColor,
-        bgColor1, bgColor2, accentColor,
+        allStudents = [],
+        ownerIndex  = 0,
+        teacherImg  = null,
+        nameFontSize   = 13,
+        schoolFontSize = 12,
+        nameColor   = '#1e1b4b',
+        schoolColor = '#4338ca',
+        bgColor1    = '#fafbff',
+        bgColor2    = '#eef2ff',
+        accentColor = '#3730a3',
         photoScale  = 100,
         photoShape  = 'rounded',
       } = cfg;
 
-      // ── 1. FON ──────────────────────────────────────────────
-      ctx.fillStyle = bgColor1;
+      // ══════════════════════════════════════════════════════
+      // 1. FON
+      // ══════════════════════════════════════════════════════
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0, bgColor1);
+      bgGrad.addColorStop(1, bgColor2);
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Diagonal dekor
+      // Yuqori chap burchak dekor
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(0, 0); ctx.lineTo(w * 0.55, 0); ctx.lineTo(0, h * 0.18);
-      ctx.fillStyle = hexAlpha(accentColor, 0.07); ctx.fill();
+      ctx.moveTo(0, 0); ctx.lineTo(w * 0.52, 0); ctx.lineTo(0, h * 0.14);
+      ctx.fillStyle = hexAlpha(accentColor, 0.06);
+      ctx.fill();
+      ctx.restore();
 
+      // Quyi o'ng burchak dekor
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(w, h); ctx.lineTo(w * 0.45, h); ctx.lineTo(w, h * 0.82);
-      ctx.fillStyle = hexAlpha(accentColor, 0.07); ctx.fill();
+      ctx.moveTo(w, h); ctx.lineTo(w * 0.48, h); ctx.lineTo(w, h * 0.86);
+      ctx.fillStyle = hexAlpha(accentColor, 0.06);
+      ctx.fill();
+      ctx.restore();
 
-      // ── 2. HEADER BAND ──────────────────────────────────────
-      const headerH = Math.round(h * 0.072);
-      const hg = ctx.createLinearGradient(0, 0, w, 0);
-      hg.addColorStop(0, accentColor);
-      hg.addColorStop(1, shiftHue(accentColor, 40));
-      ctx.fillStyle = hg;
+      // ══════════════════════════════════════════════════════
+      // 2. HEADER – Gradient band
+      // ══════════════════════════════════════════════════════
+      const headerH = Math.round(h * 0.068);
+      const hgrd = ctx.createLinearGradient(0, 0, w, 0);
+      hgrd.addColorStop(0,   accentColor);
+      hgrd.addColorStop(0.5, shiftHue(accentColor, 30));
+      hgrd.addColorStop(1,   accentColor);
+      ctx.fillStyle = hgrd;
       ctx.fillRect(0, 0, w, headerH);
 
-      // Maktab nomi + sinf
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = `700 ${Math.round(headerH * 0.42)}px Inter, sans-serif`;
-      ctx.fillText(
-        [data.schoolNumber, data.className ? data.className + ' sinf' : '', data.schoolYear]
-          .filter(Boolean).join('  •  '),
-        w / 2, headerH / 2
-      );
+      // Header matni
+      const headerFS = Math.round(headerH * 0.38);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `700 ${headerFS}px Inter, sans-serif`;
+      const headerText = [
+        data.schoolNumber || '',
+        data.className    ? data.className + ' sinf' : '',
+        data.schoolYear   || ''
+      ].filter(Boolean).join('   ·   ');
+      ctx.fillText(headerText, w / 2, headerH / 2);
 
-      // ── 3. SINF RAHBARI ─────────────────────────────────────
-      const teacherAreaTop = headerH + Math.round(h * 0.018);
-      const teacherPhotoD  = Math.round(h * 0.115 * (photoScale / 100));
-      const teacherPx      = w / 2;
-      const teacherPy      = teacherAreaTop + teacherPhotoD / 2 + Math.round(h * 0.01);
+      // ══════════════════════════════════════════════════════
+      // 3. O'QITUVCHI BLOKI – Katta rasm, markazda
+      // ══════════════════════════════════════════════════════
+      const teacherBlockTop = headerH + Math.round(h * 0.016);
 
-      // "Sinf rahbari" yorliq
-      const badgeW = Math.round(w * 0.26), badgeH = Math.round(h * 0.026);
-      const badgeX = teacherPx - badgeW / 2, badgeY = teacherAreaTop;
-      ctx.fillStyle = hexAlpha(accentColor, 0.12);
+      // O'qituvchi rasmi o'lchami – ancha katta
+      const teacherD  = Math.round(h * 0.155 * (photoScale / 100));
+      const teacherPx = w / 2;
+      const teacherPy = teacherBlockTop + Math.round(h * 0.01) + teacherD / 2;
+
+      // O'qituvchi kartasi (oq panel)
+      const tcardW = Math.round(w * 0.38);
+      const tcardH = teacherD + Math.round(h * 0.072);
+      const tcardX = teacherPx - tcardW / 2;
+      const tcardY = teacherBlockTop;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(55,48,163,0.14)';
+      ctx.shadowBlur  = 24;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle   = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeH / 2);
+      ctx.roundRect(tcardX, tcardY, tcardW, tcardH, 18);
+      ctx.fill();
+      ctx.restore();
+
+      // Karta yuqori accent chiziq
+      ctx.save();
+      ctx.fillStyle = hgrd;
+      ctx.beginPath();
+      ctx.roundRect(tcardX, tcardY, tcardW, 5, [18, 18, 0, 0]);
+      ctx.fill();
+      ctx.restore();
+
+      // O'qituvchi rasmi
+      drawPhoto(ctx, teacherImg, teacherPx, teacherPy, teacherD, 'rounded', accentColor);
+
+      // "Sinf rahbari" yorlig'i
+      const labelFS = Math.round(h * 0.013);
+      const labelY  = teacherPy + teacherD / 2 + Math.round(h * 0.01);
+
+      ctx.save();
+      const lblW = Math.round(tcardW * 0.72);
+      const lblH = Math.round(labelFS * 2);
+      ctx.fillStyle = hexAlpha(accentColor, 0.1);
+      ctx.beginPath();
+      ctx.roundRect(teacherPx - lblW / 2, labelY, lblW, lblH, lblH / 2);
       ctx.fill();
       ctx.fillStyle = accentColor;
-      ctx.font = `600 ${Math.round(badgeH * 0.55)}px Inter, sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('Sinf rahbari', teacherPx, badgeY + badgeH / 2);
+      ctx.font = `600 ${labelFS}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('👩‍🏫  Sinf rahbari', teacherPx, labelY + lblH / 2);
+      ctx.restore();
 
-      drawPhoto(ctx, teacherImg, teacherPx, teacherPy, teacherPhotoD, 'circle', accentColor);
-
-      // Rahbar ismi
-      const teacherNameY = teacherPy + teacherPhotoD / 2 + Math.round(h * 0.016);
+      // O'qituvchi ismi
+      const tNameY = labelY + Math.round(h * 0.028);
       ctx.fillStyle = nameColor;
-      ctx.font = `700 ${Math.round(h * 0.022)}px Inter, sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillText(data.teacherName || 'Sinf rahbari', teacherPx, teacherNameY);
+      ctx.font = `700 ${Math.round(h * 0.019)}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(data.teacherName || 'Sinf rahbari F.I.O', teacherPx, tNameY);
 
-      // Ajratgich
-      const dividerY = teacherNameY + Math.round(h * 0.034);
-      const dg = ctx.createLinearGradient(w * 0.1, 0, w * 0.9, 0);
-      dg.addColorStop(0, 'transparent');
-      dg.addColorStop(0.5, hexAlpha(accentColor, 0.35));
-      dg.addColorStop(1, 'transparent');
-      ctx.fillStyle = dg;
-      ctx.fillRect(w * 0.1, dividerY, w * 0.8, 1.5);
+      // ══════════════════════════════════════════════════════
+      // 4. AJRATGICH
+      // ══════════════════════════════════════════════════════
+      const divY = tcardY + tcardH + Math.round(h * 0.022);
 
-      // ── 4. O'QUVCHILAR GRID ─────────────────────────────────
-      // Egasi boshda – qolganlar tartibida
-      const ordered = buildOrderedStudents(allStudents, ownerIndex);
+      // "O'quvchilar" yozuvi
+      const secLabelFS = Math.round(h * 0.013);
+      ctx.fillStyle = hexAlpha(accentColor, 0.65);
+      ctx.font = `600 ${secLabelFS}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('━━━━━━   O\'quvchilar   ━━━━━━', w / 2, divY);
 
+      // ══════════════════════════════════════════════════════
+      // 5. O'QUVCHILAR GRID – Egasi birinchi, qolganlar tartibida
+      // ══════════════════════════════════════════════════════
+      const ordered    = buildOrderedStudents(allStudents, ownerIndex);
       const COLS       = 5;
-      const gridTop    = dividerY + Math.round(h * 0.022);
+      const gridTop    = divY + Math.round(h * 0.02);
       const gridBottom = h - Math.round(h * 0.05);
       const gridH      = gridBottom - gridTop;
-
-      // Har bir katakcha o'lchami
-      const cellW      = Math.floor(w / COLS);
       const rows       = Math.ceil(ordered.length / COLS) || 1;
+      const cellW      = Math.floor(w / COLS);
       const cellH      = Math.floor(gridH / rows);
-
-      const photoD     = Math.round(Math.min(cellW, cellH) * 0.52 * (photoScale / 100));
-      const nameFS     = Math.max(9, Math.round(cellH * 0.10));
-      const namePad    = Math.round(cellH * 0.04);
+      const photoD     = Math.round(Math.min(cellW * 0.72, cellH * 0.60) * (photoScale / 100));
+      const nameFS     = Math.max(9, Math.round(cellH * 0.095));
 
       ordered.forEach((st, idx) => {
         const col = idx % COLS;
         const row = Math.floor(idx / COLS);
         const cx  = cellW * col + cellW / 2;
-        const cy  = gridTop + cellH * row + cellH * 0.42;
+        const cy  = gridTop + cellH * row + cellH * 0.40;
+        const nameY = cy + photoD / 2 + Math.round(cellH * 0.045);
 
-        // Egasi uchun highlight
+        // ── Egasi (birinchi o'rin) alohida highlight ──
         if (idx === 0) {
           ctx.save();
-          ctx.fillStyle = hexAlpha(accentColor, 0.09);
-          ctx.beginPath();
-          ctx.roundRect(cellW * col + 4, gridTop + cellH * row + 4, cellW - 8, cellH - 8, 10);
-          ctx.fill();
 
-          // "★" belgisi
+          // Highlight kartasi
+          ctx.shadowColor = 'rgba(55,48,163,0.18)';
+          ctx.shadowBlur  = 16;
+          ctx.shadowOffsetY = 4;
+          ctx.fillStyle   = '#ffffff';
+          ctx.beginPath();
+          ctx.roundRect(cellW * col + 6, gridTop + cellH * row + 4, cellW - 12, cellH - 8, 14);
+          ctx.fill();
+          ctx.restore();
+
+          // Accent border
+          ctx.save();
+          ctx.strokeStyle = accentColor;
+          ctx.lineWidth   = 2.5;
+          ctx.beginPath();
+          ctx.roundRect(cellW * col + 6, gridTop + cellH * row + 4, cellW - 12, cellH - 8, 14);
+          ctx.stroke();
+          ctx.restore();
+
+          // "★ 1" nishon
+          ctx.save();
+          const badgeR = Math.round(cellW * 0.14);
+          const badgeCx = cellW * col + cellW - badgeR - 2;
+          const badgeCy = gridTop + cellH * row + badgeR + 2;
           ctx.fillStyle = accentColor;
-          ctx.font = `bold ${Math.round(nameFS * 1.1)}px sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText('★', cx, gridTop + cellH * row + 6);
+          ctx.beginPath();
+          ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = `700 ${Math.round(badgeR * 1.0)}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('★', badgeCx, badgeCy);
           ctx.restore();
         }
 
         // Rasm
-        drawPhoto(ctx, st.img, cx, cy, photoD, photoShape, accentColor);
+        drawPhoto(ctx, st.img, cx, cy, photoD, photoShape, idx === 0 ? accentColor : hexAlpha(accentColor, 0.45));
 
         // Ism
         ctx.fillStyle = (idx === 0) ? accentColor : nameColor;
         ctx.font = `${idx === 0 ? '700' : '500'} ${nameFS}px Inter, sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        const nameY = cy + photoD / 2 + namePad;
-        wrapTextCentered(ctx, st.name || '—', cx, nameY, cellW - 8, nameFS + 3, 2);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        wrapTextCentered(ctx, st.name || '—', cx, nameY, cellW - 10, nameFS + 3, 2);
       });
 
-      // ── 5. FOOTER ───────────────────────────────────────────
-      ctx.fillStyle = hg;
-      ctx.fillRect(0, h - Math.round(h * 0.035), w, Math.round(h * 0.035));
-      ctx.fillStyle = '#fff';
-      ctx.font = `500 ${Math.round(h * 0.014)}px Inter, sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      // ══════════════════════════════════════════════════════
+      // 6. FOOTER
+      // ══════════════════════════════════════════════════════
+      const footerH = Math.round(h * 0.036);
+      ctx.fillStyle = hgrd;
+      ctx.fillRect(0, h - footerH, w, footerH);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = `500 ${Math.round(footerH * 0.38)}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText(
-        [data.cityName, data.schoolName].filter(Boolean).join('  ·  '),
-        w / 2, h - Math.round(h * 0.0175)
+        [data.cityName, data.schoolName].filter(Boolean).join('   ·   '),
+        w / 2, h - footerH / 2
       );
     }
   },
