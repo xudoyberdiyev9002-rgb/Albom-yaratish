@@ -137,6 +137,23 @@ function selectTemplate(card, tpl) {
     document.getElementById('photoShape').value = 'rounded';
   }
 
+  // Bitiruvchi albom ichki sahifa uchun maxsus defaultlar
+  if (tpl.id === 'bitiruvchi-albom-inner') {
+    document.getElementById('photoShape').value = 'rect';
+    document.getElementById('photoScale').value = 100;
+    document.getElementById('photoScaleVal').textContent = '100%';
+    document.getElementById('canvasW').value = 1200;
+    document.getElementById('canvasH').value = 900;
+    document.getElementById('nameFontSize').value = 12;
+    document.getElementById('nameFontSizeVal').textContent = '12px';
+    document.getElementById('schoolFontSize').value = 11;
+    document.getElementById('schoolFontSizeVal').textContent = '11px';
+    document.getElementById('bgColor1').value = '#0a0a0a';
+    document.getElementById('bgColor2').value = '#0a0a0a';
+    document.getElementById('nameColor').value = '#ffffff';
+    document.getElementById('accentColor').value = '#ffffff';
+  }
+
   // Bitiruvchi muqovasi uchun maxsus defaultlar
   if (tpl.id === 'bitiruvchi-cover') {
     document.getElementById('photoShape').value = 'rect';
