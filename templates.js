@@ -737,7 +737,346 @@ window.TEMPLATES = [
   },
 
   // ============================================================
-  // 6. QIZIL – Bayram vinyetkasi
+  // 6. BITIRUVCHI ALBOM ICHKI SAHIFA
+  //    Landscape 4:3 · Qora teksturali fon · Chevron ramka
+  //    Chap blok: O'qituvchi + maktab info
+  //    O'ng blok: BITIRUVCHI / ALBOM + ikkita 4×4 sub-grid
+  // ============================================================
+  {
+    id: 'bitiruvchi-albom-inner',
+    type: 'inner',
+    name: 'Bitiruvchi Albom Ichki',
+    desc: 'Qora fon · Landscape · 28 o\'quvchi',
+    emoji: '🎓',
+    defaultW: 1200,
+    defaultH: 900,
+    bgColor1:   '#0a0a0a',
+    bgColor2:   '#0a0a0a',
+    accentColor:'#ffffff',
+    nameColor:  '#ffffff',
+    schoolColor:'#cccccc',
+
+    draw(ctx, data, cfg) {
+      const {
+        w, h,
+        allStudents  = [],
+        ownerIndex   = 0,
+        teacherImg   = null,
+        nameColor    = '#ffffff',
+        schoolColor  = '#cccccc',
+        accentColor  = '#ffffff',
+        photoScale   = 100,
+        photoShape   = 'rect',
+      } = cfg;
+
+      // ── YORDAMCHI FUNKSIYALAR ──────────────────────────────
+
+      // To'rtburchak portret rasm chizish (thin white border)
+      function drawPortrait(img, x, y, pw, ph, featured) {
+        ctx.save();
+        // Border
+        ctx.strokeStyle = featured ? '#ffffff' : 'rgba(255,255,255,0.55)';
+        ctx.lineWidth   = featured ? 1.5 : 1;
+        ctx.strokeRect(x, y, pw, ph);
+        // Clip
+        ctx.beginPath();
+        ctx.rect(x + 1, y + 1, pw - 2, ph - 2);
+        ctx.clip();
+        if (img && img.complete && img.naturalWidth > 0) {
+          const iw = img.naturalWidth, ih = img.naturalHeight;
+          const sc = Math.max(pw / iw, ph / ih);
+          const dw = iw * sc, dh = ih * sc;
+          ctx.drawImage(img, x + 1 + (pw - 2 - dw) / 2, y + 1 + (ph - 2 - dh) / 2, dw, dh);
+        } else {
+          // Placeholder – qoʻngʻir-kulrang fon
+          ctx.fillStyle = '#1e1e1e';
+          ctx.fillRect(x + 1, y + 1, pw - 2, ph - 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          ctx.font = `${Math.round(ph * 0.35)}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('👤', x + pw / 2, y + ph / 2);
+        }
+        ctx.restore();
+      }
+
+      // ── 1. QORA FON ────────────────────────────────────────
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, w, h);
+
+      // Tekstura – mayda scratch chiziqlar
+      ctx.save();
+      for (let i = 0; i < 180; i++) {
+        const x1 = Math.random() * w;
+        const y1 = Math.random() * h;
+        const len = 4 + Math.random() * 22;
+        const ang = Math.random() * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1 + Math.cos(ang) * len, y1 + Math.sin(ang) * len);
+        ctx.strokeStyle = `rgba(255,255,255,${0.018 + Math.random() * 0.028})`;
+        ctx.lineWidth   = 0.5 + Math.random() * 0.8;
+        ctx.stroke();
+      }
+      // Mayda dog'lar
+      for (let i = 0; i < 90; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 1.8, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.015 + Math.random() * 0.035})`;
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Vignette (chetlarni qoraytiradi)
+      const vig = ctx.createRadialGradient(w / 2, h / 2, h * 0.28, w / 2, h / 2, Math.max(w, h) * 0.72);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, w, h);
+
+      // ── 2. CHEVRON (ZIGZAG) RAMKALAR – Chap va O'ng ────────
+      function drawChevrons(side) {
+        ctx.save();
+        const cw   = Math.round(w * 0.038);    // chevron kengligi
+        const step = Math.round(h / 11);        // har bir "tish" balandligi
+        const tip  = Math.round(cw * 0.55);     // uchi ichga qancha kiradi
+
+        ctx.fillStyle = '#2a2a2a';
+        ctx.beginPath();
+        if (side === 'left') {
+          ctx.moveTo(0, 0);
+          ctx.lineTo(cw, 0);
+          for (let i = 0; i <= 12; i++) {
+            const y0 = i * step;
+            const y1 = y0 + step / 2;
+            const y2 = y0 + step;
+            ctx.lineTo(cw - tip, y1);
+            ctx.lineTo(cw, y2);
+          }
+          ctx.lineTo(0, h);
+          ctx.closePath();
+        } else {
+          ctx.moveTo(w, 0);
+          ctx.lineTo(w - cw, 0);
+          for (let i = 0; i <= 12; i++) {
+            const y0 = i * step;
+            const y1 = y0 + step / 2;
+            const y2 = y0 + step;
+            ctx.lineTo(w - cw + tip, y1);
+            ctx.lineTo(w - cw, y2);
+          }
+          ctx.lineTo(w, h);
+          ctx.closePath();
+        }
+        ctx.fill();
+
+        // Chevron edge glow
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+      drawChevrons('left');
+      drawChevrons('right');
+
+      const chevW = Math.round(w * 0.038);
+      const pad   = chevW + Math.round(w * 0.012);  // content padding
+
+      // ── 3. PASTKI YUPQA NUQTALI AJRATGICH ──────────────────
+      const dashY = Math.round(h * 0.918);
+      ctx.save();
+      ctx.setLineDash([3, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+      ctx.lineWidth   = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(pad, dashY);
+      ctx.lineTo(w - pad, dashY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // ── 4. CHAP BLOK – O'qituvchi + Maktab ma'lumotlari ────
+      const leftBlockW = Math.round(w * 0.28);
+      const contentTop = Math.round(h * 0.052);
+      const contentBot = dashY - Math.round(h * 0.015);
+
+      // O'qituvchi rasmi – vertikal to'rtburchak
+      const tPhotoW = Math.round(leftBlockW * 0.62 * (photoScale / 100));
+      const tPhotoH = Math.round(tPhotoW * 1.32);
+      const tPhotoX = pad + Math.round((leftBlockW - tPhotoW) / 2);
+      const tPhotoY = contentTop;
+
+      drawPortrait(teacherImg, tPhotoX, tPhotoY, tPhotoW, tPhotoH, true);
+
+      // "Sinf rahbari" yozuvi – kichik italic
+      const tLabelY = tPhotoY + tPhotoH + Math.round(h * 0.012);
+      ctx.fillStyle   = 'rgba(255,255,255,0.65)';
+      ctx.font        = `italic 400 ${Math.round(h * 0.017)}px Georgia, serif`;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText('Sinf rahbari', pad + leftBlockW / 2, tLabelY);
+
+      // O'qituvchi ismi
+      const tNameY = tLabelY + Math.round(h * 0.024);
+      ctx.fillStyle = '#ffffff';
+      ctx.font      = `italic 400 ${Math.round(h * 0.02)}px Georgia, serif`;
+      ctx.fillText(data.teacherName || 'F.I.O', pad + leftBlockW / 2, tNameY);
+
+      // Yupqa ajratgich chiziq
+      const infoSepY = tNameY + Math.round(h * 0.038);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth   = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(pad + leftBlockW * 0.1, infoSepY);
+      ctx.lineTo(pad + leftBlockW * 0.9, infoSepY);
+      ctx.stroke();
+      ctx.restore();
+
+      // Maktab raqami
+      const infoY1 = infoSepY + Math.round(h * 0.028);
+      ctx.fillStyle   = '#ffffff';
+      ctx.font        = `400 ${Math.round(h * 0.022)}px Inter, sans-serif`;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'top';
+      drawSpacedText(ctx, (data.schoolNumber || 'MAKTAB № 64').toUpperCase(),
+        pad + leftBlockW / 2, infoY1, Math.round(h * 0.004));
+
+      // Sinf
+      const infoY2 = infoY1 + Math.round(h * 0.038);
+      const classStr = data.className
+        ? `${data.className.toUpperCase()} SINF`
+        : '9 "A" SINF';
+      drawSpacedText(ctx, classStr, pad + leftBlockW / 2, infoY2, Math.round(h * 0.004));
+
+      // "Graduate" – kaligrafik kursiv
+      const gradY = infoY2 + Math.round(h * 0.042);
+      ctx.fillStyle = '#ffffff';
+      ctx.font      = `italic 400 ${Math.round(h * 0.052)}px Georgia, 'Times New Roman', serif`;
+      ctx.fillText('Graduate', pad + leftBlockW / 2, gradY);
+
+      // Yil
+      const yearY = gradY + Math.round(h * 0.065);
+      ctx.font = `700 ${Math.round(h * 0.056)}px Inter, sans-serif`;
+      ctx.fillText(data.schoolYear?.split('-')[0] || '2026', pad + leftBlockW / 2, yearY);
+
+      // ── 5. O'NG BLOK – BITIRUVCHI + ALBOM + GRID ───────────
+      const rightStart = pad + leftBlockW + Math.round(w * 0.022);
+      const rightW     = w - rightStart - pad;
+
+      // Sarlavha: "BITIRUVCHI" katta, "ALBOM" kichikroq
+      const titleY = contentTop;
+      ctx.textAlign   = 'left';
+      ctx.textBaseline = 'top';
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font      = `800 ${Math.round(h * 0.072)}px Inter, sans-serif`;
+      const btW = ctx.measureText('BITIRUVCHI').width;
+      ctx.fillText('BITIRUVCHI', rightStart, titleY);
+
+      ctx.font      = `400 ${Math.round(h * 0.048)}px Inter, sans-serif`;
+      ctx.fillText('ALBOM', rightStart + btW + Math.round(w * 0.012), titleY + Math.round(h * 0.018));
+
+      // Ingichka chiziq sarlavha ostida
+      const titleLineY = titleY + Math.round(h * 0.088);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rightStart, titleLineY);
+      ctx.lineTo(rightStart + rightW, titleLineY);
+      ctx.stroke();
+      ctx.restore();
+
+      // ── 6. O'QUVCHILAR – Ikkita 4×4 sub-grid ──────────────
+      const gridTop  = titleLineY + Math.round(h * 0.018);
+      const gridBot  = dashY - Math.round(h * 0.01);
+      const gridH    = gridBot - gridTop;
+
+      const subGap   = Math.round(rightW * 0.028);   // ikki sub-grid orasidagi bo'shliq
+      const subW     = Math.round((rightW - subGap) / 2);
+
+      // Har bir sub-grid: 4 ustun × 4 qator
+      const COLS = 4;
+      const ROWS = 4;
+      const cellGapX = Math.round(subW * 0.025);
+      const cellGapY = Math.round(gridH * 0.022);
+      const cellW    = Math.round((subW - cellGapX * (COLS - 1)) / COLS);
+      const cellH    = Math.round((gridH - cellGapY * (ROWS - 1)) / ROWS);
+
+      // O'quvchi foto o'lchami – portret nisbat
+      const pW = cellW;
+      const pH = Math.round(cellH * 0.76);
+
+      // Ism uchun joy
+      const nameFSize = Math.max(8, Math.round(cellH * 0.1));
+
+      // Barcha o'quvchilar — egasi 1-o'rinda
+      const ordered = buildOrderedStudents(allStudents, ownerIndex);
+
+      // LEFT sub-grid: 0–15 (16 ta)
+      // RIGHT sub-grid: 16–27 (12 ta, 0-qator "featured" = biroz kattaroq)
+      // Lekin biz allStudents dan foydalanamiz, tartibini saqlaymiz
+
+      // Sub-grid chizish funksiyasi
+      function drawSubGrid(students, startX, featured0) {
+        students.forEach((st, idx) => {
+          const col = idx % COLS;
+          const row = Math.floor(idx / COLS);
+          const isFeatured = featured0 && row === 0;
+
+          // Featured qator ozgina kattaroq
+          const featScale = isFeatured ? 1.12 : 1.0;
+          const cpW = Math.round(pW * featScale);
+          const cpH = Math.round(pH * featScale);
+
+          // Featured qator uchun Y offset (boshidan hisoblash)
+          let rowY = gridTop;
+          for (let r = 0; r < row; r++) {
+            const rFeat = featured0 && r === 0;
+            rowY += Math.round(pH * (rFeat ? 1.12 : 1.0)) + Math.round(cellGapY * (rFeat ? 1.2 : 1.0));
+          }
+
+          const cx = startX + col * (cellW + cellGapX) + (cellW - cpW) / 2;
+          const cy = rowY;
+
+          drawPortrait(st?.img || null, cx, cy, cpW, cpH, isFeatured || idx === 0);
+
+          // Ism
+          const nm = st?.name || '';
+          ctx.fillStyle   = '#ffffff';
+          ctx.font        = `300 ${nameFSize}px Inter, sans-serif`;
+          ctx.textAlign   = 'center';
+          ctx.textBaseline = 'top';
+          const nameY = cy + cpH + Math.round(cellH * 0.028);
+          // Qisqa ism (fayl nomidan surname + birinchi harf)
+          const shortName = nm.length > 14 ? nm.substring(0, 14) : nm;
+          ctx.fillText(shortName, cx + cpW / 2, nameY);
+        });
+      }
+
+      // Left sub-grid: birinchi 16 ta o'quvchi
+      const leftStudents  = ordered.slice(0, 16);
+      // Right sub-grid: keyingi 12 ta (0-qator "featured")
+      const rightStudents = ordered.slice(16, 28);
+
+      drawSubGrid(leftStudents,  rightStart,           false);
+      drawSubGrid(rightStudents, rightStart + subW + subGap, true);
+
+      // ── 7. PASTKI MATN (ajratgich ostida) ──────────────────
+      const footerY = dashY + Math.round(h * 0.018);
+      ctx.fillStyle   = 'rgba(255,255,255,0.45)';
+      ctx.font        = `300 ${Math.round(h * 0.018)}px Inter, sans-serif`;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(
+        [data.cityName, data.schoolName].filter(Boolean).join('   ·   ') || '',
+        w / 2, footerY
+      );
+    }
+  },
+
+  // ============================================================
+  // 7. QIZIL – Bayram vinyetkasi
   // ============================================================
   {
     id: 'festive-red',
