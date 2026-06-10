@@ -22,19 +22,16 @@ window.Generator = {
     this.canvases = [];
     const total     = students.length;
     const isInner   = template.type === 'inner';
+    const isSplit   = template.type === 'split-inner';
 
     for (let i = 0; i < total; i++) {
       const student = students[i];
       let canvas;
 
-      if (template.type === 'split-inner') {
-        // Split-inner: barcha o'quvchilar bir xil (1 ta sahifa) yoki har biri alohida
-        // Har bir sahifa BIR XIL bo'ladi — faqat bitta sahifa generatsiya qilinadi
-        // Lekin foydalanuvchi barcha o'quvchilarni 1 ta sahifada ko'radi
-        canvas = await this._renderSplitInner(students, template, config);
-        this.canvases.push({ canvas, name: 'sinf_albom_ichki', index: 0 });
-        if (onProgress) onProgress(total, total);
-        break; // Faqat bitta sahifa
+      if (isSplit) {
+        // Split-inner: HAR BIR o'quvchi uchun alohida sahifa.
+        // Shu o'quvchi chapdagi katta rasm + o'ng ro'yxatda 1-o'rinda.
+        canvas = await this._renderSplitInner(students, i, template, config);
       } else if (isInner) {
         // Ichki shablon: barcha o'quvchilar + shu o'quvchi 1-o'rinda
         canvas = await this._renderInner(students, i, template, config);
@@ -52,9 +49,10 @@ window.Generator = {
   },
 
   // ────────────────────────────────────────────────────────────
-  // Split-inner shablon uchun render (bitta sahifa, barcha o'quvchilar)
+  // Split-inner shablon uchun render (har o'quvchi = alohida sahifa)
+  // ownerIndex = joriy o'quvchi → chapdagi katta rasm + 1-o'rinda
   // ────────────────────────────────────────────────────────────
-  async _renderSplitInner(students, template, config) {
+  async _renderSplitInner(students, ownerIndex, template, config) {
     const quality = parseInt(config.exportQuality) || 2;
     const w = parseInt(config.canvasW) || template.defaultW;
     const h = parseInt(config.canvasH) || template.defaultH;
@@ -65,17 +63,20 @@ window.Generator = {
     const ctx = canvas.getContext('2d');
     ctx.scale(quality, quality);
 
+    const owner = students[ownerIndex] || {};
+    const customLabel = (config.leftLabel || '').trim();
+
     template.draw(ctx, window.AppState?.classInfo || {}, {
       ...config,
       w, h,
       allStudents:   students,
-      ownerIndex:    0,
-      leftImg:       config.leftImg       || window.AppState?.leftImg    || null,
-      bgImg:         config.splitBgImg    || window.AppState?.splitBgImg || null,
+      ownerIndex,
+      leftImg:       owner.img || null,                      // o'quvchining o'zi = chap portret
+      bgImg:         config.splitBgImg || window.AppState?.splitBgImg || null,
       bgType:        config.bgType        || 'color',
       bgColor1:      config.bgColor1      || template.bgColor1,
       bgColor2:      config.bgColor2      || template.bgColor2,
-      leftLabel:     config.leftLabel     || window.AppState?.classInfo?.teacherName || '',
+      leftLabel:     customLabel || owner.name || '',        // bo'sh = o'quvchi ismi
       divider:       config.divider       || 'line',
       namePos:       config.namePos       || 'bottom',
       photoShape:    config.photoShape    || 'rounded',

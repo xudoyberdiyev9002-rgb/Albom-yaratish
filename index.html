@@ -155,89 +155,9 @@
           <p class="upload-hint" style="margin-top:8px">Sinf rahbari rasmi albom ichki sahifasida <strong>yuqorida</strong> ko'rinadi</p>
         </div>
 
-        <!-- CHAP PORTRET rasmi (faqat split-inner shablon uchun ko'rinadi) -->
+        <!-- Split-inner uchun ma'lumot (sozlamalar 3-bosqichda) -->
         <div class="teacher-upload-wrap" id="leftPhotoUploadWrap" style="display:none">
-          <h4 style="font-size:13px;color:#a5b4fc;margin-bottom:8px;">📸 Chap portret rasmi</h4>
-          <div class="teacher-drop-zone" id="leftPhotoDropZone">
-            <div id="leftPhotoPreviewDiv" style="display:none">
-              <img id="leftPhotoThumb" src="" alt="Portret"/>
-              <button id="leftPhotoRemove" title="O'chirish">✕</button>
-            </div>
-            <div id="leftPhotoPlaceholder">
-              <span>🧑‍🎓</span>
-              <p>Chap portret rasm</p>
-              <small>Sahifaning 90% ini egallaydi</small>
-            </div>
-            <input type="file" id="leftPhotoFileInput" accept="image/*" hidden/>
-          </div>
-          <p class="upload-hint" style="margin-top:8px">Bu rasm sahifaning <strong>chap yarmi</strong>da katta portret sifatida ko'rinadi</p>
-          <!-- Chap portret sozlamalari -->
-          <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div class="form-group">
-              <label style="font-size:11px">Pastdagi yozuv</label>
-              <input type="text" id="leftLabel" placeholder="Sinf rahbari yoki ism..." style="font-size:12px;padding:6px 8px"/>
-            </div>
-            <div class="form-group">
-              <label style="font-size:11px">Ajratgich</label>
-              <select id="splitDivider" style="font-size:12px;padding:6px 8px">
-                <option value="line">Chiziq</option>
-                <option value="gap">Bo'shliq</option>
-                <option value="none">Yo'q</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label style="font-size:11px">Fon turi</label>
-              <select id="splitBgType" style="font-size:12px;padding:6px 8px">
-                <option value="color">Rang</option>
-                <option value="gradient">Gradient</option>
-                <option value="image">Fon rasm</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label style="font-size:11px">Fon rangi</label>
-              <input type="color" id="splitBgColor" value="#0f172a" style="height:34px"/>
-            </div>
-          </div>
-          <!-- Fon rasm yuklash (split uchun) -->
-          <div id="splitBgImagePanel" style="display:none;margin-top:8px">
-            <div class="teacher-drop-zone" id="splitBgDropZone" style="min-height:60px">
-              <div id="splitBgPreviewDiv" style="display:none">
-                <img id="splitBgThumb" src="" alt="Fon" style="height:60px;object-fit:cover;border-radius:6px;width:100%"/>
-                <button id="splitBgRemove" title="O'chirish" style="position:absolute;top:3px;right:3px">✕</button>
-              </div>
-              <div id="splitBgPlaceholder">
-                <span>🖼</span>
-                <p>Fon rasmini yuklang</p>
-                <small>JPG · PNG · WEBP</small>
-              </div>
-              <input type="file" id="splitBgFileInput" accept="image/*" hidden/>
-            </div>
-          </div>
-          <!-- Maks ustunlar -->
-          <div class="form-group" style="margin-top:8px">
-            <label style="font-size:11px">Maksimal ustunlar soni (o'ng grid)</label>
-            <input type="number" id="splitMaxCols" value="5" min="2" max="10" style="font-size:12px;padding:6px 8px"/>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
-            <div class="form-group">
-              <label style="font-size:11px">Ism joylashuvi</label>
-              <select id="splitNamePos" style="font-size:12px;padding:6px 8px">
-                <option value="bottom">Pastda</option>
-                <option value="top">Ustida</option>
-                <option value="over">Ustiga</option>
-                <option value="none">Yo'q</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label style="font-size:11px">Rasm shakli</label>
-              <select id="splitPhotoShape" style="font-size:12px;padding:6px 8px">
-                <option value="rounded">Yumaloq</option>
-                <option value="rect">To'rtburchak</option>
-                <option value="circle">Doira</option>
-                <option value="oval">Oval</option>
-              </select>
-            </div>
-          </div>
+          <p class="upload-hint">📐 <strong>Split Ichki Sahifa</strong>: har bir o'quvchi uchun alohida sahifa yaratiladi — o'quvchining o'zi <strong>chapdagi katta rasm</strong> bo'ladi va o'ng tarafdagi ro'yxatda <strong>birinchi o'rinda</strong> turadi. Dizayn sozlamalari keyingi <strong>Tahrirlash</strong> bosqichida jonli ko'rinadi.</p>
         </div>
 
         <div class="drop-zone" id="dropZone">
@@ -274,7 +194,7 @@
     <div class="editor-layout">
       <!-- CONTROLS -->
       <div class="editor-controls">
-        <div class="ec-card">
+        <div class="ec-card generic-ctrl">
           <h4>🔤 Matn Sozlamalari</h4>
           <div class="ctrl-group">
             <label>Ism shrift o'lchami</label>
@@ -296,7 +216,7 @@
           </div>
         </div>
 
-        <div class="ec-card">
+        <div class="ec-card generic-ctrl">
           <h4>🖼 Rasm Sozlamalari</h4>
           <div class="ctrl-group">
             <label>Rasm o'lchami</label>
@@ -319,7 +239,7 @@
           </div>
         </div>
 
-        <div class="ec-card">
+        <div class="ec-card generic-ctrl">
           <h4>🎨 Fon Sozlamalari</h4>
           <div class="ctrl-group">
             <label>Asosiy rang</label>
@@ -335,7 +255,7 @@
           </div>
         </div>
 
-        <div class="ec-card">
+        <div class="ec-card generic-ctrl">
           <h4>📐 O'lcham</h4>
           <div class="ctrl-group">
             <label>Kenglik (px)</label>
@@ -352,6 +272,87 @@
               <option value="2" selected>Yuqori (2x)</option>
               <option value="3">Ultra (3x)</option>
             </select>
+          </div>
+        </div>
+
+        <!-- SPLIT ICHKI SAHIFA SOZLAMALARI (faqat split-inner uchun) -->
+        <div class="ec-card split-ctrl" id="splitControlsCard" style="display:none">
+          <h4>📐 Split Sahifa Sozlamalari</h4>
+
+          <div class="ctrl-group">
+            <label>Fon turi</label>
+            <select id="splitBgType">
+              <option value="color">Rang</option>
+              <option value="gradient">Gradient</option>
+              <option value="image">Fon rasm</option>
+            </select>
+          </div>
+          <div class="ctrl-group" id="splitBgColorGroup">
+            <label>Fon rangi</label>
+            <input type="color" id="splitBgColor" value="#0f172a"/>
+          </div>
+          <div class="ctrl-group" id="splitBgColor2Group" style="display:none">
+            <label>Gradient 2-rangi</label>
+            <input type="color" id="splitBgColor2" value="#1e3a5f"/>
+          </div>
+          <div class="ctrl-group" id="splitBgImageGroup" style="display:none">
+            <label>Fon rasmi</label>
+            <div class="teacher-drop-zone" id="splitBgDropZone" style="min-height:64px">
+              <div id="splitBgPreviewDiv" style="display:none">
+                <img id="splitBgThumb" src="" alt="Fon" style="height:60px;object-fit:cover;border-radius:6px;width:100%"/>
+                <button id="splitBgRemove" title="O'chirish" style="position:absolute;top:3px;right:3px">✕</button>
+              </div>
+              <div id="splitBgPlaceholder">
+                <span>🖼</span>
+                <p>Fon rasmini yuklang</p>
+                <small>JPG · PNG · WEBP</small>
+              </div>
+              <input type="file" id="splitBgFileInput" accept="image/*" hidden/>
+            </div>
+          </div>
+
+          <div class="ctrl-group">
+            <label>Ism joylashuvi</label>
+            <select id="splitNamePos">
+              <option value="bottom">Pastda</option>
+              <option value="top">Ustida</option>
+              <option value="over">Ustiga</option>
+              <option value="none">Yo'q</option>
+            </select>
+          </div>
+          <div class="ctrl-group">
+            <label>Ism rangi</label>
+            <input type="color" id="splitNameColor" value="#ffffff"/>
+          </div>
+          <div class="ctrl-group">
+            <label>Maksimal ustunlar soni</label>
+            <input type="range" id="splitMaxCols" min="2" max="10" value="5"/>
+            <span id="splitMaxColsVal">5</span>
+          </div>
+          <div class="ctrl-group">
+            <label>O'quvchi rasmi shakli</label>
+            <select id="splitPhotoShape">
+              <option value="rounded">Yumaloq</option>
+              <option value="rect">To'rtburchak</option>
+              <option value="circle">Doira</option>
+              <option value="oval">Oval</option>
+            </select>
+          </div>
+          <div class="ctrl-group">
+            <label>Chap rasm ramka rangi</label>
+            <input type="color" id="splitBorderColor" value="#ffffff"/>
+          </div>
+          <div class="ctrl-group">
+            <label>O'rtadagi ajratgich</label>
+            <select id="splitDivider">
+              <option value="line">Chiziq</option>
+              <option value="gap">Bo'shliq</option>
+              <option value="none">Yo'q</option>
+            </select>
+          </div>
+          <div class="ctrl-group">
+            <label>Chap rasm pastidagi yozuv</label>
+            <input type="text" id="leftLabel" placeholder="(bo'sh = o'quvchi ismi)"/>
           </div>
         </div>
 
