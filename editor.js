@@ -36,7 +36,11 @@ function initTemplateGrid() {
 
   function renderTemplates(type) {
     grid.innerHTML = '';
-    const list = window.TEMPLATES.filter(t => type === 'all' || t.type === type);
+    const list = window.TEMPLATES.filter(t =>
+      type === 'all' ||
+      t.type === type ||
+      (type === 'inner' && t.type === 'split-inner')  // split-inner ham "ichki" tabida
+    );
 
     list.forEach(tpl => {
       const card = document.createElement('div');
@@ -173,14 +177,6 @@ function selectTemplate(card, tpl) {
     document.getElementById('accentColor').value = '#6366f1';
     document.getElementById('nameFontSize').value = 0;
     document.getElementById('nameFontSizeVal').textContent = '0px';
-  }
-    document.getElementById('photoShape').value = 'rect';
-    document.getElementById('photoScale').value = 100;
-    document.getElementById('photoScaleVal').textContent = '100%';
-    document.getElementById('nameFontSize').value = 24;
-    document.getElementById('nameFontSizeVal').textContent = '24px';
-    document.getElementById('schoolFontSize').value = 14;
-    document.getElementById('schoolFontSizeVal').textContent = '14px';
   }
 
   document.getElementById('toStep2').disabled = false;
