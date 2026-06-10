@@ -27,7 +27,15 @@ window.Generator = {
       const student = students[i];
       let canvas;
 
-      if (isInner) {
+      if (template.type === 'split-inner') {
+        // Split-inner: barcha o'quvchilar bir xil (1 ta sahifa) yoki har biri alohida
+        // Har bir sahifa BIR XIL bo'ladi — faqat bitta sahifa generatsiya qilinadi
+        // Lekin foydalanuvchi barcha o'quvchilarni 1 ta sahifada ko'radi
+        canvas = await this._renderSplitInner(students, template, config);
+        this.canvases.push({ canvas, name: 'sinf_albom_ichki', index: 0 });
+        if (onProgress) onProgress(total, total);
+        break; // Faqat bitta sahifa
+      } else if (isInner) {
         // Ichki shablon: barcha o'quvchilar + shu o'quvchi 1-o'rinda
         canvas = await this._renderInner(students, i, template, config);
       } else {
@@ -41,6 +49,42 @@ window.Generator = {
     }
 
     if (onDone) onDone(this.canvases);
+  },
+
+  // ────────────────────────────────────────────────────────────
+  // Split-inner shablon uchun render (bitta sahifa, barcha o'quvchilar)
+  // ────────────────────────────────────────────────────────────
+  async _renderSplitInner(students, template, config) {
+    const quality = parseInt(config.exportQuality) || 2;
+    const w = parseInt(config.canvasW) || template.defaultW;
+    const h = parseInt(config.canvasH) || template.defaultH;
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = w * quality;
+    canvas.height = h * quality;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(quality, quality);
+
+    template.draw(ctx, window.AppState?.classInfo || {}, {
+      ...config,
+      w, h,
+      allStudents:   students,
+      ownerIndex:    0,
+      leftImg:       config.leftImg       || window.AppState?.leftImg    || null,
+      bgImg:         config.splitBgImg    || window.AppState?.splitBgImg || null,
+      bgType:        config.bgType        || 'color',
+      bgColor1:      config.bgColor1      || template.bgColor1,
+      bgColor2:      config.bgColor2      || template.bgColor2,
+      leftLabel:     config.leftLabel     || window.AppState?.classInfo?.teacherName || '',
+      divider:       config.divider       || 'line',
+      namePos:       config.namePos       || 'bottom',
+      photoShape:    config.photoShape    || 'rounded',
+      maxCols:       config.maxCols       || 5,
+      nameColor:     config.nameColor     || '#ffffff',
+      borderColor:   config.borderColor   || '#ffffff',
+    });
+
+    return canvas;
   },
 
   // ────────────────────────────────────────────────────────────
