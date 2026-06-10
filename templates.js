@@ -1076,7 +1076,328 @@ window.TEMPLATES = [
   },
 
   // ============================================================
-  // 7. QIZIL – Bayram vinyetkasi
+  // 7. SPLIT INNER – 305×400mm Landscape, chap portret + o'ng grid
+  // ============================================================
+  {
+    id: 'split-inner',
+    type: 'split-inner',
+    name: 'Split Ichki Sahifa',
+    desc: 'Chap: 1 portret · O\'ng: avtomatik grid',
+    emoji: '📐',
+    defaultW: 1440,
+    defaultH: 1098,
+    bgColor1:    '#0f172a',
+    bgColor2:    '#1e3a5f',
+    accentColor: '#6366f1',
+    nameColor:   '#ffffff',
+    schoolColor: '#cbd5e1',
+
+    draw(ctx, data, cfg) {
+      const W = cfg.w || cfg.canvasW || 1440;
+      const H = cfg.h || cfg.canvasH || 1098;
+
+      // cfg parametrlari
+      const bgType         = cfg.bgType       || 'color';
+      const bgColor1       = cfg.bgColor1      || '#0f172a';
+      const bgColor2       = cfg.bgColor2      || '#1e3a5f';
+      const gradDir        = cfg.gradDir       || 'tb';
+      const bgImg          = cfg.bgImg         || null;
+      const bgOverlay      = cfg.bgOverlay     != null ? cfg.bgOverlay : 0.4;
+      const bgOvColor      = cfg.bgOvColor     || '#000000';
+
+      const leftImg        = cfg.leftImg       || cfg.teacherImg || null;
+      const leftScale      = cfg.leftScale     != null ? cfg.leftScale : 0.90;
+      const leftBorderColor= cfg.leftBorderColor || '#ffffff';
+      const leftBorderW    = cfg.leftBorderW   != null ? cfg.leftBorderW : 3;
+      const leftRadius     = cfg.leftRadius    != null ? cfg.leftRadius : 8;
+      const leftLabel      = cfg.leftLabel     || data.teacherName || '';
+      const leftLabelFS    = cfg.leftLabelFS   || 14;
+      const leftLabelColor = cfg.leftLabelColor || '#ffffff';
+
+      const allStudents    = cfg.allStudents   || [];
+      const ownerIndex     = cfg.ownerIndex    != null ? cfg.ownerIndex : 0;
+      const maxCols        = cfg.maxCols       || 5;
+      const gapX           = cfg.gapX         != null ? cfg.gapX : 8;
+      const gapY           = cfg.gapY         != null ? cfg.gapY : 12;
+      const photoShape     = cfg.photoShape    || 'rounded';
+      const borderW        = cfg.borderW       != null ? cfg.borderW : 2;
+      const borderColor    = cfg.borderColor   || '#ffffff';
+
+      const namePos        = cfg.namePos       || 'bottom';
+      const nameFSManual   = cfg.nameFS        || 0;
+      const nameColor      = cfg.nameColor     || '#ffffff';
+      const nameAlign      = cfg.nameAlign     || 'center';
+      const nameWeight     = cfg.nameWeight    || '400';
+
+      const headerStyle    = cfg.headerStyle   || 'band';
+      const headerH        = cfg.headerH       != null ? cfg.headerH : 50;
+      const headerColor    = cfg.headerColor   || '#1e3a8a';
+      const headerText     = cfg.headerText    || [
+        data.schoolNumber, data.className ? data.className+' sinf' : '', data.schoolYear
+      ].filter(Boolean).join(' · ');
+      const headerFS       = cfg.headerFS      || 13;
+      const headerTextColor= cfg.headerTextColor || '#ffffff';
+
+      const divider        = cfg.divider       || 'line';
+      const divW           = cfg.divW          != null ? cfg.divW : 1;
+      const divColor       = cfg.divColor      || '#ffffff';
+      const divOp          = cfg.divOp         != null ? cfg.divOp : 0.30;
+
+      // ── Yordamchi funksiyalar ──
+      function hA(hex, a) {
+        const n = parseInt((hex||'#000').replace('#',''), 16);
+        return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+      }
+
+      function buildRows(count, maxC) {
+        if (count <= 0) return [];
+        const cols = Math.min(maxC, count);
+        const rowCount = Math.ceil(count / cols);
+        const rows = [];
+        let rem = count;
+        for (let r = 0; r < rowCount; r++) {
+          rows.push(Math.min(cols, rem));
+          rem -= Math.min(cols, rem);
+        }
+        return rows;
+      }
+
+      function clipPath(x, y, pw, ph, shape, ins) {
+        const r = Math.min(pw, ph) * 0.12;
+        const xi = x+ins, yi = y+ins, wi = pw-ins*2, hi = ph-ins*2;
+        switch(shape) {
+          case 'circle': ctx.arc(x+pw/2, y+ph/2, Math.min(pw,ph)/2-ins, 0, Math.PI*2); break;
+          case 'oval':   ctx.ellipse(x+pw/2, y+ph/2, pw/2-ins, ph/2-ins, 0, 0, Math.PI*2); break;
+          case 'rect':   ctx.rect(xi, yi, wi, hi); break;
+          default:       ctx.roundRect(xi, yi, wi, hi, Math.max(1, r-ins));
+        }
+      }
+
+      // ── 1. HEADER ──
+      let topOffset = 0;
+      if (headerStyle !== 'none' && headerH > 0) {
+        topOffset = headerH;
+        if (headerStyle === 'band') {
+          ctx.fillStyle = headerColor;
+          ctx.fillRect(0, 0, W, headerH);
+        } else {
+          ctx.save();
+          ctx.strokeStyle = hA('#ffffff', 0.25);
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(0, headerH); ctx.lineTo(W, headerH); ctx.stroke();
+          ctx.restore();
+        }
+        if (headerText.trim()) {
+          ctx.save();
+          ctx.fillStyle = headerTextColor;
+          ctx.font = `600 ${headerFS}px Inter,sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(headerText.trim(), W/2, headerH/2);
+          ctx.restore();
+        }
+      }
+
+      // ── 2. FON ──
+      const contentH = H - topOffset;
+      if (bgType === 'image' && bgImg) {
+        const iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
+        const sc = Math.max(W/iw, contentH/ih);
+        ctx.drawImage(bgImg, (W-iw*sc)/2, topOffset+(contentH-ih*sc)/2, iw*sc, ih*sc);
+        if (bgOverlay > 0.01) {
+          ctx.fillStyle = hA(bgOvColor, bgOverlay);
+          ctx.fillRect(0, topOffset, W, contentH);
+        }
+      } else if (bgType === 'gradient') {
+        let g;
+        if (gradDir === 'radial') g = ctx.createRadialGradient(W/2, topOffset+contentH/2, 0, W/2, topOffset+contentH/2, Math.max(W,contentH)*0.75);
+        else if (gradDir === 'lr') g = ctx.createLinearGradient(0, 0, W, 0);
+        else if (gradDir === 'diag') g = ctx.createLinearGradient(0, topOffset, W, H);
+        else g = ctx.createLinearGradient(0, topOffset, 0, H);
+        g.addColorStop(0, bgColor1); g.addColorStop(1, bgColor2);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, topOffset, W, contentH);
+      } else {
+        ctx.fillStyle = bgColor1;
+        ctx.fillRect(0, topOffset, W, contentH);
+      }
+
+      const contentY = topOffset;
+      const halfW = Math.floor(W / 2);
+
+      // ── 3. CHAP – PORTRET RASM ──
+      const panelW = halfW, panelH = contentH;
+      const maxPhH = Math.round(panelH * leftScale);
+      let phW, phH;
+      if (leftImg && leftImg.complete && leftImg.naturalWidth > 0) {
+        const iw = leftImg.naturalWidth, ih = leftImg.naturalHeight;
+        const sc = Math.min((panelW * leftScale) / iw, maxPhH / ih);
+        phW = Math.round(iw * sc);
+        phH = Math.round(ih * sc);
+      } else {
+        phH = maxPhH;
+        phW = Math.round(phH * 0.75);
+      }
+      const px = Math.round((panelW - phW) / 2);
+      const py = contentY + Math.round((panelH - phH) / 2);
+      const r  = leftRadius;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 24;
+      ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 5;
+      if (leftBorderW > 0) {
+        ctx.strokeStyle = leftBorderColor; ctx.lineWidth = leftBorderW;
+        ctx.beginPath(); ctx.roundRect(px, py, phW, phH, r); ctx.stroke();
+      }
+      ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+      ctx.beginPath();
+      ctx.roundRect(px+leftBorderW/2, py+leftBorderW/2, phW-leftBorderW, phH-leftBorderW, Math.max(0,r-1));
+      ctx.clip();
+      if (leftImg && leftImg.complete && leftImg.naturalWidth > 0) {
+        const iw = leftImg.naturalWidth, ih = leftImg.naturalHeight;
+        const sc = Math.max((phW-leftBorderW)/iw, (phH-leftBorderW)/ih);
+        const dw = iw*sc, dh = ih*sc;
+        ctx.drawImage(leftImg, px+leftBorderW/2+(phW-leftBorderW-dw)/2, py+leftBorderW/2+(phH-leftBorderW-dh)/2, dw, dh);
+      } else {
+        const pg = ctx.createLinearGradient(px, py, px+phW, py+phH);
+        pg.addColorStop(0,'#1e3a5f'); pg.addColorStop(1,'#0f2027');
+        ctx.fillStyle = pg; ctx.fillRect(px, py, phW, phH);
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath(); ctx.arc(px+phW/2, py+phH*0.32, phW*0.22, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath(); ctx.ellipse(px+phW/2, py+phH*0.82, phW*0.35, phH*0.22, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.font = `500 ${Math.round(phW*0.055)}px Inter,sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('📸 Rasm yuklang', px+phW/2, py+phH*0.55);
+      }
+      ctx.restore();
+      if (leftLabel && leftLabel.trim()) {
+        ctx.save();
+        ctx.fillStyle = leftLabelColor;
+        ctx.font = `500 ${leftLabelFS}px Inter,sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(leftLabel.trim(), panelW/2, py+phH+Math.round(phH*0.022));
+        ctx.restore();
+      }
+
+      // ── 4. AJRATGICH ──
+      if (divider === 'line') {
+        ctx.save();
+        ctx.strokeStyle = hA(divColor, divOp);
+        ctx.lineWidth = divW;
+        ctx.beginPath();
+        ctx.moveTo(halfW, contentY + contentH*0.05);
+        ctx.lineTo(halfW, contentY + contentH*0.95);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ── 5. O'NG – O'QUVCHILAR GRID ──
+      const rightPad  = Math.round(halfW * 0.04);
+      const rightX    = halfW + rightPad;
+      const rightW    = halfW - rightPad * 2;
+      const rightPadV = Math.round(contentH * 0.05);
+      const rightGridY= contentY + rightPadV;
+      const rightGridH= contentH - rightPadV * 2;
+
+      // Faqat haqiqiy o'quvchilar (ownerIndex bilan ahamiyatsiz — hammasi chiziladi)
+      const students = allStudents.length > 0 ? allStudents : [];
+      const count = students.length || 1;
+      const rows = buildRows(count, maxCols);
+      const rowCount = rows.length;
+
+      const usableH = rightGridH * 0.92;
+      const totalGapY = gapY * (rowCount - 1);
+      const cellH = Math.max(10, Math.floor((usableH - totalGapY) / rowCount));
+      const namePad = (namePos === 'none' || namePos === 'over') ? 0 : 1;
+      const autoNameFS = Math.max(7, Math.round(cellH * 0.10));
+      const nameFS = nameFSManual > 0 ? nameFSManual : autoNameFS;
+      const nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
+      const photoH = Math.max(10, cellH - nameReserve);
+      const photoW = Math.round(photoH * 0.76);
+
+      const totalGridH = rowCount * cellH + (rowCount-1) * gapY;
+      const gridStartY = rightGridY + Math.round((rightGridH - totalGridH) / 2);
+
+      let studentIdx = 0;
+      rows.forEach((colsInRow, rowI) => {
+        const totalRowW = colsInRow * photoW + (colsInRow-1) * gapX;
+        const rowStartX = rightX + Math.round((rightW - totalRowW) / 2);
+        const rowY = gridStartY + rowI * (cellH + gapY);
+
+        for (let col = 0; col < colsInRow; col++) {
+          const spx = rowStartX + col * (photoW + gapX);
+          const spy = namePos === 'top' ? rowY + nameReserve : rowY;
+          const student = students[studentIdx] || null;
+
+          // ── Foto ──
+          ctx.save();
+          if (borderW > 0) {
+            ctx.strokeStyle = borderColor; ctx.lineWidth = borderW;
+            ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.stroke();
+          }
+          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, borderW/2); ctx.clip();
+
+          if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
+            const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
+            const sc = Math.max(photoW/iw, photoH/ih);
+            const dw = iw*sc, dh = ih*sc;
+            ctx.drawImage(student.img, spx+(photoW-dw)/2, spy+(photoH-dh)/2, dw, dh);
+          } else {
+            const PALETTE = [
+              ['#1e3a5f','#2d6a4f'],['#4a1942','#6b2d5e'],['#1a3a5c','#1e6091'],
+              ['#3d1a00','#7b3f00'],['#0d3b2e','#145a32'],['#2c003e','#4a0072'],
+              ['#003366','#004080'],['#1b1b2f','#2b2b4b'],['#002b36','#073642'],
+            ];
+            const [c1,c2] = PALETTE[studentIdx % PALETTE.length];
+            const pg = ctx.createLinearGradient(spx, spy, spx+photoW*0.5, spy+photoH);
+            pg.addColorStop(0,c1); pg.addColorStop(1,c2);
+            ctx.fillStyle = pg; ctx.fillRect(spx, spy, photoW, photoH);
+            ctx.fillStyle = 'rgba(255,255,255,0.13)';
+            ctx.beginPath(); ctx.arc(spx+photoW/2, spy+photoH*0.32, photoW*0.24, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.09)';
+            ctx.beginPath(); ctx.ellipse(spx+photoW/2, spy+photoH*0.86, photoW*0.34, photoH*0.26, 0, 0, Math.PI*2); ctx.fill();
+          }
+          ctx.restore();
+
+          // ── Ism ──
+          if (namePos !== 'none') {
+            const nm = student ? student.name : '';
+            if (!nm) { studentIdx++; continue; }
+            ctx.save();
+            ctx.fillStyle = nameColor;
+            ctx.font = `${nameWeight} ${nameFS}px Inter,sans-serif`;
+            const nameX = nameAlign === 'left' ? spx : nameAlign === 'right' ? spx+photoW : spx+photoW/2;
+            ctx.textAlign = nameAlign === 'center' ? 'center' : nameAlign;
+
+            if (namePos === 'bottom') {
+              ctx.textBaseline = 'top';
+              ctx.fillText(nm, nameX, spy+photoH+Math.round(photoH*0.03)+2);
+            } else if (namePos === 'top') {
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(nm, nameX, rowY+nameReserve-2);
+            } else if (namePos === 'over') {
+              const oH = Math.round(photoH*0.32);
+              const oY = spy+photoH-oH;
+              ctx.save();
+              ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.clip();
+              const og = ctx.createLinearGradient(0, oY, 0, spy+photoH);
+              og.addColorStop(0,'rgba(0,0,0,0)'); og.addColorStop(1,'rgba(0,0,0,0.78)');
+              ctx.fillStyle = og; ctx.fillRect(spx, oY, photoW, oH);
+              ctx.restore();
+              ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+              ctx.fillText(nm, spx+photoW/2, spy+photoH-4);
+            }
+            ctx.restore();
+          }
+          studentIdx++;
+        }
+      });
+    }
+  },
+
+  // ============================================================
+  // 8. QIZIL – Bayram vinyetkasi
   // ============================================================
   {
     id: 'festive-red',

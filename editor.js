@@ -13,6 +13,8 @@ window.AppState = {
   students:            [],   // [{ name, img, url }]
   classInfo:           {},
   teacherImg:          null, // sinf rahbari rasmi
+  leftImg:             null, // split-inner chap portret rasmi
+  splitBgImg:          null, // split-inner fon rasmi
   currentPreviewIdx:   0,
 };
 
@@ -119,6 +121,10 @@ function selectTemplate(card, tpl) {
   const wrap = document.getElementById('teacherUploadWrap');
   if (wrap) wrap.style.display = tpl.type === 'inner' ? 'block' : 'none';
 
+  // Split-inner upload blokini ko'rsat/yashir
+  const splitWrap = document.getElementById('leftPhotoUploadWrap');
+  if (splitWrap) splitWrap.style.display = tpl.type === 'split-inner' ? 'block' : 'none';
+
   // Canvas default o'lchamlari
   document.getElementById('canvasW').value      = tpl.defaultW;
   document.getElementById('canvasH').value      = tpl.defaultH;
@@ -154,8 +160,20 @@ function selectTemplate(card, tpl) {
     document.getElementById('accentColor').value = '#ffffff';
   }
 
-  // Bitiruvchi muqovasi uchun maxsus defaultlar
-  if (tpl.id === 'bitiruvchi-cover') {
+  // Split-inner shablon uchun maxsus defaultlar
+  if (tpl.id === 'split-inner') {
+    document.getElementById('canvasW').value = 1440;
+    document.getElementById('canvasH').value = 1098;
+    document.getElementById('photoShape').value = 'rounded';
+    document.getElementById('photoScale').value = 100;
+    document.getElementById('photoScaleVal').textContent = '100%';
+    document.getElementById('bgColor1').value = '#0f172a';
+    document.getElementById('bgColor2').value = '#1e3a5f';
+    document.getElementById('nameColor').value = '#ffffff';
+    document.getElementById('accentColor').value = '#6366f1';
+    document.getElementById('nameFontSize').value = 0;
+    document.getElementById('nameFontSizeVal').textContent = '0px';
+  }
     document.getElementById('photoShape').value = 'rect';
     document.getElementById('photoScale').value = 100;
     document.getElementById('photoScaleVal').textContent = '100%';
@@ -212,6 +230,76 @@ function initTeacherUpload() {
     thumb.src                   = '';
     previewDiv.style.display    = 'none';
     placeholder.style.display   = '';
+  });
+
+  // ── CHAP PORTRET RASM (split-inner uchun) ──
+  initImageUpload({
+    dropZoneId:   'leftPhotoDropZone',
+    fileInputId:  'leftPhotoFileInput',
+    thumbId:      'leftPhotoThumb',
+    previewDivId: 'leftPhotoPreviewDiv',
+    placeholderId:'leftPhotoPlaceholder',
+    removeBtnId:  'leftPhotoRemove',
+    stateKey:     'leftImg',
+  });
+
+  // ── FON RASM (split-inner uchun) ──
+  initImageUpload({
+    dropZoneId:   'splitBgDropZone',
+    fileInputId:  'splitBgFileInput',
+    thumbId:      'splitBgThumb',
+    previewDivId: 'splitBgPreviewDiv',
+    placeholderId:'splitBgPlaceholder',
+    removeBtnId:  'splitBgRemove',
+    stateKey:     'splitBgImg',
+  });
+
+  // splitBgType o'zgarganda panel ko'rsat/yashir
+  const splitBgTypeEl = document.getElementById('splitBgType');
+  if (splitBgTypeEl) {
+    splitBgTypeEl.addEventListener('change', () => {
+      const panel = document.getElementById('splitBgImagePanel');
+      if (panel) panel.style.display = splitBgTypeEl.value === 'image' ? 'block' : 'none';
+    });
+  }
+}
+
+// Umumiy rasm yuklash yordamchi funksiyasi
+function initImageUpload({ dropZoneId, fileInputId, thumbId, previewDivId, placeholderId, removeBtnId, stateKey }) {
+  const dz   = document.getElementById(dropZoneId);
+  const fi   = document.getElementById(fileInputId);
+  const th   = document.getElementById(thumbId);
+  const pd   = document.getElementById(previewDivId);
+  const pl   = document.getElementById(placeholderId);
+  const rb   = document.getElementById(removeBtnId);
+  if (!dz || !fi) return;
+
+  function load(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      window.AppState[stateKey] = img;
+      if (th) th.src = url;
+      if (pd) pd.style.display = 'block';
+      if (pl) pl.style.display = 'none';
+      renderPreview();
+    };
+    img.src = url;
+  }
+
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.style.borderColor='#6366f1'; });
+  dz.addEventListener('dragleave', () => { dz.style.borderColor=''; });
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.style.borderColor=''; load(e.dataTransfer.files[0]); });
+  fi.addEventListener('change', () => { load(fi.files[0]); fi.value=''; });
+  rb && rb.addEventListener('click', e => {
+    e.stopPropagation();
+    window.AppState[stateKey] = null;
+    if (th) th.src = '';
+    if (pd) pd.style.display = 'none';
+    if (pl) pl.style.display = '';
+    renderPreview();
   });
 }
 
@@ -378,7 +466,32 @@ function renderPreview() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (tpl.type === 'inner') {
+  if (tpl.type === 'split-inner') {
+    // Split-inner: barcha o'quvchilar grid + chap portret rasm
+    tpl.draw(ctx, window.AppState.classInfo, {
+      ...cfg,
+      w: cfg.canvasW, h: cfg.canvasH,
+      allStudents:    students,
+      ownerIndex:     idx,
+      leftImg:        window.AppState.leftImg    || null,
+      bgImg:          window.AppState.splitBgImg || null,
+      bgType:         document.getElementById('splitBgType')?.value       || 'color',
+      bgColor1:       document.getElementById('splitBgColor')?.value      || cfg.bgColor1,
+      bgColor2:       cfg.bgColor2,
+      leftLabel:      document.getElementById('leftLabel')?.value         || '',
+      divider:        document.getElementById('splitDivider')?.value      || 'line',
+      namePos:        document.getElementById('splitNamePos')?.value      || 'bottom',
+      photoShape:     document.getElementById('splitPhotoShape')?.value   || 'rounded',
+      maxCols:        parseInt(document.getElementById('splitMaxCols')?.value) || 5,
+      nameColor:      cfg.nameColor,
+      borderColor:    cfg.accentColor,
+      headerText:     [window.AppState.classInfo.schoolNumber,
+                       window.AppState.classInfo.className ? window.AppState.classInfo.className+' sinf' : '',
+                       window.AppState.classInfo.schoolYear].filter(Boolean).join(' · '),
+    });
+    document.querySelector('.preview-label').textContent =
+      `Split Ichki – ${students.length} o'quvchi · "${student.name}"`;
+  } else if (tpl.type === 'inner') {
     // Ichki shablon: barcha o'quvchilar uzatiladi, egasi = idx
     tpl.draw(ctx, window.AppState.classInfo, {
       ...cfg,
@@ -405,6 +518,7 @@ function renderPreview() {
 
 function getEditorConfig() {
   const tpl = window.AppState.selectedTemplate;
+  const isSplit = tpl?.type === 'split-inner';
   return {
     canvasW:       parseInt(document.getElementById('canvasW').value)       || tpl?.defaultW || 400,
     canvasH:       parseInt(document.getElementById('canvasH').value)       || tpl?.defaultH || 560,
@@ -412,13 +526,27 @@ function getEditorConfig() {
     schoolFontSize:parseInt(document.getElementById('schoolFontSize').value)|| 13,
     nameColor:     document.getElementById('nameColor').value,
     schoolColor:   document.getElementById('schoolColor').value,
-    bgColor1:      document.getElementById('bgColor1').value,
+    bgColor1:      isSplit ? (document.getElementById('splitBgColor')?.value || document.getElementById('bgColor1').value) : document.getElementById('bgColor1').value,
     bgColor2:      document.getElementById('bgColor2').value,
     accentColor:   document.getElementById('accentColor').value,
     photoScale:    parseInt(document.getElementById('photoScale').value)    || 100,
     photoOffsetY:  parseInt(document.getElementById('photoOffsetY').value)  || 0,
-    photoShape:    document.getElementById('photoShape').value,
+    photoShape:    isSplit ? (document.getElementById('splitPhotoShape')?.value || 'rounded') : document.getElementById('photoShape').value,
     exportQuality: parseInt(document.getElementById('exportQuality').value) || 2,
+    // Split-inner uchun qo'shimcha
+    bgType:        isSplit ? (document.getElementById('splitBgType')?.value || 'color') : 'color',
+    splitBgImg:    window.AppState.splitBgImg || null,
+    leftImg:       window.AppState.leftImg || null,
+    leftLabel:     document.getElementById('leftLabel')?.value || '',
+    divider:       document.getElementById('splitDivider')?.value  || 'line',
+    namePos:       isSplit ? (document.getElementById('splitNamePos')?.value || 'bottom') : 'bottom',
+    maxCols:       parseInt(document.getElementById('splitMaxCols')?.value) || 5,
+    nameFS:        parseInt(document.getElementById('nameFontSize').value)  || 0,
+    nameWeight:    '400',
+    gapX:          8,
+    gapY:          12,
+    borderW:       2,
+    borderColor:   document.getElementById('accentColor').value || '#ffffff',
   };
 }
 
@@ -453,7 +581,7 @@ async function startGeneration() {
   exportDone.style.display   = 'none';
   thumbGrid.innerHTML        = '';
   progressBar.style.width    = '0%';
-  progressTitle.textContent  = tpl.type === 'inner'
+  progressTitle.textContent  = (tpl.type === 'inner' || tpl.type === 'split-inner')
     ? 'Albom sahifalari generatsiya qilinmoqda...'
     : 'Vinyetkalar generatsiya qilinmoqda...';
 
@@ -538,6 +666,8 @@ function initNavigation() {
     window.AppState.students          = [];
     window.AppState.selectedTemplate  = null;
     window.AppState.teacherImg        = null;
+    window.AppState.leftImg           = null;
+    window.AppState.splitBgImg        = null;
     window.AppState.currentPreviewIdx = 0;
     renderStudentsList();
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
