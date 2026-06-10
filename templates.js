@@ -1105,17 +1105,25 @@ window.TEMPLATES = [
       const bgOverlay      = cfg.bgOverlay     != null ? cfg.bgOverlay : 0.4;
       const bgOvColor      = cfg.bgOvColor     || '#000000';
 
-      const leftImg        = cfg.leftImg       || cfg.teacherImg || null;
+      let leftImg          = cfg.leftImg       || cfg.teacherImg || null;
       const leftScale      = cfg.leftScale     != null ? cfg.leftScale : 0.90;
       const leftBorderColor= cfg.leftBorderColor || '#ffffff';
       const leftBorderW    = cfg.leftBorderW   != null ? cfg.leftBorderW : 3;
       const leftRadius     = cfg.leftRadius    != null ? cfg.leftRadius : 8;
-      const leftLabel      = cfg.leftLabel     || data.teacherName || '';
+      let leftLabel        = cfg.leftLabel     || '';
       const leftLabelFS    = cfg.leftLabelFS   || 14;
       const leftLabelColor = cfg.leftLabelColor || '#ffffff';
 
       const allStudents    = cfg.allStudents   || [];
       const ownerIndex     = cfg.ownerIndex    != null ? cfg.ownerIndex : 0;
+      // Chap portret = egasining rasmi (agar alohida berilmagan bo'lsa)
+      if (!leftImg && allStudents[ownerIndex] && allStudents[ownerIndex].img) {
+        leftImg = allStudents[ownerIndex].img;
+      }
+      // Chap pastdagi yozuv = egasining ismi (agar alohida berilmagan bo'lsa)
+      if (!leftLabel && allStudents[ownerIndex] && allStudents[ownerIndex].name) {
+        leftLabel = allStudents[ownerIndex].name;
+      }
       const maxCols        = cfg.maxCols       || 5;
       const gapX           = cfg.gapX         != null ? cfg.gapX : 8;
       const gapY           = cfg.gapY         != null ? cfg.gapY : 12;
@@ -1300,8 +1308,12 @@ window.TEMPLATES = [
       const rightGridY= contentY + rightPadV;
       const rightGridH= contentH - rightPadV * 2;
 
-      // Faqat haqiqiy o'quvchilar (ownerIndex bilan ahamiyatsiz — hammasi chiziladi)
-      const students = allStudents.length > 0 ? allStudents : [];
+      // O'quvchilar — EGASI birinchi o'ringa qo'yiladi
+      let students = allStudents.length > 0 ? allStudents.slice() : [];
+      if (students.length > 0 && ownerIndex > 0 && ownerIndex < students.length) {
+        const owner = students[ownerIndex];
+        students = [owner, ...students.filter((_, i) => i !== ownerIndex)];
+      }
       const count = students.length || 1;
       const rows = buildRows(count, maxCols);
       const rowCount = rows.length;
@@ -1331,12 +1343,19 @@ window.TEMPLATES = [
           const student = students[studentIdx] || null;
 
           // ── Foto ──
+          const isOwner = (studentIdx === 0);  // egasi = birinchi o'rinda
           ctx.save();
-          if (borderW > 0) {
+          if (isOwner) {
+            // Egasini ajratib ko'rsatish — oltin ramka
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth   = Math.max(3, borderW * 2);
+            ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.stroke();
+          } else if (borderW > 0) {
             ctx.strokeStyle = borderColor; ctx.lineWidth = borderW;
             ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.stroke();
           }
-          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, borderW/2); ctx.clip();
+          const clipIns = isOwner ? Math.max(3, borderW * 2) / 2 : borderW / 2;
+          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, clipIns); ctx.clip();
 
           if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
             const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
@@ -1365,8 +1384,8 @@ window.TEMPLATES = [
             const nm = student ? student.name : '';
             if (!nm) { studentIdx++; continue; }
             ctx.save();
-            ctx.fillStyle = nameColor;
-            ctx.font = `${nameWeight} ${nameFS}px Inter,sans-serif`;
+            ctx.fillStyle = isOwner ? '#fbbf24' : nameColor;
+            ctx.font = `${isOwner ? '700' : nameWeight} ${nameFS}px Inter,sans-serif`;
             const nameX = nameAlign === 'left' ? spx : nameAlign === 'right' ? spx+photoW : spx+photoW/2;
             ctx.textAlign = nameAlign === 'center' ? 'center' : nameAlign;
 

@@ -228,17 +228,6 @@ function initTeacherUpload() {
     placeholder.style.display   = '';
   });
 
-  // ── CHAP PORTRET RASM (split-inner uchun) ──
-  initImageUpload({
-    dropZoneId:   'leftPhotoDropZone',
-    fileInputId:  'leftPhotoFileInput',
-    thumbId:      'leftPhotoThumb',
-    previewDivId: 'leftPhotoPreviewDiv',
-    placeholderId:'leftPhotoPlaceholder',
-    removeBtnId:  'leftPhotoRemove',
-    stateKey:     'leftImg',
-  });
-
   // ── FON RASM (split-inner uchun) ──
   initImageUpload({
     dropZoneId:   'splitBgDropZone',
@@ -250,12 +239,18 @@ function initTeacherUpload() {
     stateKey:     'splitBgImg',
   });
 
-  // splitBgType o'zgarganda panel ko'rsat/yashir
+  // splitBgType o'zgarganda panellarni ko'rsat/yashir
   const splitBgTypeEl = document.getElementById('splitBgType');
   if (splitBgTypeEl) {
     splitBgTypeEl.addEventListener('change', () => {
-      const panel = document.getElementById('splitBgImagePanel');
-      if (panel) panel.style.display = splitBgTypeEl.value === 'image' ? 'block' : 'none';
+      const v = splitBgTypeEl.value;
+      const cg = document.getElementById('splitBgColorGroup');
+      const c2 = document.getElementById('splitBgColor2Group');
+      const ig = document.getElementById('splitBgImageGroup');
+      if (cg) cg.style.display = v !== 'image' ? '' : 'none';
+      if (c2) c2.style.display = v === 'gradient' ? '' : 'none';
+      if (ig) ig.style.display = v === 'image' ? '' : 'none';
+      renderPreview();
     });
   }
 }
@@ -408,16 +403,30 @@ function initEditorControls() {
 
   // Barcha kontrol o'zgarishida debounced preview yangilash
   let debTimer;
+  const debRender = () => { clearTimeout(debTimer); debTimer = setTimeout(renderPreview, 200); };
+
   document.querySelectorAll(
     '#nameFontSize,#schoolFontSize,#nameColor,#schoolColor,' +
     '#photoScale,#photoOffsetY,#photoShape,#bgColor1,#bgColor2,' +
     '#accentColor,#canvasW,#canvasH'
   ).forEach(el => {
-    ['input', 'change'].forEach(ev =>
-      el.addEventListener(ev, () => {
-        clearTimeout(debTimer);
-        debTimer = setTimeout(renderPreview, 280);
-      }));
+    ['input', 'change'].forEach(ev => el.addEventListener(ev, debRender));
+  });
+
+  // Split-inner kontrollari
+  document.querySelectorAll(
+    '#splitBgColor,#splitBgColor2,#splitNamePos,#splitNameColor,' +
+    '#splitPhotoShape,#splitBorderColor,#splitDivider,#leftLabel'
+  ).forEach(el => {
+    if (el) ['input', 'change'].forEach(ev => el.addEventListener(ev, debRender));
+  });
+
+  // splitMaxCols slider + label
+  const maxColsEl = document.getElementById('splitMaxCols');
+  const maxColsVal = document.getElementById('splitMaxColsVal');
+  if (maxColsEl) maxColsEl.addEventListener('input', () => {
+    if (maxColsVal) maxColsVal.textContent = maxColsEl.value;
+    debRender();
   });
 
   // O'quvchilar navigatsiyasi
@@ -462,31 +471,38 @@ function renderPreview() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Editor kartalarini shablon turiga qarab ko'rsat/yashir
+  const isSplitMode = tpl.type === 'split-inner';
+  document.querySelectorAll('.generic-ctrl').forEach(c => c.style.display = isSplitMode ? 'none' : '');
+  const splitCard = document.getElementById('splitControlsCard');
+  if (splitCard) splitCard.style.display = isSplitMode ? '' : 'none';
+
   if (tpl.type === 'split-inner') {
-    // Split-inner: barcha o'quvchilar grid + chap portret rasm
+    // Split-inner: HAR BIR o'quvchi chapdagi katta rasm + birinchi o'rinda
+    const leftLabelInput = (document.getElementById('leftLabel')?.value || '').trim();
     tpl.draw(ctx, window.AppState.classInfo, {
       ...cfg,
       w: cfg.canvasW, h: cfg.canvasH,
       allStudents:    students,
       ownerIndex:     idx,
-      leftImg:        window.AppState.leftImg    || null,
+      leftImg:        student.img || null,           // o'quvchining o'zi = chap portret
       bgImg:          window.AppState.splitBgImg || null,
       bgType:         document.getElementById('splitBgType')?.value       || 'color',
       bgColor1:       document.getElementById('splitBgColor')?.value      || cfg.bgColor1,
-      bgColor2:       cfg.bgColor2,
-      leftLabel:      document.getElementById('leftLabel')?.value         || '',
+      bgColor2:       document.getElementById('splitBgColor2')?.value     || cfg.bgColor2,
+      leftLabel:      leftLabelInput || student.name || '',  // bo'sh bo'lsa = o'quvchi ismi
       divider:        document.getElementById('splitDivider')?.value      || 'line',
       namePos:        document.getElementById('splitNamePos')?.value      || 'bottom',
       photoShape:     document.getElementById('splitPhotoShape')?.value   || 'rounded',
       maxCols:        parseInt(document.getElementById('splitMaxCols')?.value) || 5,
-      nameColor:      cfg.nameColor,
-      borderColor:    cfg.accentColor,
+      nameColor:      document.getElementById('splitNameColor')?.value    || '#ffffff',
+      borderColor:    document.getElementById('splitBorderColor')?.value  || '#ffffff',
       headerText:     [window.AppState.classInfo.schoolNumber,
                        window.AppState.classInfo.className ? window.AppState.classInfo.className+' sinf' : '',
                        window.AppState.classInfo.schoolYear].filter(Boolean).join(' · '),
     });
     document.querySelector('.preview-label').textContent =
-      `Split Ichki – ${students.length} o'quvchi · "${student.name}"`;
+      `Split Ichki — "${student.name}" chapda + birinchi o'rinda  (${idx + 1}/${students.length})`;
   } else if (tpl.type === 'inner') {
     // Ichki shablon: barcha o'quvchilar uzatiladi, egasi = idx
     tpl.draw(ctx, window.AppState.classInfo, {
@@ -515,34 +531,34 @@ function renderPreview() {
 function getEditorConfig() {
   const tpl = window.AppState.selectedTemplate;
   const isSplit = tpl?.type === 'split-inner';
+  const $ = id => document.getElementById(id);
   return {
-    canvasW:       parseInt(document.getElementById('canvasW').value)       || tpl?.defaultW || 400,
-    canvasH:       parseInt(document.getElementById('canvasH').value)       || tpl?.defaultH || 560,
-    nameFontSize:  parseInt(document.getElementById('nameFontSize').value)  || 22,
-    schoolFontSize:parseInt(document.getElementById('schoolFontSize').value)|| 13,
-    nameColor:     document.getElementById('nameColor').value,
-    schoolColor:   document.getElementById('schoolColor').value,
-    bgColor1:      isSplit ? (document.getElementById('splitBgColor')?.value || document.getElementById('bgColor1').value) : document.getElementById('bgColor1').value,
-    bgColor2:      document.getElementById('bgColor2').value,
-    accentColor:   document.getElementById('accentColor').value,
-    photoScale:    parseInt(document.getElementById('photoScale').value)    || 100,
-    photoOffsetY:  parseInt(document.getElementById('photoOffsetY').value)  || 0,
-    photoShape:    isSplit ? (document.getElementById('splitPhotoShape')?.value || 'rounded') : document.getElementById('photoShape').value,
-    exportQuality: parseInt(document.getElementById('exportQuality').value) || 2,
+    canvasW:       parseInt($('canvasW').value)       || tpl?.defaultW || 400,
+    canvasH:       parseInt($('canvasH').value)       || tpl?.defaultH || 560,
+    nameFontSize:  parseInt($('nameFontSize').value)  || 22,
+    schoolFontSize:parseInt($('schoolFontSize').value)|| 13,
+    nameColor:     isSplit ? ($('splitNameColor')?.value || '#ffffff') : $('nameColor').value,
+    schoolColor:   $('schoolColor').value,
+    bgColor1:      isSplit ? ($('splitBgColor')?.value  || $('bgColor1').value) : $('bgColor1').value,
+    bgColor2:      isSplit ? ($('splitBgColor2')?.value || $('bgColor2').value) : $('bgColor2').value,
+    accentColor:   $('accentColor').value,
+    photoScale:    parseInt($('photoScale').value)    || 100,
+    photoOffsetY:  parseInt($('photoOffsetY').value)  || 0,
+    photoShape:    isSplit ? ($('splitPhotoShape')?.value || 'rounded') : $('photoShape').value,
+    exportQuality: parseInt($('exportQuality').value) || 2,
     // Split-inner uchun qo'shimcha
-    bgType:        isSplit ? (document.getElementById('splitBgType')?.value || 'color') : 'color',
+    bgType:        isSplit ? ($('splitBgType')?.value || 'color') : 'color',
     splitBgImg:    window.AppState.splitBgImg || null,
-    leftImg:       window.AppState.leftImg || null,
-    leftLabel:     document.getElementById('leftLabel')?.value || '',
-    divider:       document.getElementById('splitDivider')?.value  || 'line',
-    namePos:       isSplit ? (document.getElementById('splitNamePos')?.value || 'bottom') : 'bottom',
-    maxCols:       parseInt(document.getElementById('splitMaxCols')?.value) || 5,
-    nameFS:        parseInt(document.getElementById('nameFontSize').value)  || 0,
+    leftLabel:     $('leftLabel')?.value || '',
+    divider:       $('splitDivider')?.value  || 'line',
+    namePos:       isSplit ? ($('splitNamePos')?.value || 'bottom') : 'bottom',
+    maxCols:       parseInt($('splitMaxCols')?.value) || 5,
+    nameFS:        0,
     nameWeight:    '400',
     gapX:          8,
     gapY:          12,
     borderW:       2,
-    borderColor:   document.getElementById('accentColor').value || '#ffffff',
+    borderColor:   isSplit ? ($('splitBorderColor')?.value || '#ffffff') : ($('accentColor').value || '#ffffff'),
   };
 }
 
@@ -606,8 +622,9 @@ async function startGeneration() {
     canvases => {
       progressCard.style.display = 'none';
       exportDone.style.display   = 'block';
+      const kind = (tpl.type === 'inner' || tpl.type === 'split-inner') ? 'albom sahifasi' : 'vinyetka';
       document.getElementById('doneCount').textContent =
-        `${canvases.length} ta ${tpl.type === 'inner' ? 'albom sahifasi' : 'vinyetka'} muvaffaqiyatli yaratildi`;
+        `${canvases.length} ta ${kind} muvaffaqiyatli yaratildi`;
     }
   );
 }
