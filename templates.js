@@ -1281,7 +1281,39 @@ window.TEMPLATES = [
         }
 
         const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
-        ctx.drawImage(img, x + (w - dw) / 2 + ox * w, y + (h - dh) / 2 + oy * h, dw, dh);
+        const dx = x + (w - dw) / 2 + ox * w, dy = y + (h - dh) / 2 + oy * h;
+
+        // ── RETUSH (Portret filtri) ──
+        const R = cfg.retouch || {};
+        const hasAdj = (R.smooth || R.brightness || R.contrast || R.saturation || R.warmth);
+        if (hasAdj) {
+          const blurPx = (R.smooth > 0) ? Math.max(0.3, (R.smooth / 100) * dh * 0.012) : 0;
+          const sepia  = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
+          ctx.filter =
+            `brightness(${1 + (R.brightness || 0) / 100}) ` +
+            `contrast(${1 + (R.contrast || 0) / 100}) ` +
+            `saturate(${1 + (R.saturation || 0) / 100}) ` +
+            `sepia(${sepia})` + (blurPx ? ` blur(${blurPx}px)` : '');
+        }
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.filter = 'none';
+
+        // sovuq ton (iliqlik manfiy bo'lsa)
+        if (R.warmth < 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.globalAlpha = (-R.warmth) / 100 * 0.18;
+          ctx.fillStyle = '#3a6ea5';
+          ctx.fillRect(x, y, w, h);
+          ctx.restore();
+        }
+        // vignette
+        if (R.vignette > 0) {
+          const g = ctx.createRadialGradient(x + w/2, y + h/2, Math.min(w,h)*0.35, x + w/2, y + h/2, Math.max(w,h)*0.72);
+          g.addColorStop(0, 'rgba(0,0,0,0)');
+          g.addColorStop(1, `rgba(0,0,0,${(R.vignette / 100) * 0.6})`);
+          ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+        }
         return true;
       }
 
