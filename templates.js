@@ -1422,12 +1422,12 @@ window.TEMPLATES = [
   {
     id: 'poster-split',
     type: 'poster-inner',
-    name: 'Poster 305×400 (5×5)',
-    desc: 'Qora fon · chap katta · o\'ng 5×5 (21 ta)',
+    name: 'Poster 400×305 (albom)',
+    desc: 'Landscape · chap katta · o\'ng dinamik grid',
     emoji: '🖼',
-    defaultW: 3602,
-    defaultH: 4724,
-    noScale: true,            // chiqish aniq 3602×4724 bo'lsin (scale qilinmasin)
+    defaultW: 4724,
+    defaultH: 3602,
+    noScale: true,            // chiqish aniq 4724×3602 bo'lsin (scale qilinmasin)
     exportFormat: 'jpeg',     // JPEG sifatida eksport
     jpegQuality: 0.92,
     bgColor1: '#000000',
@@ -1489,32 +1489,55 @@ window.TEMPLATES = [
         }
       }
 
-      // ── CHAP PANEL: x=53,y=53 → 1747×4617, butun rasm (contain) ──
-      const LX = Math.round(53  / 3602 * W);
-      const LY = Math.round(53  / 4724 * H);
-      const LW = Math.round(1747 / 3602 * W);
-      const LH = Math.round(4617 / 4724 * H);
+      // Bazaviy o'lcham (mm→px @300dpi): 4724×3602 (landscape)
+      const BW = 4724, BH = 3602;
+      const sx = W / BW, sy = H / BH;
+
+      // ── CHAP PANEL: x=53,y=53 → 1847×3496, butun rasm (contain) ──
+      const LX = Math.round(53   * sx);
+      const LY = Math.round(53   * sy);
+      const LW = Math.round(1847 * sx);
+      const LH = Math.round(3496 * sy);
       drawContain(leftImg, LX, LY, LW, LH);
 
-      // ── O'NG PANEL: 5×5 grid, qator1=5 ta, qator2-5=4 ta ──
-      const cellW = Math.round(340 / 3602 * W);
-      const cellH = Math.round(944 / 4724 * H);
-      const gridX = Math.round(1900 / 3602 * W);
-      // Vertikal markazlash (5×cellH balandlik bo'yicha)
-      const gridTotalH = cellH * 5;
-      const gridY = Math.round((H - gridTotalH) / 2);
+      // ── O'NG PANEL: dinamik grid (COLS×ROWS o'quvchi soniga qarab) ──
+      const panelX = Math.round(1960 * sx);
+      const panelY = 0;
+      const panelW = Math.round(2764 * sx);
+      const panelH = Math.round(3602 * sy);
 
-      let sIdx = 0;
-      for (let row = 0; row < 5; row++) {
-        const colsThisRow = (row === 0) ? 5 : 4;  // 1-qator 5 ta, qolgani 4 ta
-        for (let col = 0; col < colsThisRow; col++) {
-          const cx = gridX + col * cellW;
-          const cy = gridY + row * cellH;
-          const st = allStudents[sIdx];
-          drawCover(st ? st.img : null, cx, cy, cellW, cellH);
-          sIdx++;
-        }
-        // 5-ustun (col index 4) 2–5 qatorlarda qora qoladi — hech narsa chizilmaydi
+      const n = allStudents.length || 1;
+      // O'quvchi soniga eng mos COLS×ROWS ni tanlash (portret kataklar ~0.72 nisbat)
+      let best = { cols: 1, rows: n, score: Infinity };
+      for (let cols = 1; cols <= n; cols++) {
+        const rows   = Math.ceil(n / cols);
+        const cw     = panelW / cols, ch = panelH / rows;
+        const aspect = cw / ch;            // katak eni/bo'yi
+        const empty  = cols * rows - n;    // bo'sh kataklar soni
+        const score  = Math.abs(aspect - 0.72) + empty * 0.03;
+        if (score < best.score) best = { cols, rows, score };
+      }
+      const COLS = best.cols, ROWS = best.rows;
+      const cellW = Math.floor(panelW / COLS);
+      const cellH = Math.floor(panelH / ROWS);
+
+      // Grid umumiy o'lchami → markazlash
+      const usedW  = cellW * COLS, usedH = cellH * ROWS;
+      const startX = panelX + Math.round((panelW - usedW) / 2);
+      const startY = panelY + Math.round((panelH - usedH) / 2);
+
+      for (let i = 0; i < n; i++) {
+        const row = Math.floor(i / COLS);
+        const col = i % COLS;
+        // Oxirgi qator to'liq bo'lmasa — o'rtaga tekislash
+        const itemsInRow = Math.min(COLS, n - row * COLS);
+        const rowOffsetX = (row === ROWS - 1)
+          ? Math.round((COLS - itemsInRow) * cellW / 2)
+          : 0;
+        const cx = startX + rowOffsetX + col * cellW;
+        const cy = startY + row * cellH;
+        const st = allStudents[i];
+        drawCover(st ? st.img : null, cx, cy, cellW, cellH);
       }
     }
   },
