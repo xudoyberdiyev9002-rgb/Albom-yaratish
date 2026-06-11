@@ -22,14 +22,14 @@ window.Generator = {
     this.canvases = [];
     const total     = students.length;
     const isInner   = template.type === 'inner';
-    const isSplit   = template.type === 'split-inner';
+    const isSplit   = template.type === 'split-inner' || template.type === 'poster-inner';
 
     for (let i = 0; i < total; i++) {
       const student = students[i];
       let canvas;
 
       if (isSplit) {
-        // Split-inner: HAR BIR o'quvchi uchun alohida sahifa.
+        // Split/Poster: HAR BIR o'quvchi uchun alohida sahifa.
         // Shu o'quvchi chapdagi katta rasm + o'ng ro'yxatda 1-o'rinda.
         canvas = await this._renderSplitInner(students, i, template, config);
       } else if (isInner) {
@@ -40,7 +40,27 @@ window.Generator = {
         canvas = await this._renderOne(student, template, config);
       }
 
-      this.canvases.push({ canvas, name: student.name, index: i });
+      const item = {
+        name:        student.name,
+        index:       i,
+        format:      template.exportFormat || 'png',
+        jpegQuality: template.jpegQuality  || 0.92,
+      };
+
+      if (template.noScale) {
+        // Katta canvas (poster) — darhol blob ga aylantirib, xotirani bo'shatamiz
+        const isJpeg = (template.exportFormat === 'jpeg');
+        item.blob = await canvasToBlob(
+          canvas,
+          isJpeg ? 'image/jpeg' : 'image/png',
+          isJpeg ? (template.jpegQuality || 0.92) : 1.0
+        );
+        item.canvas = makeThumb(canvas, 360);  // faqat kichik preview saqlanadi
+      } else {
+        item.canvas = canvas;
+      }
+
+      this.canvases.push(item);
       if (onProgress) onProgress(i + 1, total);
       await sleep(10);
     }
@@ -53,7 +73,8 @@ window.Generator = {
   // ownerIndex = joriy o'quvchi → chapdagi katta rasm + 1-o'rinda
   // ────────────────────────────────────────────────────────────
   async _renderSplitInner(students, ownerIndex, template, config) {
-    const quality = parseInt(config.exportQuality) || 2;
+    // noScale shablonlar (poster) aniq o'lchamda chiqadi → quality=1
+    const quality = template.noScale ? 1 : (parseInt(config.exportQuality) || 2);
     const w = parseInt(config.canvasW) || template.defaultW;
     const h = parseInt(config.canvasH) || template.defaultH;
 
@@ -170,9 +191,15 @@ window.Generator = {
       const item     = canvases[i];
       const safeName = sanitizeFilename(item.name);
       const num      = String(item.index + 1).padStart(2, '0');
-      const filename = `${num}_${safeName}.png`;
 
-      const blob = await canvasToBlob(item.canvas);
+      // Format: JPEG yoki PNG
+      const isJpeg   = item.format === 'jpeg';
+      const mime     = isJpeg ? 'image/jpeg' : 'image/png';
+      const ext      = isJpeg ? 'jpg' : 'png';
+      const q        = isJpeg ? (item.jpegQuality || 0.92) : 1.0;
+      const filename = `${num}_${safeName}.${ext}`;
+
+      const blob = item.blob ? item.blob : await canvasToBlob(item.canvas, mime, q);
       folder.file(filename, blob);
 
       if (onProgress) onProgress(i + 1, total);
@@ -197,10 +224,20 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function canvasToBlob(canvas) {
+function canvasToBlob(canvas, mime, quality) {
   return new Promise(resolve => {
-    canvas.toBlob(blob => resolve(blob), 'image/png', 1.0);
+    canvas.toBlob(blob => resolve(blob), mime || 'image/png', quality != null ? quality : 1.0);
   });
+}
+
+// Katta canvas'dan kichik preview thumbnail yasaydi (xotira tejash uchun)
+function makeThumb(srcCanvas, maxW) {
+  const sc = Math.min(1, maxW / srcCanvas.width);
+  const t  = document.createElement('canvas');
+  t.width  = Math.max(1, Math.round(srcCanvas.width  * sc));
+  t.height = Math.max(1, Math.round(srcCanvas.height * sc));
+  t.getContext('2d').drawImage(srcCanvas, 0, 0, t.width, t.height);
+  return t;
 }
 
 function sanitizeFilename(name) {
