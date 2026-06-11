@@ -18,6 +18,7 @@ window.AppState = {
   transforms:          {},   // free-transform: key -> {scale, ox, oy}
   _regions:            [],   // joriy preview dagi rasm hududlari (hit-test uchun)
   previewZoom:         1,     // tahrirlash oynasi masshtabi
+  faces:               {},    // {studentIdx: {cx,cy,fh}} yuz aniqlash natijasi
   currentPreviewIdx:   0,
 };
 
@@ -340,15 +341,33 @@ function handleFiles(files) {
   });
 }
 
-function loadStudentFile(file) {
-  return new Promise(resolve => {
-    const name = file.name.replace(/\.[^.]+$/, '').trim();
-    const url  = URL.createObjectURL(file);
-    const img  = new Image();
-    img.onload  = () => resolve({ name, img, url });
-    img.onerror = () => resolve({ name, img: null, url: null });
-    img.src = url;
-  });
+async function loadStudentFile(file) {
+  const name = file.name.replace(/\.[^.]+$/, '').trim();
+  const { img, url } = await loadCorrectedImage(file);
+  return { name, img, url };
+}
+
+// EXIF orientatsiyani to'g'rilab rasm yuklaydi (yonboshlab yuklanmasin)
+async function loadCorrectedImage(file) {
+  try {
+    let bmp;
+    try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch (e) { bmp = await createImageBitmap(file); }
+    const c = document.createElement('canvas');
+    c.width = bmp.width; c.height = bmp.height;
+    c.getContext('2d').drawImage(bmp, 0, 0);
+    if (bmp.close) bmp.close();
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    await new Promise(res => { img.onload = res; img.onerror = res; img.src = url; });
+    return { img, url };
+  } catch (e) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    await new Promise(res => { img.onload = res; img.onerror = res; img.src = url; });
+    return { img, url };
+  }
 }
 
 function renderStudentsList() {
@@ -467,6 +486,55 @@ function initEditorControls() {
   if (pzIn)  pzIn.addEventListener('click',  () => setPreviewZoom((window.AppState.previewZoom || 1) + 0.25));
   if (pzOut) pzOut.addEventListener('click', () => setPreviewZoom((window.AppState.previewZoom || 1) - 0.25));
   if (pzRst) pzRst.addEventListener('click', () => setPreviewZoom(1));
+
+  const afBtn = document.getElementById('autoFitBtn');
+  if (afBtn) afBtn.addEventListener('click', runAutoFit);
+}
+
+// Yuz aniqlash orqali har bir rasmni avto-tekislash (face-api.js)
+async function runAutoFit() {
+  const btn = document.getElementById('autoFitBtn');
+  const students = window.AppState.students;
+  if (!students.length) return;
+  if (typeof faceapi === 'undefined') {
+    alert("Yuz aniqlash kutubxonasi yuklanmadi. Internet aloqasini tekshiring va sahifani yangilang.");
+    return;
+  }
+  const orig = btn ? btn.textContent : '';
+  if (btn) btn.disabled = true;
+  try {
+    if (btn) btn.textContent = '⏳ Modellar yuklanmoqda...';
+    if (!window._faceModelsLoaded) {
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
+      window._faceModelsLoaded = true;
+    }
+    const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.35 });
+    for (let i = 0; i < students.length; i++) {
+      if (btn) btn.textContent = `⏳ Yuz aniqlanmoqda ${i + 1}/${students.length}`;
+      const s = students[i];
+      let det = null;
+      if (s && s.img) { try { det = await faceapi.detectSingleFace(s.img, opt); } catch (e) {} }
+      if (det && det.box) {
+        const b = det.box;
+        const iw = s.img.naturalWidth || s.img.width;
+        const ih = s.img.naturalHeight || s.img.height;
+        window.AppState.faces[i] = {
+          cx: (b.x + b.width / 2) / iw,
+          cy: (b.y + b.height / 2) / ih,
+          fh: b.height / ih,
+        };
+      } else {
+        window.AppState.faces[i] = null;
+      }
+      delete window.AppState.transforms[`g${i}`];
+      delete window.AppState.transforms[`L${i}`];
+    }
+    renderPreview();
+    if (btn) { btn.textContent = '✓ Tayyor'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1300); }
+  } catch (e) {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+    alert('Avto-tekislashda xatolik: ' + (e && e.message ? e.message : e));
+  }
 }
 
 // Preview canvas ustida rasmlarni sudrash (move) va g'ildirak (zoom)
@@ -490,8 +558,12 @@ function initFreeTransform() {
     }
     return null;
   };
-  const getT = (key) =>
-    (window.AppState.transforms[key] = window.AppState.transforms[key] || { scale: 1, ox: 0, oy: 0 });
+  const getT = (key) => {
+    const t = window.AppState.transforms[key] || { scale: 1, ox: 0, oy: 0 };
+    t.src = 'manual';
+    window.AppState.transforms[key] = t;
+    return t;
+  };
 
   // Sudrash boshlanishi
   pc.addEventListener('mousedown', (e) => {
@@ -625,6 +697,7 @@ function renderPreview() {
       leftImg:        student.img || null,           // o'quvchining o'zi = chap portret
       bgImg:          window.AppState.splitBgImg || null,
       transforms:     window.AppState.transforms,    // free-transform
+      faces:          window.AppState.faces,
       hitRegions:     _hit,                          // rasm hududlari (hit-test)
       bgType:         document.getElementById('splitBgType')?.value       || 'color',
       bgColor1:       document.getElementById('splitBgColor')?.value      || cfg.bgColor1,
@@ -701,6 +774,7 @@ function getEditorConfig() {
     borderW:       2,
     borderColor:   isSplit ? ($('splitBorderColor')?.value || '#ffffff') : ($('accentColor').value || '#ffffff'),
     transforms:    window.AppState.transforms,   // free-transform (generatsiyada ham)
+    faces:         window.AppState.faces,
   };
 }
 
@@ -825,6 +899,7 @@ function initNavigation() {
     window.AppState.splitBgImg        = null;
     window.AppState.transforms        = {};
     window.AppState._regions          = [];
+    window.AppState.faces             = {};
     window.AppState.previewZoom       = 1;
     window.AppState.currentPreviewIdx = 0;
     renderStudentsList();
