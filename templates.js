@@ -4,24 +4,28 @@
  */
 
 /**
- * Chekka-saqlovchi teri silliqlash (Portraiture uslubidagi "smart blur").
- * Global blur o'rniga: tekis sohalar (teri) silliqlanadi, chekkalar
- * (ko'z, kiprik, lab, soch, qosh) tiniq qoladi.
+ * Teri silliqlash — Portraiture uslubidagi: TERI-RANG MASKASI + chastota ajratish.
  *
- *  - img        : manba rasm (data-URL canvas, taint emas)
- *  - tw, th     : chizilayotgan o'lcham (px)
- *  - amount     : 0..100 silliqlash kuchi
- *  -> silliqlangan <canvas> qaytaradi (yoki xato bo'lsa null)
+ * Farqi (oldingi "smart blur" dan):
+ *   • Silliqlash FAQAT teri rangidagi piksellarga qo'llanadi (YCbCr maskasi)
+ *     → fon, soch, kiyim, ko'z, qosh, kiprik umuman tegmaydi.
+ *   • Teri ichida ham kuchli chekkalar (lab cheti, burun) saqlanadi.
+ *   • Tekstura qisman saqlanadi (plastik/"yasama" ko'rinish bo'lmaydi).
+ *
+ *  img        : manba rasm (data-URL canvas — taint emas)
+ *  tw, th     : chizilayotgan o'lcham (px)
+ *  amount     : 0..100 silliqlash kuchi
+ *  -> silliqlangan <canvas> (yoki xato bo'lsa null)
  */
-function rtEdgePreserveSmooth(img, tw, th, amount) {
+function rtSkinSmooth(img, tw, th, amount) {
   try {
     tw = Math.max(1, Math.round(tw));
     th = Math.max(1, Math.round(th));
-    const px = tw * th;
+    const total = tw * th;
     const key = tw + '_' + th + '_' + amount;
 
-    // Kichik rasmlar uchun keshlash (preview / grid uchun tez)
-    const cacheable = px <= 600000;
+    // Kichik rasmlar (preview / grid) — keshlanadi (tez)
+    const cacheable = total <= 600000;
     if (cacheable && img.__rt && img.__rt.key === key) return img.__rt.canvas;
 
     // 1) Manba (chizilgan o'lchamda)
@@ -30,35 +34,53 @@ function rtEdgePreserveSmooth(img, tw, th, amount) {
     const sctx = src.getContext('2d');
     sctx.drawImage(img, 0, 0, tw, th);
 
-    // 2) Blur qilingan nusxa (GPU — tez)
+    // 2) Past-chastota (rang/ton) qatlami — Gauss blur (GPU, tez)
     const minDim = Math.min(tw, th);
-    const radius = Math.max(0.6, (amount / 100) * minDim * 0.015);
-    const blr  = document.createElement('canvas');
-    blr.width  = tw; blr.height = th;
-    const bctx = blr.getContext('2d');
-    bctx.filter = `blur(${radius}px)`;
-    bctx.drawImage(src, 0, 0);
-    bctx.filter = 'none';
+    const radius = Math.max(0.8, (amount / 100) * minDim * 0.02);
+    const low  = document.createElement('canvas');
+    low.width  = tw; low.height = th;
+    const lctx = low.getContext('2d');
+    lctx.filter = `blur(${radius}px)`;
+    lctx.drawImage(src, 0, 0);
+    lctx.filter = 'none';
 
-    // 3) Piksel bo'yicha aralashtirish (chekka-saqlovchi)
-    const o = sctx.getImageData(0, 0, tw, th);
-    const b = bctx.getImageData(0, 0, tw, th);
-    const od = o.data, bd = b.data;
-    const strength = amount / 100;     // 0..1
-    const t0 = 6, t1 = 34;             // detallik chegaralari (0..255)
-    const inv = 1 / (t1 - t0);
+    // 3) Teri maskasi + chekka-saqlovchi aralashtirish (bitta o'tishda)
+    const o  = sctx.getImageData(0, 0, tw, th);
+    const lo = lctx.getImageData(0, 0, tw, th);
+    const od = o.data, ld = lo.data;
+    const strength = amount / 100;        // 0..1
+    const t0 = 4, t1 = 26;                // chekka chegaralari (detallik, 0..255)
+    const tinv = 1 / (t1 - t0);
+
     for (let i = 0; i < od.length; i += 4) {
-      const dr = od[i] - bd[i], dg = od[i + 1] - bd[i + 1], db = od[i + 2] - bd[i + 2];
-      const detail = (Math.abs(dr) + Math.abs(dg) + Math.abs(db)) * 0.3333;
-      // edgeKeep: tekis (<=t0) → 0,  kuchli chekka (>=t1) → 1
-      let e = (detail - t0) * inv;
+      const r = od[i], g = od[i + 1], b = od[i + 2];
+
+      // — TERI maskasi (YCbCr, yumshoq chegaralar) —
+      const Cb = -0.169 * r - 0.331 * g + 0.5   * b + 128;
+      const Cr =  0.5   * r - 0.419 * g - 0.081 * b + 128;
+      let skin = 1;
+      if      (Cr < 123) skin = 0;
+      else if (Cr < 135) skin *= (Cr - 123) / 12;
+      else if (Cr > 180) skin  = (Cr > 192) ? 0 : skin * (192 - Cr) / 12;
+      if (skin > 0) {
+        if      (Cb < 73)  skin = 0;
+        else if (Cb < 85)  skin *= (Cb - 73) / 12;
+        else if (Cb > 135) skin  = (Cb > 147) ? 0 : skin * (147 - Cb) / 12;
+      }
+      if (skin <= 0) continue;            // teri emas → o'zgartirmaymiz (tiniq)
+
+      // — chekka saqlash (teri ichidagi kuchli detallar) —
+      const lr = ld[i], lg = ld[i + 1], lb = ld[i + 2];
+      const detail = (Math.abs(r - lr) + Math.abs(g - lg) + Math.abs(b - lb)) * 0.3333;
+      let e = (detail - t0) * tinv;
       if (e < 0) e = 0; else if (e > 1) e = 1;
-      e = e * e * (3 - 2 * e);         // smoothstep
-      const wgt = strength * (1 - e);  // chekkalarda 0, tekisda strength
-      if (wgt > 0) {
-        od[i]     += (bd[i]     - od[i])     * wgt;
-        od[i + 1] += (bd[i + 1] - od[i + 1]) * wgt;
-        od[i + 2] += (bd[i + 2] - od[i + 2]) * wgt;
+      e = e * e * (3 - 2 * e);            // smoothstep
+
+      const w = strength * skin * (1 - e);
+      if (w > 0) {
+        od[i]     = r + (lr - r) * w;
+        od[i + 1] = g + (lg - g) * w;
+        od[i + 2] = b + (lb - b) * w;
       }
     }
     sctx.putImageData(o, 0, 0);
@@ -1362,9 +1384,9 @@ window.TEMPLATES = [
             `saturate(${1 + (R.saturation || 0) / 100}) ` +
             `sepia(${sepia})`;
         }
-        // Teri silliqlash: chekka-saqlovchi (global blur EMAS)
+        // Teri silliqlash: teri-rang maskasi + chastota ajratish (global blur EMAS)
         let smoothed = null;
-        if (R.smooth > 0) smoothed = rtEdgePreserveSmooth(img, dw, dh, R.smooth);
+        if (R.smooth > 0) smoothed = rtSkinSmooth(img, dw, dh, R.smooth);
         if (smoothed) ctx.drawImage(smoothed, dx, dy, dw, dh);
         else          ctx.drawImage(img, dx, dy, dw, dh);
         ctx.filter = 'none';
