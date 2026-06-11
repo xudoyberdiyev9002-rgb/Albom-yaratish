@@ -180,10 +180,10 @@ function selectTemplate(card, tpl) {
     document.getElementById('nameFontSizeVal').textContent = '0px';
   }
 
-  // Poster-split shablon uchun maxsus defaultlar (aniq o'lcham)
+  // Poster-split shablon uchun maxsus defaultlar (aniq o'lcham, landscape)
   if (tpl.id === 'poster-split') {
-    document.getElementById('canvasW').value = 3602;
-    document.getElementById('canvasH').value = 4724;
+    document.getElementById('canvasW').value = 4724;
+    document.getElementById('canvasH').value = 3602;
     document.getElementById('bgColor1').value = '#000000';
     document.getElementById('bgColor2').value = '#000000';
   }
