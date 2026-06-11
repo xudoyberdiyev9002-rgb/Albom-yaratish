@@ -15,6 +15,8 @@ window.AppState = {
   teacherImg:          null, // sinf rahbari rasmi
   leftImg:             null, // split-inner chap portret rasmi
   splitBgImg:          null, // split-inner fon rasmi
+  transforms:          {},   // free-transform: key -> {scale, ox, oy}
+  _regions:            [],   // joriy preview dagi rasm hududlari (hit-test uchun)
   currentPreviewIdx:   0,
 };
 
@@ -453,6 +455,89 @@ function initEditorControls() {
       (window.AppState.currentPreviewIdx + 1) % len;
     renderPreview();
   });
+
+  // ── FREE TRANSFORM: rasmlarni qo'lda siljitish/masshtab (Photoshop kabi) ──
+  initFreeTransform();
+}
+
+// Preview canvas ustida rasmlarni sudrash (move) va g'ildirak (zoom)
+function initFreeTransform() {
+  const pc = document.getElementById('previewCanvas');
+  if (!pc) return;
+
+  let drag = null;  // { key, lastX, lastY, w, h }
+
+  const toCanvas = (e) => {
+    const rect = pc.getBoundingClientRect();
+    const fx = pc.width / rect.width;
+    const fy = pc.height / rect.height;
+    return { x: (e.clientX - rect.left) * fx, y: (e.clientY - rect.top) * fy, fx, fy };
+  };
+  const regionAt = (cx, cy) => {
+    const regs = window.AppState._regions || [];
+    for (let i = regs.length - 1; i >= 0; i--) {
+      const r = regs[i];
+      if (cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h) return r;
+    }
+    return null;
+  };
+  const getT = (key) =>
+    (window.AppState.transforms[key] = window.AppState.transforms[key] || { scale: 1, ox: 0, oy: 0 });
+
+  // Sudrash boshlanishi
+  pc.addEventListener('mousedown', (e) => {
+    const p = toCanvas(e);
+    const r = regionAt(p.x, p.y);
+    if (!r) return;
+    drag = { key: r.key, lastX: e.clientX, lastY: e.clientY, w: r.w, h: r.h };
+    pc.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  // Sudrash (move)
+  window.addEventListener('mousemove', (e) => {
+    if (!drag) return;
+    const rect = pc.getBoundingClientRect();
+    const fx = pc.width / rect.width;
+    const dx = (e.clientX - drag.lastX) * fx;
+    const dy = (e.clientY - drag.lastY) * fx;
+    const t = getT(drag.key);
+    t.ox += dx / drag.w;
+    t.oy += dy / drag.h;
+    drag.lastX = e.clientX;
+    drag.lastY = e.clientY;
+    renderPreview();
+  });
+  window.addEventListener('mouseup', () => {
+    if (drag) { drag = null; pc.style.cursor = 'default'; }
+  });
+
+  // Hover — kursor ko'rinishi
+  pc.addEventListener('mousemove', (e) => {
+    if (drag) return;
+    const p = toCanvas(e);
+    pc.style.cursor = regionAt(p.x, p.y) ? 'grab' : 'default';
+  });
+
+  // G'ildirak — masshtab (zoom)
+  pc.addEventListener('wheel', (e) => {
+    const p = toCanvas(e);
+    const r = regionAt(p.x, p.y);
+    if (!r) return;
+    e.preventDefault();
+    const t = getT(r.key);
+    t.scale = Math.max(0.2, Math.min(8, (t.scale || 1) * (e.deltaY < 0 ? 1.08 : 0.926)));
+    renderPreview();
+  }, { passive: false });
+
+  // Ikki marta bosish — shu rasm transformini tiklash
+  pc.addEventListener('dblclick', (e) => {
+    const p = toCanvas(e);
+    const r = regionAt(p.x, p.y);
+    if (!r) return;
+    delete window.AppState.transforms[r.key];
+    renderPreview();
+  });
 }
 
 function renderPreview() {
@@ -479,6 +564,8 @@ function renderPreview() {
 
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const _hit = [];  // free-transform uchun rasm hududlari
 
   // Editor kartalarini shablon turiga qarab ko'rsat/yashir
   const isSplitMode  = tpl.type === 'split-inner';
@@ -509,6 +596,8 @@ function renderPreview() {
       ownerIndex:     idx,
       leftImg:        student.img || null,           // o'quvchining o'zi = chap portret
       bgImg:          window.AppState.splitBgImg || null,
+      transforms:     window.AppState.transforms,    // free-transform
+      hitRegions:     _hit,                          // rasm hududlari (hit-test)
       bgType:         document.getElementById('splitBgType')?.value       || 'color',
       bgColor1:       document.getElementById('splitBgColor')?.value      || cfg.bgColor1,
       bgColor2:       document.getElementById('splitBgColor2')?.value     || cfg.bgColor2,
@@ -548,6 +637,8 @@ function renderPreview() {
     document.querySelector('.preview-label').textContent =
       `Ko'rish — ${idx + 1}-o'quvchi namunasi`;
   }
+
+  window.AppState._regions = _hit;  // hit-test uchun saqlash
 }
 
 function getEditorConfig() {
@@ -581,6 +672,7 @@ function getEditorConfig() {
     gapY:          12,
     borderW:       2,
     borderColor:   isSplit ? ($('splitBorderColor')?.value || '#ffffff') : ($('accentColor').value || '#ffffff'),
+    transforms:    window.AppState.transforms,   // free-transform (generatsiyada ham)
   };
 }
 
@@ -703,6 +795,8 @@ function initNavigation() {
     window.AppState.teacherImg        = null;
     window.AppState.leftImg           = null;
     window.AppState.splitBgImg        = null;
+    window.AppState.transforms        = {};
+    window.AppState._regions          = [];
     window.AppState.currentPreviewIdx = 0;
     renderStudentsList();
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
