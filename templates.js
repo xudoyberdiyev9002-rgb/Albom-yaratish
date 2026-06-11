@@ -1416,7 +1416,111 @@ window.TEMPLATES = [
   },
 
   // ============================================================
-  // 8. QIZIL – Bayram vinyetkasi
+  // 8. POSTER 305×400 — Qora fon, chap katta panel, o'ng 5×5 grid
+  //    Aniq o'lchamlar: 3602×4724 px (300 DPI), JPEG q92
+  // ============================================================
+  {
+    id: 'poster-split',
+    type: 'poster-inner',
+    name: 'Poster 305×400 (5×5)',
+    desc: 'Qora fon · chap katta · o\'ng 5×5 (21 ta)',
+    emoji: '🖼',
+    defaultW: 3602,
+    defaultH: 4724,
+    noScale: true,            // chiqish aniq 3602×4724 bo'lsin (scale qilinmasin)
+    exportFormat: 'jpeg',     // JPEG sifatida eksport
+    jpegQuality: 0.92,
+    bgColor1: '#000000',
+    bgColor2: '#000000',
+    accentColor: '#ffffff',
+    nameColor: '#ffffff',
+    schoolColor: '#ffffff',
+
+    draw(ctx, data, cfg) {
+      const W = cfg.w || cfg.canvasW || 3602;
+      const H = cfg.h || cfg.canvasH || 4724;
+      const allStudents = cfg.allStudents || [];
+      const ownerIndex  = cfg.ownerIndex != null ? cfg.ownerIndex : 0;
+      const leftImg = cfg.leftImg ||
+        (allStudents[ownerIndex] && allStudents[ownerIndex].img) || null;
+
+      // ── Qora fon ──
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
+
+      // Yordamchi: COVER (kataknи to'ldiradi, ortig'i kesiladi)
+      function drawCover(img, x, y, w, h) {
+        if (img && img.complete && img.naturalWidth > 0) {
+          const iw = img.naturalWidth, ih = img.naturalHeight;
+          const sc = Math.max(w / iw, h / ih);
+          const dw = iw * sc, dh = ih * sc;
+          ctx.save();
+          ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+          ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+          ctx.restore();
+        } else {
+          // Bo'sh katak — deyarli qora, ozgina ko'rinadigan placeholder
+          ctx.fillStyle = '#0e0e0e';
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.10)';
+          ctx.font = `${Math.round(w * 0.3)}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('👤', x + w / 2, y + h / 2);
+        }
+      }
+
+      // Yordamchi: CONTAIN (butun rasm sig'adi, ortig'i qora)
+      function drawContain(img, x, y, w, h) {
+        if (img && img.complete && img.naturalWidth > 0) {
+          const iw = img.naturalWidth, ih = img.naturalHeight;
+          const sc = Math.min(w / iw, h / ih);
+          const dw = iw * sc, dh = ih * sc;
+          ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+        } else {
+          ctx.fillStyle = '#0e0e0e';
+          ctx.fillRect(x, y, w, h);
+          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.font = `${Math.round(w * 0.12)}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('👤', x + w / 2, y + h / 2);
+        }
+      }
+
+      // ── CHAP PANEL: x=53,y=53 → 1747×4617, butun rasm (contain) ──
+      const LX = Math.round(53  / 3602 * W);
+      const LY = Math.round(53  / 4724 * H);
+      const LW = Math.round(1747 / 3602 * W);
+      const LH = Math.round(4617 / 4724 * H);
+      drawContain(leftImg, LX, LY, LW, LH);
+
+      // ── O'NG PANEL: 5×5 grid, qator1=5 ta, qator2-5=4 ta ──
+      const cellW = Math.round(340 / 3602 * W);
+      const cellH = Math.round(944 / 4724 * H);
+      const gridX = Math.round(1900 / 3602 * W);
+      // Vertikal markazlash (5×cellH balandlik bo'yicha)
+      const gridTotalH = cellH * 5;
+      const gridY = Math.round((H - gridTotalH) / 2);
+
+      let sIdx = 0;
+      for (let row = 0; row < 5; row++) {
+        const colsThisRow = (row === 0) ? 5 : 4;  // 1-qator 5 ta, qolgani 4 ta
+        for (let col = 0; col < colsThisRow; col++) {
+          const cx = gridX + col * cellW;
+          const cy = gridY + row * cellH;
+          const st = allStudents[sIdx];
+          drawCover(st ? st.img : null, cx, cy, cellW, cellH);
+          sIdx++;
+        }
+        // 5-ustun (col index 4) 2–5 qatorlarda qora qoladi — hech narsa chizilmaydi
+      }
+    }
+  },
+
+  // ============================================================
+  // 9. QIZIL – Bayram vinyetkasi
   // ============================================================
   {
     id: 'festive-red',
