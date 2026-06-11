@@ -3,6 +3,73 @@
  * Har bir shablon – Canvas'da chizish uchun konfiguratsiya + draw() funksiyasi
  */
 
+/**
+ * Chekka-saqlovchi teri silliqlash (Portraiture uslubidagi "smart blur").
+ * Global blur o'rniga: tekis sohalar (teri) silliqlanadi, chekkalar
+ * (ko'z, kiprik, lab, soch, qosh) tiniq qoladi.
+ *
+ *  - img        : manba rasm (data-URL canvas, taint emas)
+ *  - tw, th     : chizilayotgan o'lcham (px)
+ *  - amount     : 0..100 silliqlash kuchi
+ *  -> silliqlangan <canvas> qaytaradi (yoki xato bo'lsa null)
+ */
+function rtEdgePreserveSmooth(img, tw, th, amount) {
+  try {
+    tw = Math.max(1, Math.round(tw));
+    th = Math.max(1, Math.round(th));
+    const px = tw * th;
+    const key = tw + '_' + th + '_' + amount;
+
+    // Kichik rasmlar uchun keshlash (preview / grid uchun tez)
+    const cacheable = px <= 600000;
+    if (cacheable && img.__rt && img.__rt.key === key) return img.__rt.canvas;
+
+    // 1) Manba (chizilgan o'lchamda)
+    const src  = document.createElement('canvas');
+    src.width  = tw; src.height = th;
+    const sctx = src.getContext('2d');
+    sctx.drawImage(img, 0, 0, tw, th);
+
+    // 2) Blur qilingan nusxa (GPU — tez)
+    const minDim = Math.min(tw, th);
+    const radius = Math.max(0.6, (amount / 100) * minDim * 0.015);
+    const blr  = document.createElement('canvas');
+    blr.width  = tw; blr.height = th;
+    const bctx = blr.getContext('2d');
+    bctx.filter = `blur(${radius}px)`;
+    bctx.drawImage(src, 0, 0);
+    bctx.filter = 'none';
+
+    // 3) Piksel bo'yicha aralashtirish (chekka-saqlovchi)
+    const o = sctx.getImageData(0, 0, tw, th);
+    const b = bctx.getImageData(0, 0, tw, th);
+    const od = o.data, bd = b.data;
+    const strength = amount / 100;     // 0..1
+    const t0 = 6, t1 = 34;             // detallik chegaralari (0..255)
+    const inv = 1 / (t1 - t0);
+    for (let i = 0; i < od.length; i += 4) {
+      const dr = od[i] - bd[i], dg = od[i + 1] - bd[i + 1], db = od[i + 2] - bd[i + 2];
+      const detail = (Math.abs(dr) + Math.abs(dg) + Math.abs(db)) * 0.3333;
+      // edgeKeep: tekis (<=t0) → 0,  kuchli chekka (>=t1) → 1
+      let e = (detail - t0) * inv;
+      if (e < 0) e = 0; else if (e > 1) e = 1;
+      e = e * e * (3 - 2 * e);         // smoothstep
+      const wgt = strength * (1 - e);  // chekkalarda 0, tekisda strength
+      if (wgt > 0) {
+        od[i]     += (bd[i]     - od[i])     * wgt;
+        od[i + 1] += (bd[i + 1] - od[i + 1]) * wgt;
+        od[i + 2] += (bd[i + 2] - od[i + 2]) * wgt;
+      }
+    }
+    sctx.putImageData(o, 0, 0);
+
+    if (cacheable) img.__rt = { key, canvas: src };
+    return src;
+  } catch (e) {
+    return null;   // xato (masalan taint) bo'lsa — oddiy chizishga qaytamiz
+  }
+}
+
 window.TEMPLATES = [
   // ============================================================
   // 0. BITIRUVCHI ALBOM MUQOVASI (qora fon, vatermark, elegant)
@@ -1285,17 +1352,21 @@ window.TEMPLATES = [
 
         // ── RETUSH (Portret filtri) ──
         const R = cfg.retouch || {};
-        const hasAdj = (R.smooth || R.brightness || R.contrast || R.saturation || R.warmth);
-        if (hasAdj) {
-          const blurPx = (R.smooth > 0) ? Math.max(0.3, (R.smooth / 100) * dh * 0.006) : 0;
-          const sepia  = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
+        // Rang sozlamalari (butun rasmga) — silliqlashdan alohida
+        const hasColor = (R.brightness || R.contrast || R.saturation || R.warmth > 0);
+        if (hasColor) {
+          const sepia = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
           ctx.filter =
             `brightness(${1 + (R.brightness || 0) / 100}) ` +
             `contrast(${1 + (R.contrast || 0) / 100}) ` +
             `saturate(${1 + (R.saturation || 0) / 100}) ` +
-            `sepia(${sepia})` + (blurPx ? ` blur(${blurPx}px)` : '');
+            `sepia(${sepia})`;
         }
-        ctx.drawImage(img, dx, dy, dw, dh);
+        // Teri silliqlash: chekka-saqlovchi (global blur EMAS)
+        let smoothed = null;
+        if (R.smooth > 0) smoothed = rtEdgePreserveSmooth(img, dw, dh, R.smooth);
+        if (smoothed) ctx.drawImage(smoothed, dx, dy, dw, dh);
+        else          ctx.drawImage(img, dx, dy, dw, dh);
         ctx.filter = 'none';
 
         // sovuq ton (iliqlik manfiy bo'lsa)
