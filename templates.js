@@ -1086,6 +1086,10 @@ window.TEMPLATES = [
     emoji: '📐',
     defaultW: 1440,
     defaultH: 1098,
+    printW: 4724,            // pechat aniqligi: 300 DPI @ 400mm
+    printH: 3602,
+    exportFormat: 'jpeg',
+    jpegQuality: 0.95,
     bgColor1:    '#0f172a',
     bgColor2:    '#1e3a5f',
     accentColor: '#6366f1',
