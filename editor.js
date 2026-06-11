@@ -505,6 +505,25 @@ function initEditorControls() {
   const afYL = document.getElementById('afFaceYLeft');
   const afYLV = document.getElementById('afFaceYLeftVal');
   if (afYL) afYL.addEventListener('input', () => { if (afYLV) afYLV.textContent = afYL.value + '%'; renderPreview(); });
+
+  // ── RETUSH sliderlari ──
+  [['rtSmooth','rtSmoothVal'],['rtWarmth','rtWarmthVal'],['rtBright','rtBrightVal'],
+   ['rtContrast','rtContrastVal'],['rtSat','rtSatVal'],['rtVignette','rtVignetteVal']]
+  .forEach(([id, vid]) => {
+    const el = document.getElementById(id), v = document.getElementById(vid);
+    if (el) el.addEventListener('input', () => { if (v) v.textContent = el.value; renderPreview(); });
+  });
+  const setRt = (vals) => {
+    Object.entries(vals).forEach(([id, val]) => {
+      const el = document.getElementById(id); if (!el) return;
+      el.value = val; const v = document.getElementById(id + 'Val'); if (v) v.textContent = val;
+    });
+    renderPreview();
+  };
+  const rtP = document.getElementById('rtPreset');
+  if (rtP) rtP.addEventListener('click', () => setRt({ rtSmooth:40, rtWarmth:15, rtBright:5, rtContrast:8, rtSat:5, rtVignette:20 }));
+  const rtR = document.getElementById('rtReset');
+  if (rtR) rtR.addEventListener('click', () => setRt({ rtSmooth:0, rtWarmth:0, rtBright:0, rtContrast:0, rtSat:0, rtVignette:0 }));
 }
 
 // Yuz aniqlash orqali har bir rasmni avto-tekislash (face-api.js)
@@ -795,6 +814,14 @@ function getEditorConfig() {
     autoFaceY:     (parseInt(($('afFaceY') || {}).value) || 43) / 100,
     autoFaceFracLeft: (parseInt(($('afFaceLeft')  || {}).value) || 27) / 100,
     autoFaceYLeft:    (parseInt(($('afFaceYLeft') || {}).value) || 43) / 100,
+    retouch: {
+      smooth:     parseInt(($('rtSmooth')   || {}).value) || 0,
+      warmth:     parseInt(($('rtWarmth')   || {}).value) || 0,
+      brightness: parseInt(($('rtBright')   || {}).value) || 0,
+      contrast:   parseInt(($('rtContrast') || {}).value) || 0,
+      saturation: parseInt(($('rtSat')      || {}).value) || 0,
+      vignette:   parseInt(($('rtVignette') || {}).value) || 0,
+    },
   };
 }
 
