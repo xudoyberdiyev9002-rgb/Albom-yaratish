@@ -521,7 +521,7 @@ function initEditorControls() {
     renderPreview();
   };
   const rtP = document.getElementById('rtPreset');
-  if (rtP) rtP.addEventListener('click', () => setRt({ rtSmooth:40, rtWarmth:15, rtBright:5, rtContrast:8, rtSat:5, rtVignette:20 }));
+  if (rtP) rtP.addEventListener('click', () => setRt({ rtSmooth:30, rtWarmth:20, rtBright:10, rtContrast:15, rtSat:15, rtVignette:25 }));
   const rtR = document.getElementById('rtReset');
   if (rtR) rtR.addEventListener('click', () => setRt({ rtSmooth:0, rtWarmth:0, rtBright:0, rtContrast:0, rtSat:0, rtVignette:0 }));
 }

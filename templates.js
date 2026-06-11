@@ -1287,7 +1287,7 @@ window.TEMPLATES = [
         const R = cfg.retouch || {};
         const hasAdj = (R.smooth || R.brightness || R.contrast || R.saturation || R.warmth);
         if (hasAdj) {
-          const blurPx = (R.smooth > 0) ? Math.max(0.3, (R.smooth / 100) * dh * 0.012) : 0;
+          const blurPx = (R.smooth > 0) ? Math.max(0.3, (R.smooth / 100) * dh * 0.006) : 0;
           const sepia  = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
           ctx.filter =
             `brightness(${1 + (R.brightness || 0) / 100}) ` +
