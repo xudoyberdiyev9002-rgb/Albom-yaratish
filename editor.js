@@ -17,6 +17,7 @@ window.AppState = {
   splitBgImg:          null, // split-inner fon rasmi
   transforms:          {},   // free-transform: key -> {scale, ox, oy}
   _regions:            [],   // joriy preview dagi rasm hududlari (hit-test uchun)
+  previewZoom:         1,     // tahrirlash oynasi masshtabi
   currentPreviewIdx:   0,
 };
 
@@ -458,6 +459,14 @@ function initEditorControls() {
 
   // ── FREE TRANSFORM: rasmlarni qo'lda siljitish/masshtab (Photoshop kabi) ──
   initFreeTransform();
+
+  // ── PREVIEW ZOOM (yaqinlashtirish) ──
+  const pzIn  = document.getElementById('previewZoomIn');
+  const pzOut = document.getElementById('previewZoomOut');
+  const pzRst = document.getElementById('previewZoomReset');
+  if (pzIn)  pzIn.addEventListener('click',  () => setPreviewZoom((window.AppState.previewZoom || 1) + 0.25));
+  if (pzOut) pzOut.addEventListener('click', () => setPreviewZoom((window.AppState.previewZoom || 1) - 0.25));
+  if (pzRst) pzRst.addEventListener('click', () => setPreviewZoom(1));
 }
 
 // Preview canvas ustida rasmlarni sudrash (move) va g'ildirak (zoom)
@@ -540,6 +549,29 @@ function initFreeTransform() {
   });
 }
 
+// Preview canvasni masshtab bilan o'lchamlash (yaqinlashtirish funksiyasi)
+function sizePreviewCanvas() {
+  const canvas = document.getElementById('previewCanvas');
+  const tpl = window.AppState.selectedTemplate;
+  if (!canvas || !tpl) return;
+  const cont = document.querySelector('.canvas-container');
+  const availW = ((cont ? cont.clientWidth : 700) - 44);
+  const cW = canvas.width  || tpl.defaultW;
+  const cH = canvas.height || tpl.defaultH;
+  const baseScale = Math.min(1, availW / cW);     // konteyner kengligiga moslash
+  const z = window.AppState.previewZoom || 1;
+  const disp = baseScale * z;
+  canvas.style.width  = Math.round(cW * disp) + 'px';
+  canvas.style.height = Math.round(cH * disp) + 'px';
+  const lbl = document.getElementById('previewZoomLabel');
+  if (lbl) lbl.textContent = Math.round(z * 100) + '%';
+}
+
+function setPreviewZoom(z) {
+  window.AppState.previewZoom = Math.max(0.25, Math.min(5, z));
+  sizePreviewCanvas();
+}
+
 function renderPreview() {
   const tpl      = window.AppState.selectedTemplate;
   const students = window.AppState.students;
@@ -555,12 +587,8 @@ function renderPreview() {
   canvas.width  = cfg.canvasW;
   canvas.height = cfg.canvasH;
 
-  // Responsive masshtab
-  const container  = document.querySelector('.canvas-container');
-  const maxW       = Math.min(520, (container?.offsetWidth || 560) - 40);
-  const dispScale  = Math.min(1, maxW / cfg.canvasW);
-  canvas.style.width  = cfg.canvasW  * dispScale + 'px';
-  canvas.style.height = cfg.canvasH * dispScale + 'px';
+  // Responsive masshtab (preview zoom bilan)
+  sizePreviewCanvas();
 
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -797,6 +825,7 @@ function initNavigation() {
     window.AppState.splitBgImg        = null;
     window.AppState.transforms        = {};
     window.AppState._regions          = [];
+    window.AppState.previewZoom       = 1;
     window.AppState.currentPreviewIdx = 0;
     renderStudentsList();
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));

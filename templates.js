@@ -1234,9 +1234,15 @@ window.TEMPLATES = [
         if (hitRegions) hitRegions.push({ key, x, y, w, h });
         const t = getT(key);
         const iw = img.naturalWidth, ih = img.naturalHeight;
-        const sc = Math.max(w / iw, h / ih) * (t.scale || 1);
+        const s = Math.max(1, Math.min(8, t.scale || 1));
+        const sc = Math.max(w / iw, h / ih) * s;
         const dw = iw * sc, dh = ih * sc;
-        ctx.drawImage(img, x + (w - dw) / 2 + (t.ox || 0) * w, y + (h - dh) / 2 + (t.oy || 0) * h, dw, dh);
+        const maxOx = (dw - w) / (2 * w);
+        const maxOy = (dh - h) / (2 * h);
+        const ox = Math.max(-maxOx, Math.min(maxOx, t.ox || 0));
+        const oy = Math.max(-maxOy, Math.min(maxOy, t.oy || 0));
+        t.scale = s; t.ox = ox; t.oy = oy;
+        ctx.drawImage(img, x + (w - dw) / 2 + ox * w, y + (h - dh) / 2 + oy * h, dw, dh);
         return true;
       }
 
