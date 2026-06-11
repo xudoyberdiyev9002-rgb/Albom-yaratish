@@ -1108,7 +1108,7 @@ window.TEMPLATES = [
       let leftImg          = cfg.leftImg       || cfg.teacherImg || null;
       const leftScale      = cfg.leftScale     != null ? cfg.leftScale : 0.90;
       const leftBorderColor= cfg.leftBorderColor || '#ffffff';
-      const leftBorderW    = cfg.leftBorderW   != null ? cfg.leftBorderW : 3;
+      const leftBorderW    = 0;   // border olib tashlandi
       const leftRadius     = cfg.leftRadius    != null ? cfg.leftRadius : 8;
       let leftLabel        = cfg.leftLabel     || '';
       const leftLabelFS    = cfg.leftLabelFS   || 14;
@@ -1128,7 +1128,7 @@ window.TEMPLATES = [
       const gapX           = cfg.gapX         != null ? cfg.gapX : 8;
       const gapY           = cfg.gapY         != null ? cfg.gapY : 12;
       const photoShape     = cfg.photoShape    || 'rounded';
-      const borderW        = cfg.borderW       != null ? cfg.borderW : 2;
+      const borderW        = 0;   // ramka borderlari olib tashlandi
       const borderColor    = cfg.borderColor   || '#ffffff';
 
       const namePos        = cfg.namePos       || 'bottom';
@@ -1157,17 +1157,25 @@ window.TEMPLATES = [
         return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
       }
 
-      function buildRows(count, maxC) {
+      // GRID ALGORITMI:
+      //  - count <= cols  → bitta qator
+      //  - ortiqcha 1 ta  → tepa (birinchi) qatorga qo'shiladi (cols+1)
+      //  - ortiqcha 2+ ta → yangi tepa qator ochiladi (rem ta)
+      //  Barcha qatorlar gorizontal markazlanadi.
+      function buildRows(count, cols) {
         if (count <= 0) return [];
-        const cols = Math.min(maxC, count);
-        const rowCount = Math.ceil(count / cols);
-        const rows = [];
-        let rem = count;
-        for (let r = 0; r < rowCount; r++) {
-          rows.push(Math.min(cols, rem));
-          rem -= Math.min(cols, rem);
+        if (count <= cols) return [count];
+        const fullRows = Math.floor(count / cols);
+        const rem = count % cols;
+        if (rem === 0) {
+          return Array(fullRows).fill(cols);
+        } else if (rem === 1) {
+          // 1 ta ortsa — yangi qator ochilmaydi, birinchi qatorga qo'shiladi
+          return [cols + 1, ...Array(fullRows - 1).fill(cols)];
+        } else {
+          // 2+ ortsa — yangi (tepa) qator
+          return [rem, ...Array(fullRows).fill(cols)];
         }
-        return rows;
       }
 
       function clipPath(x, y, pw, ph, shape, ins) {
@@ -1181,29 +1189,8 @@ window.TEMPLATES = [
         }
       }
 
-      // ── 1. HEADER ──
+      // ── 1. HEADER — o'chirilgan (tepa bar yo'q) ──
       let topOffset = 0;
-      if (headerStyle !== 'none' && headerH > 0) {
-        topOffset = headerH;
-        if (headerStyle === 'band') {
-          ctx.fillStyle = headerColor;
-          ctx.fillRect(0, 0, W, headerH);
-        } else {
-          ctx.save();
-          ctx.strokeStyle = hA('#ffffff', 0.25);
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(0, headerH); ctx.lineTo(W, headerH); ctx.stroke();
-          ctx.restore();
-        }
-        if (headerText.trim()) {
-          ctx.save();
-          ctx.fillStyle = headerTextColor;
-          ctx.font = `600 ${headerFS}px Inter,sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(headerText.trim(), W/2, headerH/2);
-          ctx.restore();
-        }
-      }
 
       // ── 2. FON ──
       const contentH = H - topOffset;
@@ -1317,16 +1304,30 @@ window.TEMPLATES = [
       const count = students.length || 1;
       const rows = buildRows(count, maxCols);
       const rowCount = rows.length;
+      const maxItemsInRow = Math.max(...rows);  // eng keng qator (cols yoki cols+1)
 
-      const usableH = rightGridH * 0.92;
+      // Vertikal: har qatorga teng balandlik
+      const usableH = rightGridH * 0.96;
       const totalGapY = gapY * (rowCount - 1);
-      const cellH = Math.max(10, Math.floor((usableH - totalGapY) / rowCount));
+      let cellH = Math.max(10, Math.floor((usableH - totalGapY) / rowCount));
       const namePad = (namePos === 'none' || namePos === 'over') ? 0 : 1;
-      const autoNameFS = Math.max(7, Math.round(cellH * 0.10));
-      const nameFS = nameFSManual > 0 ? nameFSManual : autoNameFS;
-      const nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
-      const photoH = Math.max(10, cellH - nameReserve);
-      const photoW = Math.round(photoH * 0.76);
+      let nameFS = nameFSManual > 0 ? nameFSManual : Math.max(7, Math.round(cellH * 0.10));
+      let nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
+      let photoH = Math.max(10, cellH - nameReserve);
+      let photoW = photoH * 0.76;
+
+      // Gorizontal cheklov: eng keng qator rightW ichiga sig'sin
+      const neededW = maxItemsInRow * photoW + (maxItemsInRow - 1) * gapX;
+      if (neededW > rightW) {
+        const f = rightW / neededW;
+        photoW *= f;
+        photoH *= f;
+        if (nameFSManual <= 0) nameFS = Math.max(7, Math.round(photoH * 0.13));
+        nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
+        cellH = photoH + nameReserve;
+      }
+      photoW = Math.round(photoW);
+      photoH = Math.round(photoH);
 
       const totalGridH = rowCount * cellH + (rowCount-1) * gapY;
       const gridStartY = rightGridY + Math.round((rightGridH - totalGridH) / 2);
@@ -1342,20 +1343,10 @@ window.TEMPLATES = [
           const spy = namePos === 'top' ? rowY + nameReserve : rowY;
           const student = students[studentIdx] || null;
 
-          // ── Foto ──
+          // ── Foto (border yo'q) ──
           const isOwner = (studentIdx === 0);  // egasi = birinchi o'rinda
           ctx.save();
-          if (isOwner) {
-            // Egasini ajratib ko'rsatish — oltin ramka
-            ctx.strokeStyle = '#fbbf24';
-            ctx.lineWidth   = Math.max(3, borderW * 2);
-            ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.stroke();
-          } else if (borderW > 0) {
-            ctx.strokeStyle = borderColor; ctx.lineWidth = borderW;
-            ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.stroke();
-          }
-          const clipIns = isOwner ? Math.max(3, borderW * 2) / 2 : borderW / 2;
-          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, clipIns); ctx.clip();
+          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.clip();
 
           if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
             const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
@@ -1422,12 +1413,12 @@ window.TEMPLATES = [
   {
     id: 'poster-split',
     type: 'poster-inner',
-    name: 'Poster 305×400 (5×5)',
-    desc: 'Qora fon · chap katta · o\'ng 5×5 (21 ta)',
+    name: 'Poster 400×305 (albom)',
+    desc: 'Landscape · chap katta · o\'ng dinamik grid',
     emoji: '🖼',
-    defaultW: 3602,
-    defaultH: 4724,
-    noScale: true,            // chiqish aniq 3602×4724 bo'lsin (scale qilinmasin)
+    defaultW: 4724,
+    defaultH: 3602,
+    noScale: true,            // chiqish aniq 4724×3602 bo'lsin (scale qilinmasin)
     exportFormat: 'jpeg',     // JPEG sifatida eksport
     jpegQuality: 0.92,
     bgColor1: '#000000',
@@ -1489,32 +1480,55 @@ window.TEMPLATES = [
         }
       }
 
-      // ── CHAP PANEL: x=53,y=53 → 1747×4617, butun rasm (contain) ──
-      const LX = Math.round(53  / 3602 * W);
-      const LY = Math.round(53  / 4724 * H);
-      const LW = Math.round(1747 / 3602 * W);
-      const LH = Math.round(4617 / 4724 * H);
+      // Bazaviy o'lcham (mm→px @300dpi): 4724×3602 (landscape)
+      const BW = 4724, BH = 3602;
+      const sx = W / BW, sy = H / BH;
+
+      // ── CHAP PANEL: x=53,y=53 → 1847×3496, butun rasm (contain) ──
+      const LX = Math.round(53   * sx);
+      const LY = Math.round(53   * sy);
+      const LW = Math.round(1847 * sx);
+      const LH = Math.round(3496 * sy);
       drawContain(leftImg, LX, LY, LW, LH);
 
-      // ── O'NG PANEL: 5×5 grid, qator1=5 ta, qator2-5=4 ta ──
-      const cellW = Math.round(340 / 3602 * W);
-      const cellH = Math.round(944 / 4724 * H);
-      const gridX = Math.round(1900 / 3602 * W);
-      // Vertikal markazlash (5×cellH balandlik bo'yicha)
-      const gridTotalH = cellH * 5;
-      const gridY = Math.round((H - gridTotalH) / 2);
+      // ── O'NG PANEL: dinamik grid (COLS×ROWS o'quvchi soniga qarab) ──
+      const panelX = Math.round(1960 * sx);
+      const panelY = 0;
+      const panelW = Math.round(2764 * sx);
+      const panelH = Math.round(3602 * sy);
 
-      let sIdx = 0;
-      for (let row = 0; row < 5; row++) {
-        const colsThisRow = (row === 0) ? 5 : 4;  // 1-qator 5 ta, qolgani 4 ta
-        for (let col = 0; col < colsThisRow; col++) {
-          const cx = gridX + col * cellW;
-          const cy = gridY + row * cellH;
-          const st = allStudents[sIdx];
-          drawCover(st ? st.img : null, cx, cy, cellW, cellH);
-          sIdx++;
-        }
-        // 5-ustun (col index 4) 2–5 qatorlarda qora qoladi — hech narsa chizilmaydi
+      const n = allStudents.length || 1;
+      // O'quvchi soniga eng mos COLS×ROWS ni tanlash (portret kataklar ~0.72 nisbat)
+      let best = { cols: 1, rows: n, score: Infinity };
+      for (let cols = 1; cols <= n; cols++) {
+        const rows   = Math.ceil(n / cols);
+        const cw     = panelW / cols, ch = panelH / rows;
+        const aspect = cw / ch;            // katak eni/bo'yi
+        const empty  = cols * rows - n;    // bo'sh kataklar soni
+        const score  = Math.abs(aspect - 0.72) + empty * 0.03;
+        if (score < best.score) best = { cols, rows, score };
+      }
+      const COLS = best.cols, ROWS = best.rows;
+      const cellW = Math.floor(panelW / COLS);
+      const cellH = Math.floor(panelH / ROWS);
+
+      // Grid umumiy o'lchami → markazlash
+      const usedW  = cellW * COLS, usedH = cellH * ROWS;
+      const startX = panelX + Math.round((panelW - usedW) / 2);
+      const startY = panelY + Math.round((panelH - usedH) / 2);
+
+      for (let i = 0; i < n; i++) {
+        const row = Math.floor(i / COLS);
+        const col = i % COLS;
+        // Oxirgi qator to'liq bo'lmasa — o'rtaga tekislash
+        const itemsInRow = Math.min(COLS, n - row * COLS);
+        const rowOffsetX = (row === ROWS - 1)
+          ? Math.round((COLS - itemsInRow) * cellW / 2)
+          : 0;
+        const cx = startX + rowOffsetX + col * cellW;
+        const cy = startY + row * cellH;
+        const st = allStudents[i];
+        drawCover(st ? st.img : null, cx, cy, cellW, cellH);
       }
     }
   },
