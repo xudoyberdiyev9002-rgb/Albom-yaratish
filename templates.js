@@ -1086,10 +1086,10 @@ window.TEMPLATES = [
     emoji: '📐',
     defaultW: 1440,
     defaultH: 1098,
-    printW: 4724,            // pechat aniqligi: 300 DPI @ 400mm
-    printH: 3602,
+    printW: 7087,            // pechat aniqligi: 450 DPI @ 400mm
+    printH: 5404,
     exportFormat: 'jpeg',
-    jpegQuality: 0.95,
+    jpegQuality: 1.0,        // maksimal sifat (kattaroq fayl: ~7-8MB)
     bgColor1:    '#0f172a',
     bgColor2:    '#1e3a5f',
     accentColor: '#6366f1',
