@@ -489,6 +489,14 @@ function initEditorControls() {
 
   const afBtn = document.getElementById('autoFitBtn');
   if (afBtn) afBtn.addEventListener('click', runAutoFit);
+
+  const afF = document.getElementById('afFace');
+  const afFV = document.getElementById('afFaceVal');
+  if (afF) afF.addEventListener('input', () => { if (afFV) afFV.textContent = afF.value + '%'; renderPreview(); });
+
+  const afY = document.getElementById('afFaceY');
+  const afYV = document.getElementById('afFaceYVal');
+  if (afY) afY.addEventListener('input', () => { if (afYV) afYV.textContent = afY.value + '%'; renderPreview(); });
 }
 
 // Yuz aniqlash orqali har bir rasmni avto-tekislash (face-api.js)
@@ -775,6 +783,8 @@ function getEditorConfig() {
     borderColor:   isSplit ? ($('splitBorderColor')?.value || '#ffffff') : ($('accentColor').value || '#ffffff'),
     transforms:    window.AppState.transforms,   // free-transform (generatsiyada ham)
     faces:         window.AppState.faces,
+    autoFaceFrac:  (parseInt(($('afFace')  || {}).value) || 28) / 100,
+    autoFaceY:     (parseInt(($('afFaceY') || {}).value) || 43) / 100,
   };
 }
 
