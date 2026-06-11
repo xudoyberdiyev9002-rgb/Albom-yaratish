@@ -458,8 +458,22 @@ function updatePhys(p,dt){
   p.x+=p.vx;
   const bx1=Math.floor(p.x/BS),bx2=Math.floor((p.x+14)/BS);
   const by1=Math.floor(p.y/BS),by2=Math.floor((p.y+23)/BS);
-  if(p.vx>0){if(solid(bx2,by1)||solid(bx2,by2)){p.x=bx2*BS-15;p.vx=0;if(p.onGround)p.vy=JUMP*0.7;}}
-  else if(p.vx<0){if(solid(bx1,by1)||solid(bx1,by2)){p.x=(bx1+1)*BS;p.vx=0;if(p.onGround)p.vy=JUMP*0.7;}}
+  if(p.vx>0){
+    if(solid(bx2,by1)||solid(bx2,by2)){
+      // Step-up assist: only hop when the obstacle is a single block (feet
+      // blocked but head clear). Prevents endless bouncing against tall walls.
+      const stepUp=p.onGround&&!solid(bx2,by1)&&solid(bx2,by2);
+      p.x=bx2*BS-15;p.vx=0;
+      if(stepUp){p.vy=JUMP*0.7;p.onGround=false;}
+    }
+  }
+  else if(p.vx<0){
+    if(solid(bx1,by1)||solid(bx1,by2)){
+      const stepUp=p.onGround&&!solid(bx1,by1)&&solid(bx1,by2);
+      p.x=(bx1+1)*BS;p.vx=0;
+      if(stepUp){p.vy=JUMP*0.7;p.onGround=false;}
+    }
+  }
   p.y+=p.vy;
   const bxA=Math.floor(p.x/BS),bxB=Math.floor((p.x+14)/BS);
   const byT=Math.floor(p.y/BS),byB=Math.floor((p.y+23)/BS);
@@ -606,11 +620,11 @@ function drawWorld(){
 }
 
 function drawHP(p,sx,sy){
-  const hw=22, hh=3;
-  const px=sx+8-p.maxHp*hw/2/p.maxHp*p.maxHp;
-  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(sx+8-hw,sy-22,hw*2,hh+2);
+  const hw=14, hh=3;
+  const bx=sx+8-hw; // centered over the entity (entity is ~16px wide)
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(bx,sy-22,hw*2,hh+2);
   ctx.fillStyle=p.hp/p.maxHp>0.5?'#3c3':'#c33';
-  ctx.fillRect(sx+8-hw,sy-22,Math.floor(hw*2*p.hp/p.maxHp),hh);
+  ctx.fillRect(bx,sy-22,Math.floor(hw*2*p.hp/p.maxHp),hh);
 }
 
 function drawEntity(p){
@@ -726,6 +740,9 @@ function buildHearts(){
 }
 
 // ========== BLOCK INTERACTION ==========
+let mouseX=0,mouseY=0,mouseIn=false;
+canvas.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;mouseIn=true;});
+canvas.addEventListener('mouseleave',()=>{mouseIn=false;});
 canvas.addEventListener('click',e=>{
   if(!myP||chatOpen||invOpen||paused)return;
   const wx=Math.floor((e.clientX+camX)/BS), wy=Math.floor((e.clientY+camY)/BS);
@@ -880,8 +897,10 @@ function gameLoop(ts){
   ctx.strokeStyle='rgba(255,255,255,0.7)'; ctx.lineWidth=1.5;
   ctx.beginPath();ctx.moveTo(cx-10,cy);ctx.lineTo(cx+10,cy);ctx.stroke();
   ctx.beginPath();ctx.moveTo(cx,cy-10);ctx.lineTo(cx,cy+10);ctx.stroke();
-  // Block cursor
-  const mbx=Math.floor((cx+camX)/BS),mby=Math.floor((cy+camY)/BS);
+  // Block cursor — follow mouse on desktop, screen center on touch devices
+  let mbx,mby;
+  if(mouseIn&&!isMobile){mbx=Math.floor((mouseX+camX)/BS);mby=Math.floor((mouseY+camY)/BS);}
+  else{mbx=Math.floor((cx+camX)/BS);mby=Math.floor((cy+camY)/BS);}
   ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=2;
   ctx.strokeRect(mbx*BS-camX,mby*BS-camY,BS,BS);
 
@@ -942,16 +961,45 @@ function startGame(){
   hide('loginScreen');
   document.getElementById('gameDiv').style.display='block';
   gameRunning=true;
-  requestAnimationFrame(gameLoop);
+  // NOTE: gameLoop is already running (single chain started at the bottom of
+  // the script). Do NOT start a second requestAnimationFrame chain here, or
+  // physics/movement will run twice per frame (2x speed bug).
 }
 
 // ========== MOBILE ==========
-const isMobile=('ontouchstart' in window);
+// Show/enable mobile controls for touch devices OR narrow screens (the CSS
+// media query shows the mobile UI at <=600px, so handlers must attach there
+// too — otherwise buttons would be visible but dead on touchless small screens).
+const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+const isMobile=hasTouch||window.matchMedia('(max-width:600px)').matches;
 if(isMobile){
   document.getElementById('mobileUI').style.display='block';
   const joyWrap=document.getElementById('joyWrap'),joyKnob=document.getElementById('joyKnob');
   let joyActive=false,joyId=null,joyOX=0,joyOY=0;
   const JM=42;
+  // --- Shared joystick math (used by both touch and mouse) ---
+  function joyStart(cx,cy){
+    joyActive=true;
+    const r=joyWrap.getBoundingClientRect();
+    joyOX=r.left+r.width/2;joyOY=r.top+r.height/2;
+    joyMove(cx,cy);
+  }
+  function joyMove(cx,cy){
+    let dx=cx-joyOX,dy=cy-joyOY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>JM){dx=dx/dist*JM;dy=dy/dist*JM;}
+    joyKnob.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
+    keys['KeyA']=dx<-8;keys['KeyD']=dx>8;
+    keys['Space']=(dy<-24&&myP&&myP.onGround)?true:false;
+  }
+  function joyEnd(){
+    joyActive=false;joyId=null;joyKnob.style.transform='translate(-50%,-50%)';
+    keys['KeyA']=keys['KeyD']=keys['Space']=false;
+  }
+  // Mouse fallback for the joystick (touchless small screens)
+  joyWrap.addEventListener('mousedown',e=>{e.preventDefault();joyStart(e.clientX,e.clientY);});
+  document.addEventListener('mousemove',e=>{if(joyActive&&joyId===null)joyMove(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',()=>{if(joyActive&&joyId===null)joyEnd();});
   joyWrap.addEventListener('touchstart',e=>{
     e.preventDefault(); const t=e.changedTouches[0];
     joyActive=true;joyId=t.identifier;
@@ -987,6 +1035,10 @@ if(isMobile){
     el.addEventListener('touchstart',e=>{e.preventDefault();el.classList.add('pressed');down();},{passive:false});
     el.addEventListener('touchend',e=>{e.preventDefault();el.classList.remove('pressed');if(up)up();},{passive:false});
     el.addEventListener('touchcancel',e=>{el.classList.remove('pressed');if(up)up();},{passive:false});
+    // Mouse fallback so buttons work on touchless narrow screens
+    el.addEventListener('mousedown',e=>{e.preventDefault();el.classList.add('pressed');down();});
+    el.addEventListener('mouseup',e=>{e.preventDefault();el.classList.remove('pressed');if(up)up();});
+    el.addEventListener('mouseleave',()=>{el.classList.remove('pressed');if(up)up();});
   }
   mbBtn('mbJump',()=>{if(myP&&myP.onGround){myP.vy=JUMP;myP.onGround=false;}},null);
   mbBtn('mbBreak',()=>{
