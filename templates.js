@@ -1311,10 +1311,10 @@ window.TEMPLATES = [
       const cardH = Math.round(cardW * CR);
 
       const hasName   = (namePos !== 'none');
-      const pad       = Math.max(2, Math.round(cardW * 0.05));
+      const pad       = Math.max(1, Math.round(cardW * 0.022));  // ingichka oq ramka
       const nameFS    = nameFSManual > 0 ? nameFSManual : Math.max(8, Math.round(cardW * 0.115));
       const lineH     = Math.round(nameFS * 1.18);
-      const gapInner  = Math.round(pad * 0.7);
+      const gapInner  = Math.round(nameFS * 0.35);
       const nameAreaH = hasName ? (lineH * 2 + Math.round(nameFS * 0.3)) : 0;
       const photoW    = cardW - 2 * pad;
       const photoH    = Math.max(10, cardH - 2 * pad - gapInner - nameAreaH);
