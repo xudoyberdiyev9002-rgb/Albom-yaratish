@@ -47,7 +47,7 @@ window.Generator = {
         jpegQuality: template.jpegQuality  || 0.92,
       };
 
-      if (template.noScale) {
+      if (template.noScale || template.printW) {
         // Katta canvas (poster) — darhol blob ga aylantirib, xotirani bo'shatamiz
         const isJpeg = (template.exportFormat === 'jpeg');
         item.blob = await canvasToBlob(
@@ -73,16 +73,16 @@ window.Generator = {
   // ownerIndex = joriy o'quvchi → chapdagi katta rasm + 1-o'rinda
   // ────────────────────────────────────────────────────────────
   async _renderSplitInner(students, ownerIndex, template, config) {
-    // noScale shablonlar (poster) aniq o'lchamda chiqadi → quality=1
-    const quality = template.noScale ? 1 : (parseInt(config.exportQuality) || 2);
-    const w = parseInt(config.canvasW) || template.defaultW;
-    const h = parseInt(config.canvasH) || template.defaultH;
+    const usePrint = !!template.printW;
+    const w = usePrint ? template.printW : (parseInt(config.canvasW) || template.defaultW);
+    const h = usePrint ? template.printH : (parseInt(config.canvasH) || template.defaultH);
+    const quality = usePrint ? 1 : (template.noScale ? 1 : (parseInt(config.exportQuality) || 2));
 
     const canvas = document.createElement('canvas');
     canvas.width  = w * quality;
     canvas.height = h * quality;
     const ctx = canvas.getContext('2d');
-    ctx.scale(quality, quality);
+    if (quality !== 1) ctx.scale(quality, quality);
 
     const owner = students[ownerIndex] || {};
     const customLabel = (config.leftLabel || '').trim();
