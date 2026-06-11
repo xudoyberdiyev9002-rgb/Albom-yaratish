@@ -1225,6 +1225,21 @@ window.TEMPLATES = [
       const bandBot = contentY + contentH - padV;
       const bandH   = bandBot - bandTop;
 
+      // ── Free-transform yordamchilari (har rasmni qo'lda siljitish/masshtab) ──
+      const transforms = cfg.transforms || {};
+      const hitRegions = cfg.hitRegions || null;
+      const getT = (k) => transforms[k] || { scale: 1, ox: 0, oy: 0 };
+      function drawImgT(img, x, y, w, h, key) {
+        if (!(img && img.complete && img.naturalWidth > 0)) return false;
+        if (hitRegions) hitRegions.push({ key, x, y, w, h });
+        const t = getT(key);
+        const iw = img.naturalWidth, ih = img.naturalHeight;
+        const sc = Math.max(w / iw, h / ih) * (t.scale || 1);
+        const dw = iw * sc, dh = ih * sc;
+        ctx.drawImage(img, x + (w - dw) / 2 + (t.ox || 0) * w, y + (h - dh) / 2 + (t.oy || 0) * h, dw, dh);
+        return true;
+      }
+
       // ── 3. CHAP – PORTRET RASM (band balandligida, tepa/past flush) ──
       const r   = 0;   // burchak radiusi yo'q
       const lPad = Math.round(W * 0.022);
@@ -1234,13 +1249,8 @@ window.TEMPLATES = [
       const lH  = bandH;
 
       ctx.save();
-      ctx.beginPath(); ctx.roundRect(lX, lY, lW, lH, r); ctx.clip();
-      if (leftImg && leftImg.complete && leftImg.naturalWidth > 0) {
-        const iw = leftImg.naturalWidth, ih = leftImg.naturalHeight;
-        const sc = Math.max(lW / iw, lH / ih);   // COVER — to'ldiradi, tepa/past flush
-        const dw = iw * sc, dh = ih * sc;
-        ctx.drawImage(leftImg, lX + (lW - dw) / 2, lY + (lH - dh) / 2, dw, dh);
-      } else {
+      ctx.beginPath(); ctx.rect(lX, lY, lW, lH); ctx.clip();
+      if (!drawImgT(leftImg, lX, lY, lW, lH, `L${ownerIndex}`)) {
         const pg = ctx.createLinearGradient(lX, lY, lX + lW, lY + lH);
         pg.addColorStop(0, '#1e3a5f'); pg.addColorStop(1, '#0f2027');
         ctx.fillStyle = pg; ctx.fillRect(lX, lY, lW, lH);
@@ -1290,12 +1300,12 @@ window.TEMPLATES = [
       const rightGridY = bandTop;
       const rightGridH = bandH;
 
-      // O'quvchilar — EGASI birinchi o'ringa qo'yiladi
-      let students = allStudents.length > 0 ? allStudents.slice() : [];
-      if (students.length > 0 && ownerIndex > 0 && ownerIndex < students.length) {
-        const owner = students[ownerIndex];
-        students = [owner, ...students.filter((_, i) => i !== ownerIndex)];
+      // O'quvchilar — EGASI birinchi o'ringa (origIndex saqlanadi)
+      let order = allStudents.map((_, i) => i);
+      if (order.length > 0 && ownerIndex > 0 && ownerIndex < order.length) {
+        order = [ownerIndex, ...order.filter(i => i !== ownerIndex)];
       }
+      const students = order.map(i => allStudents[i]);
       const count = students.length || 1;
       const rows = buildRows(count, maxCols);
       const rowCount = rows.length;
@@ -1344,6 +1354,7 @@ window.TEMPLATES = [
         for (let col = 0; col < colsInRow; col++) {
           const cardX  = rowStartX + col * (cardW + gapX);
           const student = students[studentIdx] || null;
+          const origIndex = order[studentIdx];
           const isOwner = (studentIdx === 0);  // egasi = birinchi o'rinda
 
           // ── OQ CARD foni (ramka) ──
@@ -1361,12 +1372,7 @@ window.TEMPLATES = [
           ctx.beginPath();
           ctx.rect(ipx, ipy, ipw, iph);
           ctx.clip();
-          if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
-            const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
-            const sc = Math.max(ipw/iw, iph/ih);
-            const dw = iw*sc, dh = ih*sc;
-            ctx.drawImage(student.img, ipx + (ipw-dw)/2, ipy + (iph-dh)/2, dw, dh);
-          } else {
+          if (!drawImgT(student ? student.img : null, ipx, ipy, ipw, iph, `g${origIndex}`)) {
             const [c1,c2] = PALETTE[studentIdx % PALETTE.length];
             const pg = ctx.createLinearGradient(ipx, ipy, ipx+ipw*0.5, ipy+iph);
             pg.addColorStop(0,c1); pg.addColorStop(1,c2);
