@@ -1299,28 +1299,27 @@ window.TEMPLATES = [
       const count = students.length || 1;
       const rows = buildRows(count, maxCols);
       const rowCount = rows.length;
-      const maxItemsInRow = Math.max(...rows);  // eng keng qator (cols yoki cols+1)
+      const maxItemsInRow = Math.max(...rows);
 
-      // Vertikal: grid band balandligini to'liq egallaydi (tepa/past flush)
+      // ── Oq CARD o'lchami (foto + ism), band va kenglikka moslab ──
+      const CR = 1.52;  // karta balandlik/kenglik nisbati (foto 3:4 + ism joyi)
       const totalGapY = gapY * (rowCount - 1);
-      const cellH = Math.max(10, Math.floor((rightGridH - totalGapY) / rowCount));
-      const namePad = (namePos === 'none' || namePos === 'over') ? 0 : 1;
-      let nameFS = nameFSManual > 0 ? nameFSManual : Math.max(8, Math.round(cellH * 0.085));
-      let nameReserve = namePad === 0 ? 0 : Math.round(nameFS * 2.5);  // 2 qatorli ism
-      let photoH = Math.max(10, cellH - nameReserve);
-      let photoW = photoH * 0.76;
+      const cardH_byH = (rightGridH - totalGapY) / rowCount;
+      const cardW_byH = cardH_byH / CR;
+      const cardW_byW = (rightW - (maxItemsInRow - 1) * gapX) / maxItemsInRow;
+      const cardW = Math.floor(Math.min(cardW_byH, cardW_byW));
+      const cardH = Math.round(cardW * CR);
 
-      // Gorizontal cheklov: eng keng qator rightW ichiga sig'sin (cellH o'zgarmaydi)
-      const neededW = maxItemsInRow * photoW + (maxItemsInRow - 1) * gapX;
-      if (neededW > rightW) {
-        const f = rightW / neededW;
-        photoW *= f;
-        photoH *= f;
-      }
-      photoW = Math.round(photoW);
-      photoH = Math.round(photoH);
+      const hasName   = (namePos !== 'none');
+      const pad       = Math.max(2, Math.round(cardW * 0.05));
+      const nameFS    = nameFSManual > 0 ? nameFSManual : Math.max(8, Math.round(cardW * 0.115));
+      const lineH     = Math.round(nameFS * 1.18);
+      const gapInner  = Math.round(pad * 0.7);
+      const nameAreaH = hasName ? (lineH * 2 + Math.round(nameFS * 0.3)) : 0;
+      const photoW    = cardW - 2 * pad;
+      const photoH    = Math.max(10, cardH - 2 * pad - gapInner - nameAreaH);
 
-      const totalGridH = rowCount * cellH + totalGapY;
+      const totalGridH = rowCount * cardH + totalGapY;
       const gridStartY = rightGridY + Math.round((rightGridH - totalGridH) / 2);
 
       // Ismni 2 qatorga bo'lish (ism / familiya)
@@ -1330,88 +1329,67 @@ window.TEMPLATES = [
         return [parts[0], parts.slice(1).join(' ')];
       }
 
+      const PALETTE = [
+        ['#1e3a5f','#2d6a4f'],['#4a1942','#6b2d5e'],['#1a3a5c','#1e6091'],
+        ['#3d1a00','#7b3f00'],['#0d3b2e','#145a32'],['#2c003e','#4a0072'],
+        ['#003366','#004080'],['#1b1b2f','#2b2b4b'],['#002b36','#073642'],
+      ];
+
       let studentIdx = 0;
       rows.forEach((colsInRow, rowI) => {
-        const totalRowW = colsInRow * photoW + (colsInRow-1) * gapX;
+        const totalRowW = colsInRow * cardW + (colsInRow - 1) * gapX;
         const rowStartX = rightX + Math.round((rightW - totalRowW) / 2);
-        const rowTopY   = gridStartY + rowI * (cellH + gapY);
-        // foto+ism guruhini katak ichida vertikal markazlash
-        const groupH = photoH + nameReserve;
-        const offY   = Math.round((cellH - groupH) / 2);
+        const cardY     = gridStartY + rowI * (cardH + gapY);
 
         for (let col = 0; col < colsInRow; col++) {
-          const spx = rowStartX + col * (photoW + gapX);
-          const spy = (namePos === 'top') ? rowTopY + offY + nameReserve : rowTopY + offY;
+          const cardX  = rowStartX + col * (cardW + gapX);
           const student = students[studentIdx] || null;
           const isOwner = (studentIdx === 0);  // egasi = birinchi o'rinda
 
-          // ── OQ RAMKA + FOTO ──
-          const bW = Math.max(2, Math.round(Math.min(photoW, photoH) * 0.05));
+          // ── OQ CARD foni (ramka) ──
           ctx.save();
-          // oq ramka foni
+          ctx.shadowColor   = 'rgba(0,0,0,0.35)';
+          ctx.shadowBlur    = Math.max(2, Math.round(cardW * 0.04));
+          ctx.shadowOffsetY = Math.max(1, Math.round(cardW * 0.012));
           ctx.fillStyle = '#ffffff';
-          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.fill();
-          // rasm — ramka ichida
-          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, bW); ctx.clip();
-          const ix = spx + bW, iy = spy + bW, iw2 = photoW - 2*bW, ih2 = photoH - 2*bW;
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, cardW, cardH, Math.round(cardW * 0.06));
+          ctx.fill();
+          ctx.restore();
+
+          // ── FOTO (card ichida, tepada) ──
+          const ipx = cardX + pad, ipy = cardY + pad, ipw = photoW, iph = photoH;
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(ipx, ipy, ipw, iph, Math.round(cardW * 0.03));
+          ctx.clip();
           if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
             const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
-            const sc = Math.max(iw2/iw, ih2/ih);
+            const sc = Math.max(ipw/iw, iph/ih);
             const dw = iw*sc, dh = ih*sc;
-            ctx.drawImage(student.img, ix + (iw2-dw)/2, iy + (ih2-dh)/2, dw, dh);
+            ctx.drawImage(student.img, ipx + (ipw-dw)/2, ipy + (iph-dh)/2, dw, dh);
           } else {
-            const PALETTE = [
-              ['#1e3a5f','#2d6a4f'],['#4a1942','#6b2d5e'],['#1a3a5c','#1e6091'],
-              ['#3d1a00','#7b3f00'],['#0d3b2e','#145a32'],['#2c003e','#4a0072'],
-              ['#003366','#004080'],['#1b1b2f','#2b2b4b'],['#002b36','#073642'],
-            ];
             const [c1,c2] = PALETTE[studentIdx % PALETTE.length];
-            const pg = ctx.createLinearGradient(ix, iy, ix+iw2*0.5, iy+ih2);
+            const pg = ctx.createLinearGradient(ipx, ipy, ipx+ipw*0.5, ipy+iph);
             pg.addColorStop(0,c1); pg.addColorStop(1,c2);
-            ctx.fillStyle = pg; ctx.fillRect(ix, iy, iw2, ih2);
-            ctx.fillStyle = 'rgba(255,255,255,0.13)';
-            ctx.beginPath(); ctx.arc(ix+iw2/2, iy+ih2*0.32, iw2*0.24, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,0.09)';
-            ctx.beginPath(); ctx.ellipse(ix+iw2/2, iy+ih2*0.86, iw2*0.34, ih2*0.26, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = pg; ctx.fillRect(ipx, ipy, ipw, iph);
+            ctx.fillStyle = 'rgba(255,255,255,0.16)';
+            ctx.beginPath(); ctx.arc(ipx+ipw/2, ipy+iph*0.32, ipw*0.24, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.10)';
+            ctx.beginPath(); ctx.ellipse(ipx+ipw/2, ipy+iph*0.86, ipw*0.34, iph*0.26, 0, 0, Math.PI*2); ctx.fill();
           }
           ctx.restore();
 
-          // ── ISM (2 qator) ──
-          if (namePos !== 'none' && student && student.name) {
+          // ── ISM-FAMILYA (card ichida, foto ostida, 2 qator, qora matn) ──
+          if (hasName && student && student.name) {
             const lines = splitName(student.name);
-            const lineH = Math.round(nameFS * 1.15);
             ctx.save();
-            ctx.fillStyle = isOwner ? '#fbbf24' : nameColor;
-            ctx.font = `${isOwner ? '700' : nameWeight} ${nameFS}px Inter,sans-serif`;
+            ctx.fillStyle = isOwner ? '#b45309' : '#1f2937';  // egasi — amber, qolgani — to'q
+            ctx.font = `${isOwner ? '700' : '600'} ${nameFS}px Inter, sans-serif`;
             ctx.textAlign = 'center';
-
-            if (namePos === 'bottom') {
-              ctx.textBaseline = 'top';
-              const ny = spy + photoH + Math.round(nameFS * 0.45);
-              lines.forEach((ln, li) => ctx.fillText(ln, spx + photoW/2, ny + li*lineH));
-            } else if (namePos === 'top') {
-              ctx.textBaseline = 'top';
-              const ny = rowTopY + offY + Math.round(nameFS * 0.2);
-              lines.forEach((ln, li) => ctx.fillText(ln, spx + photoW/2, ny + li*lineH));
-            } else if (namePos === 'over') {
-              const oH = Math.round(photoH * 0.36);
-              const oY = spy + photoH - oH;
-              ctx.save();
-              ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, bW); ctx.clip();
-              const og = ctx.createLinearGradient(0, oY, 0, spy + photoH);
-              og.addColorStop(0,'rgba(0,0,0,0)'); og.addColorStop(1,'rgba(0,0,0,0.82)');
-              ctx.fillStyle = og; ctx.fillRect(spx, oY, photoW, oH);
-              ctx.restore();
-              ctx.fillStyle = isOwner ? '#fbbf24' : '#ffffff';
-              ctx.textBaseline = 'bottom';
-              const by = spy + photoH - Math.round(photoH*0.03);
-              if (lines[1]) {
-                ctx.fillText(lines[1], spx + photoW/2, by);
-                ctx.fillText(lines[0], spx + photoW/2, by - lineH);
-              } else {
-                ctx.fillText(lines[0], spx + photoW/2, by);
-              }
-            }
+            ctx.textBaseline = 'top';
+            const ny = ipy + iph + gapInner;
+            lines.forEach((ln, li) => ctx.fillText(ln, cardX + cardW/2, ny + li*lineH));
             ctx.restore();
           }
           studentIdx++;
