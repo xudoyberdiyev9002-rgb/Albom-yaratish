@@ -1228,20 +1228,49 @@ window.TEMPLATES = [
       // ── Free-transform yordamchilari (har rasmni qo'lda siljitish/masshtab) ──
       const transforms = cfg.transforms || {};
       const hitRegions = cfg.hitRegions || null;
-      const getT = (k) => transforms[k] || { scale: 1, ox: 0, oy: 0 };
-      function drawImgT(img, x, y, w, h, key) {
-        if (!(img && img.complete && img.naturalWidth > 0)) return false;
+      const faces      = cfg.faces || {};
+
+      function drawImgT(img, x, y, w, h, key, faceIdx, targetFrac) {
+        const iw = (img && (img.naturalWidth || img.width)) || 0;
+        const ih = (img && (img.naturalHeight || img.height)) || 0;
+        if (!(iw > 0 && ih > 0)) return false;
         if (hitRegions) hitRegions.push({ key, x, y, w, h });
-        const t = getT(key);
-        const iw = img.naturalWidth, ih = img.naturalHeight;
-        const s = Math.max(1, Math.min(8, t.scale || 1));
-        const sc = Math.max(w / iw, h / ih) * s;
-        const dw = iw * sc, dh = ih * sc;
-        const maxOx = (dw - w) / (2 * w);
-        const maxOy = (dh - h) / (2 * h);
-        const ox = Math.max(-maxOx, Math.min(maxOx, t.ox || 0));
-        const oy = Math.max(-maxOy, Math.min(maxOy, t.oy || 0));
-        t.scale = s; t.ox = ox; t.oy = oy;
+
+        const sc0 = Math.max(w / iw, h / ih);
+        const store = transforms[key];
+        let s, ox, oy;
+
+        if (store && store.src === 'manual') {
+          s = Math.max(1, Math.min(8, store.scale || 1));
+          const scs0 = sc0 * s, dw0 = iw * scs0, dh0 = ih * scs0;
+          const mOx = (dw0 - w) / (2 * w), mOy = (dh0 - h) / (2 * h);
+          ox = Math.max(-mOx, Math.min(mOx, store.ox || 0));
+          oy = Math.max(-mOy, Math.min(mOy, store.oy || 0));
+          store.scale = s; store.ox = ox; store.oy = oy;
+        } else {
+          const face = faces[faceIdx];
+          if (face) {
+            const tf = targetFrac || 0.52;
+            const fhPx = Math.max(1, face.fh * ih);
+            const fcxPx = face.cx * iw, fcyPx = face.cy * ih;
+            s = Math.max(1, Math.min(8, (tf * h) / (fhPx * sc0)));
+            const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
+            ox = (0.5 * w - (w - dw) / 2 - fcxPx * scs) / w;
+            oy = (0.42 * h - (h - dh) / 2 - fcyPx * scs) / h;
+            const mOx = (dw - w) / (2 * w), mOy = (dh - h) / (2 * h);
+            ox = Math.max(-mOx, Math.min(mOx, ox));
+            oy = Math.max(-mOy, Math.min(mOy, oy));
+          } else {
+            s = 1;
+            const scs = sc0, dw = iw * scs, dh = ih * scs;
+            const mOy = (dh - h) / (2 * h);
+            ox = 0;
+            oy = Math.max(-mOy, Math.min(mOy, -0.06));
+          }
+          transforms[key] = { scale: s, ox, oy, src: 'auto' };
+        }
+
+        const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
         ctx.drawImage(img, x + (w - dw) / 2 + ox * w, y + (h - dh) / 2 + oy * h, dw, dh);
         return true;
       }
@@ -1256,7 +1285,7 @@ window.TEMPLATES = [
 
       ctx.save();
       ctx.beginPath(); ctx.rect(lX, lY, lW, lH); ctx.clip();
-      if (!drawImgT(leftImg, lX, lY, lW, lH, `L${ownerIndex}`)) {
+      if (!drawImgT(leftImg, lX, lY, lW, lH, `L${ownerIndex}`, ownerIndex, 0.42)) {
         const pg = ctx.createLinearGradient(lX, lY, lX + lW, lY + lH);
         pg.addColorStop(0, '#1e3a5f'); pg.addColorStop(1, '#0f2027');
         ctx.fillStyle = pg; ctx.fillRect(lX, lY, lW, lH);
@@ -1378,7 +1407,7 @@ window.TEMPLATES = [
           ctx.beginPath();
           ctx.rect(ipx, ipy, ipw, iph);
           ctx.clip();
-          if (!drawImgT(student ? student.img : null, ipx, ipy, ipw, iph, `g${origIndex}`)) {
+          if (!drawImgT(student ? student.img : null, ipx, ipy, ipw, iph, `g${origIndex}`, origIndex, 0.55)) {
             const [c1,c2] = PALETTE[studentIdx % PALETTE.length];
             const pg = ctx.createLinearGradient(ipx, ipy, ipx+ipw*0.5, ipy+iph);
             pg.addColorStop(0,c1); pg.addColorStop(1,c2);
