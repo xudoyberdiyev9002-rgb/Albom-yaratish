@@ -1219,59 +1219,55 @@ window.TEMPLATES = [
       const contentY = topOffset;
       const halfW = Math.floor(W / 2);
 
-      // ── 3. CHAP – PORTRET RASM ──
-      const panelW = halfW, panelH = contentH;
-      const maxPhH = Math.round(panelH * leftScale);
-      let phW, phH;
-      if (leftImg && leftImg.complete && leftImg.naturalWidth > 0) {
-        const iw = leftImg.naturalWidth, ih = leftImg.naturalHeight;
-        const sc = Math.min((panelW * leftScale) / iw, maxPhH / ih);
-        phW = Math.round(iw * sc);
-        phH = Math.round(ih * sc);
-      } else {
-        phH = maxPhH;
-        phW = Math.round(phH * 0.75);
-      }
-      const px = Math.round((panelW - phW) / 2);
-      const py = contentY + Math.round((panelH - phH) / 2);
-      const r  = leftRadius;
+      // Umumiy vertikal band — chap rasm va o'ng grid bir xil tepa/past
+      const padV    = Math.round(contentH * 0.045);
+      const bandTop = contentY + padV;
+      const bandBot = contentY + contentH - padV;
+      const bandH   = bandBot - bandTop;
+
+      // ── 3. CHAP – PORTRET RASM (band balandligida, tepa/past flush) ──
+      const r   = leftRadius;
+      const lPad = Math.round(W * 0.022);
+      const lX  = lPad;
+      const lW  = halfW - lPad - Math.round(W * 0.012);
+      const lY  = bandTop;
+      const lH  = bandH;
 
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 24;
-      ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 5;
-      if (leftBorderW > 0) {
-        ctx.strokeStyle = leftBorderColor; ctx.lineWidth = leftBorderW;
-        ctx.beginPath(); ctx.roundRect(px, py, phW, phH, r); ctx.stroke();
-      }
-      ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
-      ctx.beginPath();
-      ctx.roundRect(px+leftBorderW/2, py+leftBorderW/2, phW-leftBorderW, phH-leftBorderW, Math.max(0,r-1));
-      ctx.clip();
+      ctx.beginPath(); ctx.roundRect(lX, lY, lW, lH, r); ctx.clip();
       if (leftImg && leftImg.complete && leftImg.naturalWidth > 0) {
         const iw = leftImg.naturalWidth, ih = leftImg.naturalHeight;
-        const sc = Math.max((phW-leftBorderW)/iw, (phH-leftBorderW)/ih);
-        const dw = iw*sc, dh = ih*sc;
-        ctx.drawImage(leftImg, px+leftBorderW/2+(phW-leftBorderW-dw)/2, py+leftBorderW/2+(phH-leftBorderW-dh)/2, dw, dh);
+        const sc = Math.max(lW / iw, lH / ih);   // COVER — to'ldiradi, tepa/past flush
+        const dw = iw * sc, dh = ih * sc;
+        ctx.drawImage(leftImg, lX + (lW - dw) / 2, lY + (lH - dh) / 2, dw, dh);
       } else {
-        const pg = ctx.createLinearGradient(px, py, px+phW, py+phH);
-        pg.addColorStop(0,'#1e3a5f'); pg.addColorStop(1,'#0f2027');
-        ctx.fillStyle = pg; ctx.fillRect(px, py, phW, phH);
+        const pg = ctx.createLinearGradient(lX, lY, lX + lW, lY + lH);
+        pg.addColorStop(0, '#1e3a5f'); pg.addColorStop(1, '#0f2027');
+        ctx.fillStyle = pg; ctx.fillRect(lX, lY, lW, lH);
         ctx.fillStyle = 'rgba(255,255,255,0.12)';
-        ctx.beginPath(); ctx.arc(px+phW/2, py+phH*0.32, phW*0.22, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(lX + lW/2, lY + lH*0.34, lW*0.20, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
-        ctx.beginPath(); ctx.ellipse(px+phW/2, py+phH*0.82, phW*0.35, phH*0.22, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(lX + lW/2, lY + lH*0.78, lW*0.32, lH*0.18, 0, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,0.22)';
-        ctx.font = `500 ${Math.round(phW*0.055)}px Inter,sans-serif`;
+        ctx.font = `500 ${Math.round(lW*0.05)}px Inter,sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('📸 Rasm yuklang', px+phW/2, py+phH*0.55);
+        ctx.fillText('📸 Rasm yuklang', lX + lW/2, lY + lH*0.5);
       }
       ctx.restore();
+
+      // Chap pastdagi yozuv — rasm pastiga overlay
       if (leftLabel && leftLabel.trim()) {
         ctx.save();
+        ctx.beginPath(); ctx.roundRect(lX, lY, lW, lH, r); ctx.clip();
+        const ovH = Math.round(lH * 0.11);
+        const ovY = lY + lH - ovH;
+        const og = ctx.createLinearGradient(0, ovY, 0, lY + lH);
+        og.addColorStop(0, 'rgba(0,0,0,0)'); og.addColorStop(1, 'rgba(0,0,0,0.72)');
+        ctx.fillStyle = og; ctx.fillRect(lX, ovY, lW, ovH);
         ctx.fillStyle = leftLabelColor;
-        ctx.font = `500 ${leftLabelFS}px Inter,sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-        ctx.fillText(leftLabel.trim(), panelW/2, py+phH+Math.round(phH*0.022));
+        ctx.font = `600 ${leftLabelFS}px Inter,sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(leftLabel.trim(), lX + lW/2, lY + lH - Math.round(lH*0.025));
         ctx.restore();
       }
 
@@ -1281,19 +1277,18 @@ window.TEMPLATES = [
         ctx.strokeStyle = hA(divColor, divOp);
         ctx.lineWidth = divW;
         ctx.beginPath();
-        ctx.moveTo(halfW, contentY + contentH*0.05);
-        ctx.lineTo(halfW, contentY + contentH*0.95);
+        ctx.moveTo(halfW, bandTop);
+        ctx.lineTo(halfW, bandBot);
         ctx.stroke();
         ctx.restore();
       }
 
-      // ── 5. O'NG – O'QUVCHILAR GRID ──
-      const rightPad  = Math.round(halfW * 0.04);
-      const rightX    = halfW + rightPad;
-      const rightW    = halfW - rightPad * 2;
-      const rightPadV = Math.round(contentH * 0.05);
-      const rightGridY= contentY + rightPadV;
-      const rightGridH= contentH - rightPadV * 2;
+      // ── 5. O'NG – O'QUVCHILAR GRID (band balandligida, tepa/past flush) ──
+      const rightPad   = Math.round(halfW * 0.04);
+      const rightX     = halfW + rightPad;
+      const rightW     = halfW - rightPad * 2;
+      const rightGridY = bandTop;
+      const rightGridH = bandH;
 
       // O'quvchilar — EGASI birinchi o'ringa qo'yiladi
       let students = allStudents.length > 0 ? allStudents.slice() : [];
@@ -1306,53 +1301,64 @@ window.TEMPLATES = [
       const rowCount = rows.length;
       const maxItemsInRow = Math.max(...rows);  // eng keng qator (cols yoki cols+1)
 
-      // Vertikal: har qatorga teng balandlik
-      const usableH = rightGridH * 0.96;
+      // Vertikal: grid band balandligini to'liq egallaydi (tepa/past flush)
       const totalGapY = gapY * (rowCount - 1);
-      let cellH = Math.max(10, Math.floor((usableH - totalGapY) / rowCount));
+      const cellH = Math.max(10, Math.floor((rightGridH - totalGapY) / rowCount));
       const namePad = (namePos === 'none' || namePos === 'over') ? 0 : 1;
-      let nameFS = nameFSManual > 0 ? nameFSManual : Math.max(7, Math.round(cellH * 0.10));
-      let nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
+      let nameFS = nameFSManual > 0 ? nameFSManual : Math.max(8, Math.round(cellH * 0.085));
+      let nameReserve = namePad === 0 ? 0 : Math.round(nameFS * 2.5);  // 2 qatorli ism
       let photoH = Math.max(10, cellH - nameReserve);
       let photoW = photoH * 0.76;
 
-      // Gorizontal cheklov: eng keng qator rightW ichiga sig'sin
+      // Gorizontal cheklov: eng keng qator rightW ichiga sig'sin (cellH o'zgarmaydi)
       const neededW = maxItemsInRow * photoW + (maxItemsInRow - 1) * gapX;
       if (neededW > rightW) {
         const f = rightW / neededW;
         photoW *= f;
         photoH *= f;
-        if (nameFSManual <= 0) nameFS = Math.max(7, Math.round(photoH * 0.13));
-        nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
-        cellH = photoH + nameReserve;
       }
       photoW = Math.round(photoW);
       photoH = Math.round(photoH);
 
-      const totalGridH = rowCount * cellH + (rowCount-1) * gapY;
+      const totalGridH = rowCount * cellH + totalGapY;
       const gridStartY = rightGridY + Math.round((rightGridH - totalGridH) / 2);
+
+      // Ismni 2 qatorga bo'lish (ism / familiya)
+      function splitName(nm) {
+        const parts = (nm || '').trim().split(/\s+/);
+        if (parts.length <= 1) return [parts[0] || ''];
+        return [parts[0], parts.slice(1).join(' ')];
+      }
 
       let studentIdx = 0;
       rows.forEach((colsInRow, rowI) => {
         const totalRowW = colsInRow * photoW + (colsInRow-1) * gapX;
         const rowStartX = rightX + Math.round((rightW - totalRowW) / 2);
-        const rowY = gridStartY + rowI * (cellH + gapY);
+        const rowTopY   = gridStartY + rowI * (cellH + gapY);
+        // foto+ism guruhini katak ichida vertikal markazlash
+        const groupH = photoH + nameReserve;
+        const offY   = Math.round((cellH - groupH) / 2);
 
         for (let col = 0; col < colsInRow; col++) {
           const spx = rowStartX + col * (photoW + gapX);
-          const spy = namePos === 'top' ? rowY + nameReserve : rowY;
+          const spy = (namePos === 'top') ? rowTopY + offY + nameReserve : rowTopY + offY;
           const student = students[studentIdx] || null;
-
-          // ── Foto (border yo'q) ──
           const isOwner = (studentIdx === 0);  // egasi = birinchi o'rinda
-          ctx.save();
-          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.clip();
 
+          // ── OQ RAMKA + FOTO ──
+          const bW = Math.max(2, Math.round(Math.min(photoW, photoH) * 0.05));
+          ctx.save();
+          // oq ramka foni
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.fill();
+          // rasm — ramka ichida
+          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, bW); ctx.clip();
+          const ix = spx + bW, iy = spy + bW, iw2 = photoW - 2*bW, ih2 = photoH - 2*bW;
           if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
             const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
-            const sc = Math.max(photoW/iw, photoH/ih);
+            const sc = Math.max(iw2/iw, ih2/ih);
             const dw = iw*sc, dh = ih*sc;
-            ctx.drawImage(student.img, spx+(photoW-dw)/2, spy+(photoH-dh)/2, dw, dh);
+            ctx.drawImage(student.img, ix + (iw2-dw)/2, iy + (ih2-dh)/2, dw, dh);
           } else {
             const PALETTE = [
               ['#1e3a5f','#2d6a4f'],['#4a1942','#6b2d5e'],['#1a3a5c','#1e6091'],
@@ -1360,43 +1366,51 @@ window.TEMPLATES = [
               ['#003366','#004080'],['#1b1b2f','#2b2b4b'],['#002b36','#073642'],
             ];
             const [c1,c2] = PALETTE[studentIdx % PALETTE.length];
-            const pg = ctx.createLinearGradient(spx, spy, spx+photoW*0.5, spy+photoH);
+            const pg = ctx.createLinearGradient(ix, iy, ix+iw2*0.5, iy+ih2);
             pg.addColorStop(0,c1); pg.addColorStop(1,c2);
-            ctx.fillStyle = pg; ctx.fillRect(spx, spy, photoW, photoH);
+            ctx.fillStyle = pg; ctx.fillRect(ix, iy, iw2, ih2);
             ctx.fillStyle = 'rgba(255,255,255,0.13)';
-            ctx.beginPath(); ctx.arc(spx+photoW/2, spy+photoH*0.32, photoW*0.24, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(ix+iw2/2, iy+ih2*0.32, iw2*0.24, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = 'rgba(255,255,255,0.09)';
-            ctx.beginPath(); ctx.ellipse(spx+photoW/2, spy+photoH*0.86, photoW*0.34, photoH*0.26, 0, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(ix+iw2/2, iy+ih2*0.86, iw2*0.34, ih2*0.26, 0, 0, Math.PI*2); ctx.fill();
           }
           ctx.restore();
 
-          // ── Ism ──
-          if (namePos !== 'none') {
-            const nm = student ? student.name : '';
-            if (!nm) { studentIdx++; continue; }
+          // ── ISM (2 qator) ──
+          if (namePos !== 'none' && student && student.name) {
+            const lines = splitName(student.name);
+            const lineH = Math.round(nameFS * 1.15);
             ctx.save();
             ctx.fillStyle = isOwner ? '#fbbf24' : nameColor;
             ctx.font = `${isOwner ? '700' : nameWeight} ${nameFS}px Inter,sans-serif`;
-            const nameX = nameAlign === 'left' ? spx : nameAlign === 'right' ? spx+photoW : spx+photoW/2;
-            ctx.textAlign = nameAlign === 'center' ? 'center' : nameAlign;
+            ctx.textAlign = 'center';
 
             if (namePos === 'bottom') {
               ctx.textBaseline = 'top';
-              ctx.fillText(nm, nameX, spy+photoH+Math.round(photoH*0.03)+2);
+              const ny = spy + photoH + Math.round(nameFS * 0.45);
+              lines.forEach((ln, li) => ctx.fillText(ln, spx + photoW/2, ny + li*lineH));
             } else if (namePos === 'top') {
-              ctx.textBaseline = 'bottom';
-              ctx.fillText(nm, nameX, rowY+nameReserve-2);
+              ctx.textBaseline = 'top';
+              const ny = rowTopY + offY + Math.round(nameFS * 0.2);
+              lines.forEach((ln, li) => ctx.fillText(ln, spx + photoW/2, ny + li*lineH));
             } else if (namePos === 'over') {
-              const oH = Math.round(photoH*0.32);
-              const oY = spy+photoH-oH;
+              const oH = Math.round(photoH * 0.36);
+              const oY = spy + photoH - oH;
               ctx.save();
-              ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.clip();
-              const og = ctx.createLinearGradient(0, oY, 0, spy+photoH);
-              og.addColorStop(0,'rgba(0,0,0,0)'); og.addColorStop(1,'rgba(0,0,0,0.78)');
+              ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, bW); ctx.clip();
+              const og = ctx.createLinearGradient(0, oY, 0, spy + photoH);
+              og.addColorStop(0,'rgba(0,0,0,0)'); og.addColorStop(1,'rgba(0,0,0,0.82)');
               ctx.fillStyle = og; ctx.fillRect(spx, oY, photoW, oH);
               ctx.restore();
-              ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-              ctx.fillText(nm, spx+photoW/2, spy+photoH-4);
+              ctx.fillStyle = isOwner ? '#fbbf24' : '#ffffff';
+              ctx.textBaseline = 'bottom';
+              const by = spy + photoH - Math.round(photoH*0.03);
+              if (lines[1]) {
+                ctx.fillText(lines[1], spx + photoW/2, by);
+                ctx.fillText(lines[0], spx + photoW/2, by - lineH);
+              } else {
+                ctx.fillText(lines[0], spx + photoW/2, by);
+              }
             }
             ctx.restore();
           }
