@@ -1226,7 +1226,7 @@ window.TEMPLATES = [
       const bandH   = bandBot - bandTop;
 
       // ── 3. CHAP – PORTRET RASM (band balandligida, tepa/past flush) ──
-      const r   = leftRadius;
+      const r   = 0;   // burchak radiusi yo'q
       const lPad = Math.round(W * 0.022);
       const lX  = lPad;
       const lW  = halfW - lPad - Math.round(W * 0.012);
@@ -1352,16 +1352,14 @@ window.TEMPLATES = [
           ctx.shadowBlur    = Math.max(2, Math.round(cardW * 0.04));
           ctx.shadowOffsetY = Math.max(1, Math.round(cardW * 0.012));
           ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.roundRect(cardX, cardY, cardW, cardH, Math.round(cardW * 0.06));
-          ctx.fill();
+          ctx.fillRect(cardX, cardY, cardW, cardH);
           ctx.restore();
 
           // ── FOTO (card ichida, tepada) ──
           const ipx = cardX + pad, ipy = cardY + pad, ipw = photoW, iph = photoH;
           ctx.save();
           ctx.beginPath();
-          ctx.roundRect(ipx, ipy, ipw, iph, Math.round(cardW * 0.03));
+          ctx.rect(ipx, ipy, ipw, iph);
           ctx.clip();
           if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
             const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
