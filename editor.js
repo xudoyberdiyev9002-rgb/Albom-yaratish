@@ -39,7 +39,7 @@ function initTemplateGrid() {
     const list = window.TEMPLATES.filter(t =>
       type === 'all' ||
       t.type === type ||
-      (type === 'inner' && t.type === 'split-inner')  // split-inner ham "ichki" tabida
+      (type === 'inner' && (t.type === 'split-inner' || t.type === 'poster-inner'))  // ichki tabga qo'shamiz
     );
 
     list.forEach(tpl => {
@@ -127,7 +127,8 @@ function selectTemplate(card, tpl) {
 
   // Split-inner upload blokini ko'rsat/yashir
   const splitWrap = document.getElementById('leftPhotoUploadWrap');
-  if (splitWrap) splitWrap.style.display = tpl.type === 'split-inner' ? 'block' : 'none';
+  if (splitWrap) splitWrap.style.display =
+    (tpl.type === 'split-inner' || tpl.type === 'poster-inner') ? 'block' : 'none';
 
   // Canvas default o'lchamlari
   document.getElementById('canvasW').value      = tpl.defaultW;
@@ -177,6 +178,14 @@ function selectTemplate(card, tpl) {
     document.getElementById('accentColor').value = '#6366f1';
     document.getElementById('nameFontSize').value = 0;
     document.getElementById('nameFontSizeVal').textContent = '0px';
+  }
+
+  // Poster-split shablon uchun maxsus defaultlar (aniq o'lcham)
+  if (tpl.id === 'poster-split') {
+    document.getElementById('canvasW').value = 3602;
+    document.getElementById('canvasH').value = 4724;
+    document.getElementById('bgColor1').value = '#000000';
+    document.getElementById('bgColor2').value = '#000000';
   }
 
   document.getElementById('toStep2').disabled = false;
@@ -472,12 +481,25 @@ function renderPreview() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Editor kartalarini shablon turiga qarab ko'rsat/yashir
-  const isSplitMode = tpl.type === 'split-inner';
-  document.querySelectorAll('.generic-ctrl').forEach(c => c.style.display = isSplitMode ? 'none' : '');
+  const isSplitMode  = tpl.type === 'split-inner';
+  const isPosterMode = tpl.type === 'poster-inner';
+  const hideGeneric  = isSplitMode || isPosterMode;
+  document.querySelectorAll('.generic-ctrl').forEach(c => c.style.display = hideGeneric ? 'none' : '');
   const splitCard = document.getElementById('splitControlsCard');
   if (splitCard) splitCard.style.display = isSplitMode ? '' : 'none';
 
-  if (tpl.type === 'split-inner') {
+  if (tpl.type === 'poster-inner') {
+    // Poster: HAR BIR o'quvchi chap katta panelda, o'ng 5×5 grid fiksir
+    tpl.draw(ctx, window.AppState.classInfo, {
+      ...cfg,
+      w: cfg.canvasW, h: cfg.canvasH,
+      allStudents: students,
+      ownerIndex:  idx,
+      leftImg:     student.img || null,
+    });
+    document.querySelector('.preview-label').textContent =
+      `Poster — "${student.name}" chap panelda  (${idx + 1}/${students.length})`;
+  } else if (tpl.type === 'split-inner') {
     // Split-inner: HAR BIR o'quvchi chapdagi katta rasm + birinchi o'rinda
     const leftLabelInput = (document.getElementById('leftLabel')?.value || '').trim();
     tpl.draw(ctx, window.AppState.classInfo, {
@@ -593,7 +615,7 @@ async function startGeneration() {
   exportDone.style.display   = 'none';
   thumbGrid.innerHTML        = '';
   progressBar.style.width    = '0%';
-  progressTitle.textContent  = (tpl.type === 'inner' || tpl.type === 'split-inner')
+  progressTitle.textContent  = (tpl.type === 'inner' || tpl.type === 'split-inner' || tpl.type === 'poster-inner')
     ? 'Albom sahifalari generatsiya qilinmoqda...'
     : 'Vinyetkalar generatsiya qilinmoqda...';
 
@@ -622,7 +644,7 @@ async function startGeneration() {
     canvases => {
       progressCard.style.display = 'none';
       exportDone.style.display   = 'block';
-      const kind = (tpl.type === 'inner' || tpl.type === 'split-inner') ? 'albom sahifasi' : 'vinyetka';
+      const kind = (tpl.type === 'inner' || tpl.type === 'split-inner' || tpl.type === 'poster-inner') ? 'albom sahifasi' : 'vinyetka';
       document.getElementById('doneCount').textContent =
         `${canvases.length} ta ${kind} muvaffaqiyatli yaratildi`;
     }
