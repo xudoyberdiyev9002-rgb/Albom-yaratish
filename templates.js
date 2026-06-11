@@ -1108,7 +1108,7 @@ window.TEMPLATES = [
       let leftImg          = cfg.leftImg       || cfg.teacherImg || null;
       const leftScale      = cfg.leftScale     != null ? cfg.leftScale : 0.90;
       const leftBorderColor= cfg.leftBorderColor || '#ffffff';
-      const leftBorderW    = cfg.leftBorderW   != null ? cfg.leftBorderW : 3;
+      const leftBorderW    = 0;   // border olib tashlandi
       const leftRadius     = cfg.leftRadius    != null ? cfg.leftRadius : 8;
       let leftLabel        = cfg.leftLabel     || '';
       const leftLabelFS    = cfg.leftLabelFS   || 14;
@@ -1128,7 +1128,7 @@ window.TEMPLATES = [
       const gapX           = cfg.gapX         != null ? cfg.gapX : 8;
       const gapY           = cfg.gapY         != null ? cfg.gapY : 12;
       const photoShape     = cfg.photoShape    || 'rounded';
-      const borderW        = cfg.borderW       != null ? cfg.borderW : 2;
+      const borderW        = 0;   // ramka borderlari olib tashlandi
       const borderColor    = cfg.borderColor   || '#ffffff';
 
       const namePos        = cfg.namePos       || 'bottom';
@@ -1157,17 +1157,25 @@ window.TEMPLATES = [
         return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
       }
 
-      function buildRows(count, maxC) {
+      // GRID ALGORITMI:
+      //  - count <= cols  → bitta qator
+      //  - ortiqcha 1 ta  → tepa (birinchi) qatorga qo'shiladi (cols+1)
+      //  - ortiqcha 2+ ta → yangi tepa qator ochiladi (rem ta)
+      //  Barcha qatorlar gorizontal markazlanadi.
+      function buildRows(count, cols) {
         if (count <= 0) return [];
-        const cols = Math.min(maxC, count);
-        const rowCount = Math.ceil(count / cols);
-        const rows = [];
-        let rem = count;
-        for (let r = 0; r < rowCount; r++) {
-          rows.push(Math.min(cols, rem));
-          rem -= Math.min(cols, rem);
+        if (count <= cols) return [count];
+        const fullRows = Math.floor(count / cols);
+        const rem = count % cols;
+        if (rem === 0) {
+          return Array(fullRows).fill(cols);
+        } else if (rem === 1) {
+          // 1 ta ortsa — yangi qator ochilmaydi, birinchi qatorga qo'shiladi
+          return [cols + 1, ...Array(fullRows - 1).fill(cols)];
+        } else {
+          // 2+ ortsa — yangi (tepa) qator
+          return [rem, ...Array(fullRows).fill(cols)];
         }
-        return rows;
       }
 
       function clipPath(x, y, pw, ph, shape, ins) {
@@ -1181,29 +1189,8 @@ window.TEMPLATES = [
         }
       }
 
-      // ── 1. HEADER ──
+      // ── 1. HEADER — o'chirilgan (tepa bar yo'q) ──
       let topOffset = 0;
-      if (headerStyle !== 'none' && headerH > 0) {
-        topOffset = headerH;
-        if (headerStyle === 'band') {
-          ctx.fillStyle = headerColor;
-          ctx.fillRect(0, 0, W, headerH);
-        } else {
-          ctx.save();
-          ctx.strokeStyle = hA('#ffffff', 0.25);
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(0, headerH); ctx.lineTo(W, headerH); ctx.stroke();
-          ctx.restore();
-        }
-        if (headerText.trim()) {
-          ctx.save();
-          ctx.fillStyle = headerTextColor;
-          ctx.font = `600 ${headerFS}px Inter,sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(headerText.trim(), W/2, headerH/2);
-          ctx.restore();
-        }
-      }
 
       // ── 2. FON ──
       const contentH = H - topOffset;
@@ -1317,16 +1304,30 @@ window.TEMPLATES = [
       const count = students.length || 1;
       const rows = buildRows(count, maxCols);
       const rowCount = rows.length;
+      const maxItemsInRow = Math.max(...rows);  // eng keng qator (cols yoki cols+1)
 
-      const usableH = rightGridH * 0.92;
+      // Vertikal: har qatorga teng balandlik
+      const usableH = rightGridH * 0.96;
       const totalGapY = gapY * (rowCount - 1);
-      const cellH = Math.max(10, Math.floor((usableH - totalGapY) / rowCount));
+      let cellH = Math.max(10, Math.floor((usableH - totalGapY) / rowCount));
       const namePad = (namePos === 'none' || namePos === 'over') ? 0 : 1;
-      const autoNameFS = Math.max(7, Math.round(cellH * 0.10));
-      const nameFS = nameFSManual > 0 ? nameFSManual : autoNameFS;
-      const nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
-      const photoH = Math.max(10, cellH - nameReserve);
-      const photoW = Math.round(photoH * 0.76);
+      let nameFS = nameFSManual > 0 ? nameFSManual : Math.max(7, Math.round(cellH * 0.10));
+      let nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
+      let photoH = Math.max(10, cellH - nameReserve);
+      let photoW = photoH * 0.76;
+
+      // Gorizontal cheklov: eng keng qator rightW ichiga sig'sin
+      const neededW = maxItemsInRow * photoW + (maxItemsInRow - 1) * gapX;
+      if (neededW > rightW) {
+        const f = rightW / neededW;
+        photoW *= f;
+        photoH *= f;
+        if (nameFSManual <= 0) nameFS = Math.max(7, Math.round(photoH * 0.13));
+        nameReserve = namePad === 0 ? 0 : nameFS * 2.4;
+        cellH = photoH + nameReserve;
+      }
+      photoW = Math.round(photoW);
+      photoH = Math.round(photoH);
 
       const totalGridH = rowCount * cellH + (rowCount-1) * gapY;
       const gridStartY = rightGridY + Math.round((rightGridH - totalGridH) / 2);
@@ -1342,20 +1343,10 @@ window.TEMPLATES = [
           const spy = namePos === 'top' ? rowY + nameReserve : rowY;
           const student = students[studentIdx] || null;
 
-          // ── Foto ──
+          // ── Foto (border yo'q) ──
           const isOwner = (studentIdx === 0);  // egasi = birinchi o'rinda
           ctx.save();
-          if (isOwner) {
-            // Egasini ajratib ko'rsatish — oltin ramka
-            ctx.strokeStyle = '#fbbf24';
-            ctx.lineWidth   = Math.max(3, borderW * 2);
-            ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.stroke();
-          } else if (borderW > 0) {
-            ctx.strokeStyle = borderColor; ctx.lineWidth = borderW;
-            ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.stroke();
-          }
-          const clipIns = isOwner ? Math.max(3, borderW * 2) / 2 : borderW / 2;
-          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, clipIns); ctx.clip();
+          ctx.beginPath(); clipPath(spx, spy, photoW, photoH, photoShape, 0); ctx.clip();
 
           if (student && student.img && student.img.complete && student.img.naturalWidth > 0) {
             const iw = student.img.naturalWidth, ih = student.img.naturalHeight;
