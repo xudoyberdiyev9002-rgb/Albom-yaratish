@@ -19,6 +19,7 @@ window.AppState = {
   _regions:            [],   // joriy preview dagi rasm hududlari (hit-test uchun)
   previewZoom:         1,     // tahrirlash oynasi masshtabi
   faces:               {},    // {studentIdx: {cx,cy,fh}} yuz aniqlash natijasi
+  retouchMap:          {},    // {studentIdx: {smooth,warmth,brightness,contrast,saturation,vignette}}
   currentPreviewIdx:   0,
 };
 
@@ -466,6 +467,7 @@ function initEditorControls() {
     if (!len) return;
     window.AppState.currentPreviewIdx =
       (window.AppState.currentPreviewIdx - 1 + len) % len;
+    rtLoadCurrent();
     renderPreview();
   });
   document.getElementById('nextStudent').addEventListener('click', () => {
@@ -473,6 +475,7 @@ function initEditorControls() {
     if (!len) return;
     window.AppState.currentPreviewIdx =
       (window.AppState.currentPreviewIdx + 1) % len;
+    rtLoadCurrent();
     renderPreview();
   });
 
@@ -506,24 +509,27 @@ function initEditorControls() {
   const afYLV = document.getElementById('afFaceYLeftVal');
   if (afYL) afYL.addEventListener('input', () => { if (afYLV) afYLV.textContent = afYL.value + '%'; renderPreview(); });
 
-  // ── RETUSH sliderlari ──
+  // ── RETUSH sliderlari (har bir rasm uchun ALOHIDA — retouchMap) ──
   [['rtSmooth','rtSmoothVal'],['rtWarmth','rtWarmthVal'],['rtBright','rtBrightVal'],
    ['rtContrast','rtContrastVal'],['rtSat','rtSatVal'],['rtVignette','rtVignetteVal']]
   .forEach(([id, vid]) => {
     const el = document.getElementById(id), v = document.getElementById(vid);
-    if (el) el.addEventListener('input', () => { if (v) v.textContent = el.value; renderPreview(); });
+    if (el) el.addEventListener('input', () => { if (v) v.textContent = el.value; rtSaveCurrent(); renderPreview(); });
   });
   const setRt = (vals) => {
     Object.entries(vals).forEach(([id, val]) => {
       const el = document.getElementById(id); if (!el) return;
       el.value = val; const v = document.getElementById(id + 'Val'); if (v) v.textContent = val;
     });
+    rtSaveCurrent();
     renderPreview();
   };
   const rtP = document.getElementById('rtPreset');
   if (rtP) rtP.addEventListener('click', () => setRt({ rtSmooth:30, rtWarmth:20, rtBright:10, rtContrast:15, rtSat:15, rtVignette:25 }));
   const rtR = document.getElementById('rtReset');
   if (rtR) rtR.addEventListener('click', () => setRt({ rtSmooth:0, rtWarmth:0, rtBright:0, rtContrast:0, rtSat:0, rtVignette:0 }));
+  const rtA = document.getElementById('rtAuto');
+  if (rtA) rtA.addEventListener('click', runAutoRetouch);
 }
 
 // Yuz aniqlash orqali har bir rasmni avto-tekislash (face-api.js)
@@ -777,6 +783,140 @@ function renderPreview() {
   window.AppState._regions = _hit;  // hit-test uchun saqlash
 }
 
+// ============================================================
+// AVTO-RETUSH (API'siz, lokal) — har bir rasmni o'qib, ideal parametr tanlaydi
+// ============================================================
+function rtClamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+// Joriy preview o'quvchisining slider qiymatlarini retouchMap ga saqlash
+function rtSaveCurrent() {
+  const idx = window.AppState.currentPreviewIdx || 0;
+  const g = id => parseInt((document.getElementById(id) || {}).value) || 0;
+  window.AppState.retouchMap[idx] = {
+    smooth:     g('rtSmooth'),
+    warmth:     g('rtWarmth'),
+    brightness: g('rtBright'),
+    contrast:   g('rtContrast'),
+    saturation: g('rtSat'),
+    vignette:   g('rtVignette'),
+  };
+}
+
+// retouchMap dagi joriy o'quvchi qiymatlarini sliderlarga yuklash
+function rtLoadCurrent() {
+  const idx = window.AppState.currentPreviewIdx || 0;
+  const p = window.AppState.retouchMap[idx] || {};
+  const set = (id, val) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.value = val || 0;
+    const v = document.getElementById(id + 'Val'); if (v) v.textContent = val || 0;
+  };
+  set('rtSmooth',   p.smooth);
+  set('rtWarmth',   p.warmth);
+  set('rtBright',   p.brightness);
+  set('rtContrast', p.contrast);
+  set('rtSat',      p.saturation);
+  set('rtVignette', p.vignette);
+}
+
+// Bitta rasmni tahlil qilib, ideal retush parametrlarini hisoblaydi (lokal, bepul)
+function analyzeRetouch(img, faceNorm) {
+  try {
+    const iw = (img && (img.naturalWidth  || img.width))  || 0;
+    const ih = (img && (img.naturalHeight || img.height)) || 0;
+    if (!iw || !ih) return null;
+
+    // Kichik ish-canvas (tez)
+    const scale = Math.min(1, 320 / Math.max(iw, ih));
+    const w = Math.max(1, Math.round(iw * scale));
+    const h = Math.max(1, Math.round(ih * scale));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, w, h);
+    // Blur nusxa (tekstura/dog'ni o'lchash uchun)
+    const cb = document.createElement('canvas'); cb.width = w; cb.height = h;
+    const bx = cb.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(c, 0, 0); bx.filter = 'none';
+    const O = cx.getImageData(0, 0, w, h).data;
+    const B = bx.getImageData(0, 0, w, h).data;
+
+    // Namuna olish hududi (yonoq/teri zonasi)
+    let x0, y0, x1, y1;
+    if (faceNorm && faceNorm.fh) {
+      const fcx = faceNorm.cx * w, fcy = faceNorm.cy * h, fhpx = faceNorm.fh * h;
+      const fw = fhpx * 0.7;
+      x0 = Math.max(0, Math.round(fcx - fw * 0.42));
+      x1 = Math.min(w, Math.round(fcx + fw * 0.42));
+      y0 = Math.max(0, Math.round(fcy + fhpx * 0.02));   // ko'zdan past — yonoq
+      y1 = Math.min(h, Math.round(fcy + fhpx * 0.38));
+    } else {
+      x0 = Math.round(w * 0.3); x1 = Math.round(w * 0.7);
+      y0 = Math.round(h * 0.32); y1 = Math.round(h * 0.7);
+    }
+    if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = w; y1 = h; }
+
+    let n = 0, sumL = 0, sumL2 = 0, sumR = 0, sumG = 0, sumB = 0, sumSat = 0, sumTex = 0;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const i = (y * w + x) * 4;
+        const r = O[i], g = O[i + 1], b = O[i + 2];
+        // teri rangi (YCbCr)
+        const Cb = -0.169 * r - 0.331 * g + 0.5 * b + 128;
+        const Cr =  0.5 * r - 0.419 * g - 0.081 * b + 128;
+        if (Cr < 133 || Cr > 183 || Cb < 77 || Cb > 140) continue;
+        const L  = 0.299 * r + 0.587 * g + 0.114 * b;
+        const Lb = 0.299 * B[i] + 0.587 * B[i + 1] + 0.114 * B[i + 2];
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        n++;
+        sumL += L; sumL2 += L * L; sumR += r; sumG += g; sumB += b;
+        sumSat += mx > 0 ? (mx - mn) / mx : 0;
+        sumTex += Math.abs(L - Lb);
+      }
+    }
+    if (n < 30) return null;   // teri topilmadi
+
+    const meanL = sumL / n;
+    const stdL  = Math.sqrt(Math.max(0, sumL2 / n - meanL * meanL));
+    const meanR = sumR / n, meanB = sumB / n;
+    const sat   = sumSat / n;
+    const tex   = sumTex / n;
+
+    // ── O'lchovlarni slider qiymatlariga aylantirish ──
+    const brightness = Math.round(rtClamp((175 - meanL) / 2.2, -25, 30)); // yorug'lik balansi
+    const contrast   = Math.round(rtClamp((42 - stdL) * 0.6,   -15, 22)); // yassi → +kontrast
+    const warmth     = Math.round(rtClamp((meanB - meanR + 18) * 1.4, 0, 45)); // sovuq → +iliqlik
+    const saturation = Math.round(rtClamp((0.32 - sat) * 120,  -15, 28)); // xira → +to'yinganlik
+    const smooth     = Math.round(rtClamp((tex - 3) * 4.5,       0, 60)); // tekstura/dog' → silliqlash
+    const vignette   = 12;                                                // yengil portret vignette
+
+    return { smooth, warmth, brightness, contrast, saturation, vignette };
+  } catch (e) {
+    return null;
+  }
+}
+
+// Hamma rasmlarni tahlil qilib, har biriga individual retush qo'yadi
+async function runAutoRetouch() {
+  const btn = document.getElementById('rtAuto');
+  const students = window.AppState.students;
+  if (!students.length) return;
+  const orig = btn ? btn.textContent : '';
+  let applied = 0;
+  for (let i = 0; i < students.length; i++) {
+    if (btn) btn.textContent = `⏳ Tahlil ${i + 1}/${students.length}`;
+    const s = students[i];
+    if (s && s.img) {
+      const p = analyzeRetouch(s.img, window.AppState.faces[i]);
+      if (p) { window.AppState.retouchMap[i] = p; applied++; }
+    }
+    if (i % 4 === 3) await new Promise(r => setTimeout(r, 0));   // UI ni bloklamaslik
+  }
+  if (btn) btn.textContent = orig || '✨ Avto-retush (har bir rasm)';
+  rtLoadCurrent();
+  renderPreview();
+  if (!applied) {
+    alert("Teri zonasi aniqlanmadi. Avval \"· Avto-tekislash (yuz bo'yicha)\" tugmasi bilan yuzlarni aniqlang yoki rasm sifatini tekshiring.");
+  }
+}
+
 function getEditorConfig() {
   const tpl = window.AppState.selectedTemplate;
   const isSplit = tpl?.type === 'split-inner';
@@ -814,14 +954,7 @@ function getEditorConfig() {
     autoFaceY:     (parseInt(($('afFaceY') || {}).value) || 43) / 100,
     autoFaceFracLeft: (parseInt(($('afFaceLeft')  || {}).value) || 27) / 100,
     autoFaceYLeft:    (parseInt(($('afFaceYLeft') || {}).value) || 43) / 100,
-    retouch: {
-      smooth:     parseInt(($('rtSmooth')   || {}).value) || 0,
-      warmth:     parseInt(($('rtWarmth')   || {}).value) || 0,
-      brightness: parseInt(($('rtBright')   || {}).value) || 0,
-      contrast:   parseInt(($('rtContrast') || {}).value) || 0,
-      saturation: parseInt(($('rtSat')      || {}).value) || 0,
-      vignette:   parseInt(($('rtVignette') || {}).value) || 0,
-    },
+    retouchMap:    window.AppState.retouchMap,   // har bir o'quvchi uchun alohida retush
   };
 }
 

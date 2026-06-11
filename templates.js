@@ -1372,8 +1372,8 @@ window.TEMPLATES = [
         const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
         const dx = x + (w - dw) / 2 + ox * w, dy = y + (h - dh) / 2 + oy * h;
 
-        // ── RETUSH (Portret filtri) ──
-        const R = cfg.retouch || {};
+        // ── RETUSH (Portret filtri) — har bir rasm uchun alohida (retouchMap) ──
+        const R = (cfg.retouchMap && cfg.retouchMap[faceIdx]) || {};
         // Rang sozlamalari (butun rasmga) — silliqlashdan alohida
         const hasColor = (R.brightness || R.contrast || R.saturation || R.warmth > 0);
         if (hasColor) {
