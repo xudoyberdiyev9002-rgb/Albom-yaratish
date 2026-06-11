@@ -497,6 +497,14 @@ function initEditorControls() {
   const afY = document.getElementById('afFaceY');
   const afYV = document.getElementById('afFaceYVal');
   if (afY) afY.addEventListener('input', () => { if (afYV) afYV.textContent = afY.value + '%'; renderPreview(); });
+
+  const afFL = document.getElementById('afFaceLeft');
+  const afFLV = document.getElementById('afFaceLeftVal');
+  if (afFL) afFL.addEventListener('input', () => { if (afFLV) afFLV.textContent = afFL.value + '%'; renderPreview(); });
+
+  const afYL = document.getElementById('afFaceYLeft');
+  const afYLV = document.getElementById('afFaceYLeftVal');
+  if (afYL) afYL.addEventListener('input', () => { if (afYLV) afYLV.textContent = afYL.value + '%'; renderPreview(); });
 }
 
 // Yuz aniqlash orqali har bir rasmni avto-tekislash (face-api.js)
@@ -785,6 +793,8 @@ function getEditorConfig() {
     faces:         window.AppState.faces,
     autoFaceFrac:  (parseInt(($('afFace')  || {}).value) || 28) / 100,
     autoFaceY:     (parseInt(($('afFaceY') || {}).value) || 43) / 100,
+    autoFaceFracLeft: (parseInt(($('afFaceLeft')  || {}).value) || 27) / 100,
+    autoFaceYLeft:    (parseInt(($('afFaceYLeft') || {}).value) || 43) / 100,
   };
 }
 

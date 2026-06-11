@@ -1250,13 +1250,19 @@ window.TEMPLATES = [
         } else {
           const face = faces[faceIdx];
           if (face) {
-            const tf = (cfg.autoFaceFrac != null ? cfg.autoFaceFrac : (targetFrac || 0.28));
+            const isLeft = (typeof key === 'string' && key.charAt(0) === 'L');
+            const tf = isLeft
+              ? (cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft : (targetFrac || 0.27))
+              : (cfg.autoFaceFrac     != null ? cfg.autoFaceFrac     : (targetFrac || 0.30));
             const fhPx = Math.max(1, face.fh * ih);
             const fcxPx = face.cx * iw, fcyPx = face.cy * ih;
             s = Math.max(1, Math.min(8, (tf * h) / (fhPx * sc0)));
             const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
             ox = (0.5 * w - (w - dw) / 2 - fcxPx * scs) / w;
-            oy = ((cfg.autoFaceY != null ? cfg.autoFaceY : 0.43) * h - (h - dh) / 2 - fcyPx * scs) / h;
+            const vy = isLeft
+              ? (cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft : 0.43)
+              : (cfg.autoFaceY     != null ? cfg.autoFaceY     : 0.43);
+            oy = (vy * h - (h - dh) / 2 - fcyPx * scs) / h;
             const mOx = (dw - w) / (2 * w), mOy = (dh - h) / (2 * h);
             ox = Math.max(-mOx, Math.min(mOx, ox));
             oy = Math.max(-mOy, Math.min(mOy, oy));
