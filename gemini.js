@@ -45,17 +45,17 @@
     const key = getKey();
     if (!key) throw new Error('API kalit kiritilmagan');
 
-    const { data } = imgToBase64(img, 768);
+    const { data } = imgToBase64(img, 1024);
 
     const prompt =
-      "You are a professional photo-retouching assistant. Analyze ONLY the human " +
-      "facial skin in this portrait. Detect blemishes that a studio retoucher would " +
-      "remove: acne/pimples, dark spots, scars, moles, and noticeable redness. " +
-      "Do NOT include eyes, eyebrows, nostrils, lips, hair or natural shadows. " +
-      "Return STRICT JSON: an array of objects with keys " +
-      '"box_2d" ([ymin,xmin,ymax,xmax] normalized 0-1000), ' +
-      '"type" (one of "acne","dark_spot","scar","mole","redness"), ' +
-      '"severity" (1-5). If skin is clean, return [].';
+      "Detect ALL skin imperfections on the human face in this portrait, even small " +
+      "or subtle ones: pimples, acne, blackheads, dark spots, freckles that stand out, " +
+      "moles, scars, redness, blemishes, uneven patches. Be thorough — a professional " +
+      "retoucher would clean these. Ignore eyes, eyebrows, nostrils, lips and hair. " +
+      "Return ONLY a JSON array (no extra text). Each element: " +
+      '{"box_2d":[ymin,xmin,ymax,xmax] normalized 0-1000, ' +
+      '"type":"acne|dark_spot|scar|mole|redness|blemish", "severity":1-5}. ' +
+      "If you truly see no imperfections, return [].";
 
     const body = {
       contents: [{
@@ -79,13 +79,24 @@
     }
 
     const json = await res.json();
-    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-    let arr;
-    try { arr = JSON.parse(text); }
+    console.log('[GeminiMap] to\'liq javob:', json);
+    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('[GeminiMap] matn javob:', text);
+
+    let parsed;
+    try { parsed = JSON.parse(text); }
     catch (e) {
       const m = text.match(/\[[\s\S]*\]/);
-      arr = m ? JSON.parse(m[0]) : [];
+      parsed = m ? JSON.parse(m[0]) : [];
     }
+
+    // Javob massiv emas, ob'ekt bo'lsa — ichidagi birinchi massivni olamiz
+    let arr = parsed;
+    if (!Array.isArray(arr) && arr && typeof arr === 'object') {
+      const firstArr = Object.values(arr).find(v => Array.isArray(v));
+      arr = firstArr || [];
+    }
+    console.log('[GeminiMap] topilgan dog\'lar:', arr);
     return Array.isArray(arr) ? arr : [];
   }
 
