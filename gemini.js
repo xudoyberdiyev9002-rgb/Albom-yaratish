@@ -189,6 +189,178 @@
     return out;
   }
 
+  // ── PHOTOSHOP USLUBIDAGI SPOT-HEALING ────────────────────
+  // Har bir dog' uchun: atrofdagi sog'lom teridan tekstura olib,
+  // rangni dog' chetidagi teriga moslaymiz (healing brush mantiqi).
+
+  // Disk ichidagi o'rtacha rang (radius px)
+  function discMean(d, w, h, cx, cy, r) {
+    let sr = 0, sg = 0, sb = 0, n = 0;
+    const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(w - 1, Math.ceil(cx + r));
+    const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(h - 1, Math.ceil(cy + r));
+    const r2 = r * r;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy > r2) continue;
+        const i = (y * w + x) * 4;
+        sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; n++;
+      }
+    }
+    return n ? { r: sr / n, g: sg / n, b: sb / n, n } : null;
+  }
+
+  // Halqa (annulus) o'rtachasi — dog' atrofidagi SOG'LOM teri rangi
+  function ringMean(d, w, h, cx, cy, rIn, rOut) {
+    let sr = 0, sg = 0, sb = 0, n = 0;
+    const x0 = Math.max(0, Math.floor(cx - rOut)), x1 = Math.min(w - 1, Math.ceil(cx + rOut));
+    const y0 = Math.max(0, Math.floor(cy - rOut)), y1 = Math.min(h - 1, Math.ceil(cy + rOut));
+    const i2 = rIn * rIn, o2 = rOut * rOut;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x - cx, dy = y - cy, dd = dx * dx + dy * dy;
+        if (dd < i2 || dd > o2) continue;
+        const i = (y * w + x) * 4;
+        sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; n++;
+      }
+    }
+    return n ? { r: sr / n, g: sg / n, b: sb / n, n } : null;
+  }
+
+  // Disk ichidagi yorug'lik dispersiyasi (kichik = toza, tekis teri)
+  function discVariance(d, w, h, cx, cy, r, targetMean) {
+    let s = 0, n = 0;
+    const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(w - 1, Math.ceil(cx + r));
+    const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(h - 1, Math.ceil(cy + r));
+    const r2 = r * r;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy > r2) continue;
+        const i = (y * w + x) * 4;
+        const L = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        s += L; n++;
+      }
+    }
+    if (!n) return Infinity;
+    const m = s / n;
+    let v = 0;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy > r2) continue;
+        const i = (y * w + x) * 4;
+        const L = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        v += (L - m) * (L - m);
+      }
+    }
+    let penalty = 0;
+    if (targetMean) {
+      penalty = Math.abs(m - (0.299 * targetMean.r + 0.587 * targetMean.g + 0.114 * targetMean.b)) * 1.5;
+    }
+    return v / n + penalty * penalty;
+  }
+
+  // Eng toza manba yo'nalishini topish (8 yo'nalish)
+  function findCleanSource(d, w, h, cx, cy, r, borderMean) {
+    const dist = r * 2.3;
+    const dirs = [
+      [1, 0], [-1, 0], [0, 1], [0, -1],
+      [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7],
+    ];
+    let best = null, bestScore = Infinity;
+    for (const [ux, uy] of dirs) {
+      const sx = cx + ux * dist, sy = cy + uy * dist;
+      if (sx - r < 0 || sx + r >= w || sy - r < 0 || sy + r >= h) continue;
+      const score = discVariance(d, w, h, sx, sy, r, borderMean);
+      if (score < bestScore) { bestScore = score; best = { ox: ux * dist, oy: uy * dist }; }
+    }
+    return best;
+  }
+
+  // Bitta dog'ni davolash (in-place, feather aralashtirish) — snapshot versiya quyida
+  // healSpotsFromSnap() ishlatiladi.
+
+  // Hamma dog'larni tozalab, healed canvas qaytaradi
+  function healSpots(img, dets, maxSide) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const scale = Math.min(1, (maxSide || 2400) / Math.max(iw, ih));
+    const w = Math.max(1, Math.round(iw * scale));
+    const h = Math.max(1, Math.round(ih * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    // manba o'qishlari original pikseldan bo'lishi uchun snapshot
+    const snap = new Uint8ClampedArray(d);
+
+    // kichikdan kattaga tartiblash (kichik dog'larni avval)
+    const sorted = dets.slice().sort((a, b) => {
+      const ar = (a.box_2d[2] - a.box_2d[0]) + (a.box_2d[3] - a.box_2d[1]);
+      const br = (b.box_2d[2] - b.box_2d[0]) + (b.box_2d[3] - b.box_2d[1]);
+      return ar - br;
+    });
+
+    sorted.forEach(det => {
+      const b = det.box_2d;
+      const cx = ((b[1] + b[3]) / 2 / 1000) * w;
+      const cy = ((b[0] + b[2]) / 2 / 1000) * h;
+      const bw = ((b[3] - b[1]) / 1000) * w;
+      const bh = ((b[2] - b[0]) / 1000) * h;
+      let r = Math.max(bw, bh) / 2;
+      r = Math.max(2.5, Math.min(r * 1.15, Math.min(w, h) * 0.06)); // min/max chegaralar
+      healSpotsFromSnap(d, snap, w, h, cx, cy, r);
+    });
+
+    ctx.putImageData(imgData, 0, 0);
+    return c;
+  }
+
+  // healOne ning snapshot versiyasi (manba = original snap, yozish = d)
+  function healSpotsFromSnap(d, snap, w, h, cx, cy, r) {
+    const borderMean = ringMean(snap, w, h, cx, cy, r * 1.05, r * 1.6);
+    const src = findCleanSource(snap, w, h, cx, cy, r, borderMean);
+    if (!src || !borderMean) return;
+    const srcMean = discMean(snap, w, h, cx + src.ox, cy + src.oy, r);
+    if (!srcMean) return;
+    const dr = borderMean.r - srcMean.r;
+    const dg = borderMean.g - srcMean.g;
+    const db = borderMean.b - srcMean.b;
+
+    const rad = r * 1.25, r2 = rad * rad;
+    const x0 = Math.max(0, Math.floor(cx - rad)), x1 = Math.min(w - 1, Math.ceil(cx + rad));
+    const y0 = Math.max(0, Math.floor(cy - rad)), y1 = Math.min(h - 1, Math.ceil(cy + rad));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x - cx, dy = y - cy, dd = dx * dx + dy * dy;
+        if (dd > r2) continue;
+        const dn = Math.sqrt(dd) / rad;
+        let wgt = dn < 0.65 ? 1 : 1 - (dn - 0.65) / 0.35;
+        wgt = wgt < 0 ? 0 : wgt * wgt * (3 - 2 * wgt);
+        const sxp = Math.round(x + src.ox), syp = Math.round(y + src.oy);
+        if (sxp < 0 || sxp >= w || syp < 0 || syp >= h) continue;
+        const si = (syp * w + sxp) * 4, ti = (y * w + x) * 4;
+        const nr = snap[si] + dr, ng = snap[si + 1] + dg, nb = snap[si + 2] + db;
+        d[ti]     = d[ti]     + (nr - d[ti]) * wgt;
+        d[ti + 1] = d[ti + 1] + (ng - d[ti + 1]) * wgt;
+        d[ti + 2] = d[ti + 2] + (nb - d[ti + 2]) * wgt;
+      }
+    }
+  }
+
+  // canvas -> Image (student.img o'rniga qo'yish uchun)
+  function canvasToImage(canvas) {
+    return new Promise(res => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.src = canvas.toDataURL('image/jpeg', 0.95);
+    });
+  }
+
   // ── Natijani modalda ko'rsatish (rasm + belgilar) ─────────
   function showResult(img, dets) {
     const overlay = document.getElementById('gmpOverlay');
@@ -239,7 +411,55 @@
         Object.entries(counts).map(([k, v]) => k + ': ' + v).join(', ')
       : '✓ Teri toza — dog\' topilmadi (generatsiya shart emas)';
 
+    // heal tugmasi holati
+    const healBtn = document.getElementById('gmpHealBtn');
+    if (healBtn) healBtn.disabled = !dets.length;
+
     overlay.style.display = 'flex';
+  }
+
+  // ── Healing'ni joriy o'quvchiga qo'llash ──────────────────
+  async function applyHeal() {
+    const last = window._gmpLast;
+    if (!last || !last.dets || !last.dets.length) return;
+    const students = (window.AppState && window.AppState.students) || [];
+    const student = students[last.idx];
+    if (!student || !student.img) return;
+
+    const healBtn = document.getElementById('gmpHealBtn');
+    const orig = healBtn ? healBtn.textContent : '';
+    if (healBtn) { healBtn.disabled = true; healBtn.textContent = '⏳ Tozalanmoqda...'; }
+    try {
+      const healedCanvas = healSpots(student.img, last.dets, 2400);
+      const healedImg = await canvasToImage(healedCanvas);
+      // asl rasmni saqlab qo'yamiz (qaytarish uchun)
+      if (!student.origImg) student.origImg = student.img;
+      student.img = healedImg;
+      // dog' keshini tozalash (rtSpotHeal kabi)
+      if (student.img.__rt) delete student.img.__rt;
+      if (typeof renderPreview === 'function') renderPreview();
+      const overlay = document.getElementById('gmpOverlay');
+      if (overlay) overlay.style.display = 'none';
+      alert('✓ ' + last.dets.length + ' ta dog\' tozalandi. Preview yangilandi.');
+    } catch (e) {
+      alert('Healing xatosi: ' + (e.message || e));
+    } finally {
+      if (healBtn) { healBtn.textContent = orig; healBtn.disabled = false; }
+    }
+  }
+
+  // Joriy o'quvchini asl holatiga qaytarish
+  function revertHeal() {
+    const idx = (window.AppState && window.AppState.currentPreviewIdx) || 0;
+    const student = window.AppState.students[idx];
+    if (student && student.origImg) {
+      student.img = student.origImg;
+      delete student.origImg;
+      if (typeof renderPreview === 'function') renderPreview();
+      alert('↩︎ Asl rasm qaytarildi.');
+    } else {
+      alert('Bu rasm hali tozalanmagan.');
+    }
   }
 
   // ── Tugma bosilganda ──────────────────────────────────────
@@ -264,6 +484,7 @@
       const faceNorm = await getFaceNorm(student.img, idx);
       btn.textContent = '⏳ Dog\'lar tahlil qilinmoqda...';
       const dets = await mapBlemishes(student.img, faceNorm);
+      window._gmpLast = { idx, dets };
       showResult(student.img, dets);
     } catch (e) {
       alert('Mapping xatosi: ' + (e.message || e));
@@ -300,8 +521,14 @@
       document.getElementById('gmpOverlay').style.display = 'none';
     });
 
+    const healBtn = document.getElementById('gmpHealBtn');
+    if (healBtn) healBtn.addEventListener('click', applyHeal);
+
+    const revertBtn = document.getElementById('gmpRevertBtn');
+    if (revertBtn) revertBtn.addEventListener('click', revertHeal);
+
     syncKeyUI();
   });
 
-  window.GeminiMap = { mapBlemishes, getFaceNorm, getKey, setKey };
+  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, getKey, setKey };
 })();
