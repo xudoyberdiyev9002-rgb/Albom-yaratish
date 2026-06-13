@@ -116,10 +116,16 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
    - Faqat dog'li yuzlarni yuborish (mapping'ni "filtr" sifatida) → pul tejash.
    - Yuqori rezolyutsiya / Nano Banana 2 (`gemini-3.1-flash-image`).
 
-   **HOLLARNI SAQLASH (qilindi):** retush hollarni o'chirib yuborardi. Yechim:
-   (1) prompt'da "hollarni saqla" deyildi; (2) KAFOLAT — `applyAiRetouch` avval
-   `mapBlemishes` bilan `type==='mole'` joylarini topadi, retushdan keyin
-   `restoreMoles()` o'sha nuqtalarni ORIGINALDAN radial-feather bilan qaytaradi.
+   **HOLLARNI SAQLASH (qilindi):** retush hollarni o'chirib yuborardi.
+   - Birinchi urinish (avtomatik Gemini `type==='mole'` tasnifi) ISHONCHSIZ
+     chiqdi — haqiqiy holni o'chirib, oddiy dog'ni hol deb qoldirardi. Olib tashlandi.
+   - **JORIY yechim — QO'LDA belgilash:** operator 🟢 "Hollarni belgilash" tugmasi
+     orqali modal'da rasm ustiga bosib hol nuqtalarini belgilaydi (toggle).
+     `student.keepMoles = [{nx,ny}]` (normada) saqlanadi. `applyAiRetouch`
+     retushdan keyin `restoreMoles()` bilan aynan shu nuqtalarni ORIGINALDAN
+     radial-feather bilan qaytaradi. `moleBoxesFromPoints()` nuqtalarni box'ga
+     aylantiradi (radius yuz balandligiga bog'liq). Tugmalar/modal: `gmpMoleBtn`,
+     `gmpMoleOverlay`, `gmpMoleCanvas`, `gmpMoleSave`, `gmpMoleClear`.
 
 ## Eslatma
 
