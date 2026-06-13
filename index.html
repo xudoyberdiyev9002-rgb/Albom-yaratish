@@ -487,17 +487,24 @@
 </div>
 
 <!-- HOL BELGILASH MODALI -->
-<div id="gmpMoleOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.78);align-items:center;justify-content:center">
-  <div style="background:#15151f;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:18px;max-width:600px;width:92%">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<div id="gmpMoleOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.9);align-items:center;justify-content:center">
+  <div style="background:#15151f;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:16px;width:96vw;height:94vh;max-width:1100px;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <h3 style="margin:0;color:#fff;font-size:16px">🟢 Saqlanadigan hollarni belgilang</h3>
-      <button id="gmpMoleClose" style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer">✕</button>
+      <button id="gmpMoleClose" style="background:none;border:none;color:#aaa;font-size:24px;cursor:pointer">✕</button>
     </div>
-    <p style="color:#cfcfe0;font-size:12px;margin:0 0 10px">Hol ustiga bosing (yashil = saqlanadi). Yana bossangiz olib tashlanadi. Retushda shu nuqtalar originaldan qoldiriladi.</p>
-    <canvas id="gmpMoleCanvas" style="max-width:100%;border-radius:8px;display:block;margin:0 auto;cursor:crosshair"></canvas>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button id="gmpMoleClear" class="btn-refresh-preview" style="flex:1">🗑 Hammasini tozalash</button>
-      <button id="gmpMoleSave" class="btn-refresh-preview" style="flex:1;background:#0f766e;color:#fff">✓ Saqlash</button>
+    <p style="color:#cfcfe0;font-size:12px;margin:0 0 8px">Hol ustiga bosing (yashil = saqlanadi). Yana bossangiz olib tashlanadi. Sichqoncha g'ildiragi yoki tugmalar bilan yaqinlashtiring, sudrab suring.</p>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0a0a12;border-radius:10px">
+      <canvas id="gmpMoleCanvas" style="display:block;cursor:crosshair;touch-action:none;max-width:100%;max-height:100%"></canvas>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <button id="gmpMoleZoomOut" class="btn-refresh-preview" style="width:44px">➖</button>
+      <span id="gmpMoleZoomLabel" style="color:#cfcfe0;font-size:13px;min-width:52px;text-align:center">100%</span>
+      <button id="gmpMoleZoomIn" class="btn-refresh-preview" style="width:44px">➕</button>
+      <button id="gmpMoleZoomReset" class="btn-refresh-preview">⤢ Sig'dirish</button>
+      <div style="flex:1"></div>
+      <button id="gmpMoleClear" class="btn-refresh-preview">🗑 Tozalash</button>
+      <button id="gmpMoleSave" class="btn-refresh-preview" style="background:#0f766e;color:#fff">✓ Saqlash</button>
     </div>
   </div>
 </div>
