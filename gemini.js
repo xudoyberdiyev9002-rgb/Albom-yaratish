@@ -18,6 +18,8 @@
   const KEY_LS = 'GEMINI_API_KEY';
   // Vision (tahlil) uchun arzon, tez model
   const MODEL = 'gemini-2.5-flash';
+  // Rasm tahrirlash (retush) modeli — Nano Banana
+  const IMG_MODEL = 'gemini-2.5-flash-image';
   const ENDPOINT = m =>
     `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
 
@@ -361,6 +363,107 @@
     });
   }
 
+  // ── NANO BANANA: AI retush (image editing / generatsiya) ──
+  // Butun portretni Gemini'ga yuboramiz, faqat teri retush qilinadi,
+  // shaxs/yuz/fon o'zgarmaydi. Javobda tahrirlangan rasm qaytadi.
+  function imgToDataB64(img, maxSide) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const scale = Math.min(1, (maxSide || 1280) / Math.max(iw, ih));
+    const w = Math.max(1, Math.round(iw * scale));
+    const h = Math.max(1, Math.round(ih * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.95).split(',')[1];
+  }
+
+  async function geminiRetouch(img) {
+    const key = getKey();
+    if (!key) throw new Error('API kalit kiritilmagan');
+
+    const data = imgToDataB64(img, 1280);
+
+    const prompt =
+      "Retouch this portrait like a professional studio photo retoucher working in " +
+      "Photoshop. Remove acne, pimples, blackheads, dark spots, hyperpigmentation, " +
+      "scars, prominent moles and skin redness from the facial skin. Leave smooth, " +
+      "clean, natural and healthy-looking skin that still keeps realistic texture and " +
+      "pores (NOT plastic or over-smoothed). CRITICAL: keep the exact same person — do " +
+      "not change identity, facial features, face shape, expression, skin tone, makeup, " +
+      "hair, clothing, pose, lighting or background. Do not slim or beautify. " +
+      "Return ONLY the edited photograph.";
+
+    const body = {
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: 'image/jpeg', data } },
+        ],
+      }],
+    };
+
+    const res = await fetch(ENDPOINT(IMG_MODEL) + '?key=' + encodeURIComponent(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error('Gemini xato (' + res.status + '): ' + t.slice(0, 300));
+    }
+
+    const json = await res.json();
+    const parts = json?.candidates?.[0]?.content?.parts || [];
+    let b64 = null, mime = 'image/png';
+    for (const p of parts) {
+      const inl = p.inlineData || p.inline_data;
+      if (inl && inl.data) { b64 = inl.data; mime = inl.mimeType || inl.mime_type || mime; break; }
+    }
+    if (!b64) {
+      const txt = parts.map(p => p.text).filter(Boolean).join(' ');
+      throw new Error('Rasm qaytmadi. Javob: ' + (txt || JSON.stringify(json).slice(0, 200)));
+    }
+
+    return await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error('Qaytgan rasm yuklanmadi'));
+      im.src = 'data:' + mime + ';base64,' + b64;
+    });
+  }
+
+  // AI retush'ni joriy o'quvchiga qo'llash
+  async function applyAiRetouch() {
+    const btn = document.getElementById('gmpAiBtn');
+    const students = (window.AppState && window.AppState.students) || [];
+    const idx = (window.AppState && window.AppState.currentPreviewIdx) || 0;
+    const student = students[idx];
+    if (!student || !student.img) { alert('Avval o\'quvchi rasmini yuklang.'); return; }
+
+    if (!getKey()) {
+      const k = prompt('Gemini API kalitini kiriting (faqat shu brauzerда saqlanadi):');
+      if (!k) return;
+      setKey(k); syncKeyUI();
+    }
+
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '🪄 AI retush qilinmoqda...'; }
+    try {
+      const base = student.origImg || student.img;     // har doim asldan ishlaymiz
+      const retouched = await geminiRetouch(base);
+      if (!student.origImg) student.origImg = student.img;
+      student.img = retouched;
+      if (student.img.__rt) delete student.img.__rt;
+      if (typeof renderPreview === 'function') renderPreview();
+      if (btn) { btn.textContent = '✓ Tayyor'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500); }
+    } catch (e) {
+      alert('AI retush xatosi: ' + (e.message || e));
+      if (btn) { btn.textContent = orig; btn.disabled = false; }
+    }
+  }
+
   // ── Natijani modalda ko'rsatish (rasm + belgilar) ─────────
   function showResult(img, dets) {
     const overlay = document.getElementById('gmpOverlay');
@@ -527,8 +630,11 @@
     const revertBtn = document.getElementById('gmpRevertBtn');
     if (revertBtn) revertBtn.addEventListener('click', revertHeal);
 
+    const aiBtn = document.getElementById('gmpAiBtn');
+    if (aiBtn) aiBtn.addEventListener('click', applyAiRetouch);
+
     syncKeyUI();
   });
 
-  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, getKey, setKey };
+  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, applyAiRetouch, getKey, setKey };
 })();
