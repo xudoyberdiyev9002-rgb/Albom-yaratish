@@ -457,13 +457,8 @@
       if (btn) btn.textContent = '⏳ Yuz aniqlanmoqda...';
       const faceNorm = await getFaceNorm(base, idx);
 
-      // Hollarni saqlash uchun avval ularning joyini aniqlaymiz (arzon mapping)
-      let moles = [];
-      try {
-        if (btn) btn.textContent = '⏳ Hollar aniqlanmoqda...';
-        const dets = await mapBlemishes(base, faceNorm);
-        moles = dets.filter(d => d.type === 'mole');
-      } catch (e) { /* mapping bo'lmasa ham retush davom etadi */ }
+      // Saqlanadigan hollar — QO'LDA belgilangan nuqtalar (ishonchli)
+      const moles = moleBoxesFromPoints(base, faceNorm, student.keepMoles);
 
       if (btn) btn.textContent = '🪄 AI retush qilinmoqda...';
       // Yuz topilsa — kesib retush (yuqori sifat), aks holda butun rasm
@@ -471,7 +466,7 @@
         ? await geminiRetouchFace(base, faceNorm)
         : await geminiRetouch(base);
 
-      // Hollarni originaldan qaytarib qo'yamiz
+      // Belgilangan hollarni originaldan qaytarib qo'yamiz
       if (moles.length) {
         if (btn) btn.textContent = '⏳ Hollar qaytarilmoqda...';
         retouched = await restoreMoles(base, retouched, moles);
@@ -660,6 +655,82 @@
     return await canvasToImage(out);
   }
 
+  // ── QO'LDA HOL BELGILASH (ishonchli — operator tanlaydi) ──
+  let _moleStudent = null;
+  let _moleDispW = 0, _moleDispH = 0;
+
+  function drawMoleMarker() {
+    const canvas = document.getElementById('gmpMoleCanvas');
+    if (!canvas || !_moleStudent) return;
+    const img = _moleStudent.origImg || _moleStudent.img;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const pts = _moleStudent.keepMoles || [];
+    pts.forEach(p => {
+      const x = p.nx * canvas.width, y = p.ny * canvas.height;
+      ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2);
+      ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(57,217,138,0.35)'; ctx.fill();
+    });
+  }
+
+  function openMoleMarker() {
+    const students = (window.AppState && window.AppState.students) || [];
+    const idx = (window.AppState && window.AppState.currentPreviewIdx) || 0;
+    const student = students[idx];
+    if (!student || !student.img) { alert('Avval o\'quvchi rasmini yuklang.'); return; }
+    _moleStudent = student;
+    if (!student.keepMoles) student.keepMoles = [];
+
+    const overlay = document.getElementById('gmpMoleOverlay');
+    const canvas = document.getElementById('gmpMoleCanvas');
+    const img = student.origImg || student.img;
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const maxSide = 520;
+    const scale = Math.min(1, maxSide / Math.max(iw, ih));
+    canvas.width = Math.round(iw * scale);
+    canvas.height = Math.round(ih * scale);
+    _moleDispW = canvas.width; _moleDispH = canvas.height;
+    drawMoleMarker();
+    overlay.style.display = 'flex';
+  }
+
+  function onMoleCanvasClick(e) {
+    if (!_moleStudent) return;
+    const canvas = document.getElementById('gmpMoleCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const nx = x / canvas.width, ny = y / canvas.height;
+    const pts = _moleStudent.keepMoles;
+    // yaqin nuqta bo'lsa — olib tashlaymiz (toggle)
+    const hitR = 12 / canvas.width;   // nisbiy
+    const i = pts.findIndex(p => Math.hypot(p.nx - nx, p.ny - ny) < hitR);
+    if (i >= 0) pts.splice(i, 1);
+    else pts.push({ nx, ny });
+    drawMoleMarker();
+  }
+
+  // keepMoles (nuqtalar) -> restoreMoles uchun box_2d (0..1000) ga aylantirish
+  function moleBoxesFromPoints(img, faceNorm, pts) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const rPx = faceNorm && faceNorm.fh
+      ? Math.max(6, faceNorm.fh * ih * 0.035)
+      : Math.max(6, Math.min(iw, ih) * 0.014);
+    return (pts || []).map(p => {
+      const cx = p.nx * iw, cy = p.ny * ih;
+      return {
+        type: 'mole',
+        box_2d: [
+          (cy - rPx) / ih * 1000, (cx - rPx) / iw * 1000,
+          (cy + rPx) / ih * 1000, (cx + rPx) / iw * 1000,
+        ],
+      };
+    });
+  }
+
   // ── Natijani modalda ko'rsatish (rasm + belgilar) ─────────
   function showResult(img, dets) {
     const overlay = document.getElementById('gmpOverlay');
@@ -829,8 +900,26 @@
     const aiBtn = document.getElementById('gmpAiBtn');
     if (aiBtn) aiBtn.addEventListener('click', applyAiRetouch);
 
+    const moleBtn = document.getElementById('gmpMoleBtn');
+    if (moleBtn) moleBtn.addEventListener('click', openMoleMarker);
+    const moleCanvas = document.getElementById('gmpMoleCanvas');
+    if (moleCanvas) moleCanvas.addEventListener('click', onMoleCanvasClick);
+    const moleClose = document.getElementById('gmpMoleClose');
+    if (moleClose) moleClose.addEventListener('click', () => {
+      document.getElementById('gmpMoleOverlay').style.display = 'none';
+    });
+    const moleSave = document.getElementById('gmpMoleSave');
+    if (moleSave) moleSave.addEventListener('click', () => {
+      document.getElementById('gmpMoleOverlay').style.display = 'none';
+    });
+    const moleClear = document.getElementById('gmpMoleClear');
+    if (moleClear) moleClear.addEventListener('click', () => {
+      if (_moleStudent) _moleStudent.keepMoles = [];
+      drawMoleMarker();
+    });
+
     syncKeyUI();
   });
 
-  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, restoreMoles, applyAiRetouch, getKey, setKey };
+  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, restoreMoles, openMoleMarker, applyAiRetouch, getKey, setKey };
 })();
