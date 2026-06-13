@@ -373,6 +373,21 @@
             <input type="text" id="leftLabel" placeholder="(bo'sh = o'quvchi ismi)"/>
           </div>
 
+          <h4 style="margin-top:14px">🧪 Gemini Mapping (test)</h4>
+          <div class="ctrl-group" style="margin-bottom:6px">
+            <label style="display:flex;justify-content:space-between">
+              <span>API kalit</span>
+              <span id="gmpKeyStatus" style="font-size:11px">Kalit kiritilmagan</span>
+            </label>
+            <input type="password" id="gmpKeyInput" placeholder="Gemini API kalit (faqat brauzerда saqlanadi)"
+                   style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:#1a1a2a;color:#fff;font-size:12px"/>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button id="gmpKeySave"  class="btn-refresh-preview" style="flex:1">💾 Saqlash</button>
+              <button id="gmpKeyClear" class="btn-refresh-preview" style="flex:1">🗑 Tozalash</button>
+            </div>
+          </div>
+          <button id="gmpBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:14px">🔍 Joriy rasmda dog'larni aniqlash</button>
+
           <h4 style="margin-top:14px">🎨 Retush (Portret)</h4>
           <button id="rtAuto" class="btn-refresh-preview" style="width:100%;margin-bottom:8px">✨ Avto-retush (har bir rasm)</button>
           <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -455,11 +470,24 @@
   <p>© 2026 VinyetkaLab · Maktab albom va vinyetka generatori</p>
 </footer>
 
+<!-- GEMINI MAPPING NATIJA MODALI -->
+<div id="gmpOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.78);align-items:center;justify-content:center">
+  <div style="background:#15151f;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:18px;max-width:600px;width:92%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0;color:#fff;font-size:16px">🔍 Gemini Mapping natijasi</h3>
+      <button id="gmpClose" style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <canvas id="gmpCanvas" style="max-width:100%;border-radius:8px;display:block;margin:0 auto"></canvas>
+    <p id="gmpInfo" style="color:#cfcfe0;font-size:13px;text-align:center;margin:12px 0 0"></p>
+  </div>
+</div>
+
 <!-- LIBS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 <script src="templates.js"></script>
 <script src="generator.js"></script>
 <script src="editor.js"></script>
+<script src="gemini.js"></script>
 </body>
 </html>
