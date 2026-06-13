@@ -388,6 +388,7 @@
           </div>
           <button id="gmpBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px">🔍 Joriy rasmda dog'larni aniqlash</button>
           <button id="gmpAiBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px;background:#7c3aed;color:#fff">🪄 AI Retush (Gemini — studio sifat)</button>
+          <button id="gmpMoleBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px;background:#0f766e;color:#fff">🟢 Saqlanadigan hollarni belgilash</button>
           <button id="gmpRevertBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:14px">↩︎ Asl rasmni qaytarish</button>
 
           <h4 style="margin-top:14px">🎨 Retush (Portret)</h4>
@@ -482,6 +483,22 @@
     <canvas id="gmpCanvas" style="max-width:100%;border-radius:8px;display:block;margin:0 auto"></canvas>
     <p id="gmpInfo" style="color:#cfcfe0;font-size:13px;text-align:center;margin:12px 0 0"></p>
     <button id="gmpHealBtn" class="btn-refresh-preview" style="width:100%;margin-top:12px;background:#2563eb;color:#fff">✨ Shu dog'larni sog'lom teri bilan tozalash</button>
+  </div>
+</div>
+
+<!-- HOL BELGILASH MODALI -->
+<div id="gmpMoleOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.78);align-items:center;justify-content:center">
+  <div style="background:#15151f;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:18px;max-width:600px;width:92%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0;color:#fff;font-size:16px">🟢 Saqlanadigan hollarni belgilang</h3>
+      <button id="gmpMoleClose" style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <p style="color:#cfcfe0;font-size:12px;margin:0 0 10px">Hol ustiga bosing (yashil = saqlanadi). Yana bossangiz olib tashlanadi. Retushda shu nuqtalar originaldan qoldiriladi.</p>
+    <canvas id="gmpMoleCanvas" style="max-width:100%;border-radius:8px;display:block;margin:0 auto;cursor:crosshair"></canvas>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="gmpMoleClear" class="btn-refresh-preview" style="flex:1">🗑 Hammasini tozalash</button>
+      <button id="gmpMoleSave" class="btn-refresh-preview" style="flex:1;background:#0f766e;color:#fff">✓ Saqlash</button>
+    </div>
   </div>
 </div>
 
