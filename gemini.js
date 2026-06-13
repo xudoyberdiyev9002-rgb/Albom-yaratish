@@ -387,13 +387,14 @@
     const prompt =
       "Retouch this portrait like a professional studio photo retoucher working in " +
       "Photoshop. Remove acne, pimples, blackheads, dark spots, hyperpigmentation, " +
-      "scars, prominent moles and skin redness from the facial skin. Leave smooth, " +
+      "scars and skin redness from the facial skin. Leave smooth, " +
       "clean, natural and healthy-looking skin that still keeps realistic texture and " +
-      "pores (NOT plastic or over-smoothed). CRITICAL: keep the exact same person — do " +
-      "not change identity, facial features, face shape, expression, skin tone, makeup, " +
-      "hair, clothing, pose, lighting or background. Keep the EXACT same framing, " +
-      "composition, head size and position — do NOT zoom, crop, rotate or shift. " +
-      "Do not slim or beautify. Return ONLY the edited photograph at the same dimensions.";
+      "pores (NOT plastic or over-smoothed). IMPORTANT: KEEP natural moles and beauty " +
+      "marks exactly as they are — do NOT remove or move them. CRITICAL: keep the exact " +
+      "same person — do not change identity, facial features, face shape, expression, " +
+      "skin tone, makeup, hair, clothing, pose, lighting or background. Keep the EXACT " +
+      "same framing, composition, head size and position — do NOT zoom, crop, rotate or " +
+      "shift. Do not slim or beautify. Return ONLY the edited photograph at the same dimensions.";
 
     const body = {
       contents: [{
@@ -455,16 +456,32 @@
       const base = student.origImg || student.img;     // har doim asldan ishlaymiz
       if (btn) btn.textContent = '⏳ Yuz aniqlanmoqda...';
       const faceNorm = await getFaceNorm(base, idx);
+
+      // Hollarni saqlash uchun avval ularning joyini aniqlaymiz (arzon mapping)
+      let moles = [];
+      try {
+        if (btn) btn.textContent = '⏳ Hollar aniqlanmoqda...';
+        const dets = await mapBlemishes(base, faceNorm);
+        moles = dets.filter(d => d.type === 'mole');
+      } catch (e) { /* mapping bo'lmasa ham retush davom etadi */ }
+
       if (btn) btn.textContent = '🪄 AI retush qilinmoqda...';
       // Yuz topilsa — kesib retush (yuqori sifat), aks holda butun rasm
-      const retouched = faceNorm
+      let retouched = faceNorm
         ? await geminiRetouchFace(base, faceNorm)
         : await geminiRetouch(base);
+
+      // Hollarni originaldan qaytarib qo'yamiz
+      if (moles.length) {
+        if (btn) btn.textContent = '⏳ Hollar qaytarilmoqda...';
+        retouched = await restoreMoles(base, retouched, moles);
+      }
+
       if (!student.origImg) student.origImg = student.img;
       student.img = retouched;
       if (student.img.__rt) delete student.img.__rt;
       if (typeof renderPreview === 'function') renderPreview();
-      if (btn) { btn.textContent = '✓ Tayyor'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500); }
+      if (btn) { btn.textContent = '✓ Tayyor' + (moles.length ? ' (' + moles.length + ' hol saqlandi)' : ''); setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1800); }
     } catch (e) {
       alert('AI retush xatosi: ' + (e.message || e));
       if (btn) { btn.textContent = orig; btn.disabled = false; }
@@ -592,6 +609,54 @@
     const fctx = out.getContext('2d');
     fctx.drawImage(img, 0, 0, iw, ih);
     fctx.drawImage(ocv, box.x0, box.y0);
+    return await canvasToImage(out);
+  }
+
+  // ── HOLLARNI SAQLASH ──────────────────────────────────────
+  // Retushdan keyin aniqlangan hol joylarini ORIGINALDAN qaytarib qo'yamiz.
+  // O'lcham mustaqil: koordinatalar 0..1000 normada, har rasmga moslab.
+  async function restoreMoles(originalImg, resultImg, moles) {
+    const ow = originalImg.naturalWidth || originalImg.width;
+    const oh = originalImg.naturalHeight || originalImg.height;
+    const rw = resultImg.naturalWidth || resultImg.width;
+    const rh = resultImg.naturalHeight || resultImg.height;
+    const out = document.createElement('canvas');
+    out.width = rw; out.height = rh;
+    const ctx = out.getContext('2d');
+    ctx.drawImage(resultImg, 0, 0, rw, rh);
+
+    const sxr = ow / rw, syr = oh / rh;
+    moles.forEach(d => {
+      const b = d.box_2d || [];
+      if (b.length < 4) return;
+      const rcx = ((b[1] + b[3]) / 2 / 1000) * rw;
+      const rcy = ((b[0] + b[2]) / 2 / 1000) * rh;
+      const rbw = ((b[3] - b[1]) / 1000) * rw;
+      const rbh = ((b[2] - b[0]) / 1000) * rh;
+      const rad = Math.max(4, Math.max(rbw, rbh) / 2 * 1.35);
+      const dsize = Math.round(rad * 2);
+      const dx = rcx - rad, dy = rcy - rad;
+
+      const tmp = document.createElement('canvas');
+      tmp.width = dsize; tmp.height = dsize;
+      const tctx = tmp.getContext('2d');
+      // originaldan shu zonani olamiz (o'lchamga moslab)
+      tctx.drawImage(originalImg,
+        (dx) * sxr, (dy) * syr, dsize * sxr, dsize * syr,
+        0, 0, dsize, dsize);
+      // radial yumshoq niqob (markaz to'liq, chetga shaffof)
+      tctx.globalCompositeOperation = 'destination-in';
+      const g = tctx.createRadialGradient(rad, rad, 0, rad, rad, rad);
+      g.addColorStop(0, 'rgba(0,0,0,1)');
+      g.addColorStop(0.6, 'rgba(0,0,0,1)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      tctx.fillStyle = g;
+      tctx.fillRect(0, 0, dsize, dsize);
+      tctx.globalCompositeOperation = 'source-over';
+
+      ctx.drawImage(tmp, dx, dy);
+    });
+
     return await canvasToImage(out);
   }
 
@@ -767,5 +832,5 @@
     syncKeyUI();
   });
 
-  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, applyAiRetouch, getKey, setKey };
+  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, restoreMoles, applyAiRetouch, getKey, setKey };
 })();
