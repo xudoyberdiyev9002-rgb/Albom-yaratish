@@ -385,16 +385,17 @@
     const data = imgToDataB64(img, 1280);
 
     const prompt =
-      "Retouch this portrait like a professional studio photo retoucher working in " +
-      "Photoshop. Remove acne, pimples, blackheads, dark spots, hyperpigmentation, " +
-      "scars and skin redness from the facial skin. Leave smooth, " +
-      "clean, natural and healthy-looking skin that still keeps realistic texture and " +
-      "pores (NOT plastic or over-smoothed). IMPORTANT: KEEP natural moles and beauty " +
-      "marks exactly as they are — do NOT remove or move them. CRITICAL: keep the exact " +
-      "same person — do not change identity, facial features, face shape, expression, " +
-      "skin tone, makeup, hair, clothing, pose, lighting or background. Keep the EXACT " +
-      "same framing, composition, head size and position — do NOT zoom, crop, rotate or " +
-      "shift. Do not slim or beautify. Return ONLY the edited photograph at the same dimensions.";
+      "You are doing MINIMAL, conservative skin retouching on this portrait. " +
+      "ONLY remove clearly temporary skin problems: active acne, pimples, " +
+      "whiteheads, blackheads and obvious red inflammation. You MAY lightly reduce " +
+      "very strong dark spots. DO NOTHING ELSE. " +
+      "STRICT RULES — you MUST obey: do NOT smooth or blur the skin, do NOT even out " +
+      "skin tone, do NOT remove natural texture, pores, freckles, moles or beauty " +
+      "marks. Do NOT change the face shape, jaw, nose, eyes, eyebrows, lips, teeth, " +
+      "expression, makeup, hair, skin color, lighting, pose, framing, head size or " +
+      "background. Do NOT beautify, slim, brighten or 'improve' the face. Keep the " +
+      "EXACT same person and the EXACT same image, only with active blemishes gone. " +
+      "Return ONLY the edited photograph at the same dimensions.";
 
     const body = {
       contents: [{
@@ -580,25 +581,57 @@
     const rctx = rcv.getContext('2d');
     rctx.drawImage(retouchedImg, 0, 0, S, S);
 
-    // 4) Teri niqobi (original kropdan)
+    // 4) FARQ-ASOSLI minimal aralashtirish:
+    //    faqat original va retush O'RTASIDAGI sezilarli farq (= olingan dog')
+    //    bo'lgan teri piksellari almashtiriladi. Qolgan teri 100% ORIGINAL qoladi
+    //    -> yuz o'zgarmaydi, faqat dog'lar ketadi.
     const ocv = document.createElement('canvas');
     ocv.width = S; ocv.height = S;
     const octx = ocv.getContext('2d');
     octx.drawImage(crop, 0, 0);
-    const srcData = octx.getImageData(0, 0, S, S).data;
+    const O = octx.getImageData(0, 0, S, S);
+    const R = rctx.getImageData(0, 0, S, S);
+    const od = O.data, rd = R.data;
     const rx = box.fhpx * 0.58, ry = box.fhpx * 0.74;
-    const mask = buildSkinMask(srcData, S, S, box.fcx, box.fcy, rx, ry);
+    const T0 = 14, T1 = 60;   // farq chegaralari (kichik farq = teginilmaydi)
 
-    // 5) Retushga niqob alfasini qo'yamiz (faqat teri qoladi)
-    rctx.globalCompositeOperation = 'destination-in';
-    rctx.drawImage(mask, 0, 0);
-    rctx.globalCompositeOperation = 'source-over';
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const i = (y * S + x) * 4;
+        const r = od[i], g = od[i + 1], b = od[i + 2];
+        // teri ehtimoli (YCbCr)
+        const Cb = -0.169 * r - 0.331 * g + 0.5 * b + 128;
+        const Cr = 0.5 * r - 0.419 * g - 0.081 * b + 128;
+        let skin = 1;
+        if (Cr < 123) skin = 0;
+        else if (Cr < 135) skin *= (Cr - 123) / 12;
+        else if (Cr > 180) skin = (Cr > 192) ? 0 : skin * (192 - Cr) / 12;
+        if (skin > 0) {
+          if (Cb < 73) skin = 0;
+          else if (Cb < 85) skin *= (Cb - 73) / 12;
+          else if (Cb > 135) skin = (Cb > 147) ? 0 : skin * (147 - Cb) / 12;
+        }
+        if (skin <= 0) continue;                 // teri emas -> original qoladi
+        // yuz ellipsi
+        const ex = (x - box.fcx) / rx, ey = (y - box.fcy) / ry;
+        let e = 1 - (ex * ex + ey * ey);
+        e = e <= 0 ? 0 : (e >= 0.35 ? 1 : e / 0.35);
+        if (e <= 0) continue;
+        // original vs retush farqi (qancha o'zgargan = dog'mi)
+        const dist = (Math.abs(r - rd[i]) + Math.abs(g - rd[i + 1]) + Math.abs(b - rd[i + 2])) / 3;
+        let a = (dist - T0) / (T1 - T0);
+        a = a <= 0 ? 0 : (a >= 1 ? 1 : a);
+        a = a * a * (3 - 2 * a);
+        const w2 = a * Math.min(1, skin) * e;
+        if (w2 <= 0) continue;
+        od[i]     = r + (rd[i] - r) * w2;
+        od[i + 1] = g + (rd[i + 1] - g) * w2;
+        od[i + 2] = b + (rd[i + 2] - b) * w2;
+      }
+    }
+    octx.putImageData(O, 0, 0);
 
-    // 6) Original krop ustiga teri-retushni qo'yamiz
-    //    -> ko'z/lab/qosh/soch ORIGINAL, faqat teri tozalangan
-    octx.drawImage(rcv, 0, 0);
-
-    // 7) To'liq o'lchamli rasmga qaytarib joylash
+    // 5) To'liq o'lchamli rasmga qaytarib joylash
     const out = document.createElement('canvas');
     out.width = iw; out.height = ih;
     const fctx = out.getContext('2d');
@@ -646,20 +679,22 @@
       const px = im.data;
       const c = dsize / 2;
 
-      // atrofdagi SOG'LOM teri yorug'ligi (tashqi halqa)
-      let bgSum = 0, bgN = 0;
+      // atrofdagi SOG'LOM teri rangi va yorug'ligi (tashqi halqa)
+      let bgSum = 0, bgR = 0, bgG = 0, bgB = 0, bgN = 0;
       for (let y = 0; y < dsize; y++) {
         for (let x = 0; x < dsize; x++) {
           const dist = Math.hypot(x - c, y - c);
           if (dist < rad * 0.6 || dist > rad * 0.98) continue;
           const i = (y * dsize + x) * 4;
           bgSum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          bgR += px[i]; bgG += px[i + 1]; bgB += px[i + 2];
           bgN++;
         }
       }
       const bgL = bgN ? bgSum / bgN : 128;
+      const mR = bgN ? bgR / bgN : 128, mG = bgN ? bgG / bgN : 128, mB = bgN ? bgB / bgN : 128;
 
-      // har piksel: faqat atrofdan TO'Q (hol) bo'lsa va doira ichida bo'lsa qoldiramiz
+      // har piksel: atrofdan TO'Q yoki RANGI farqli (= hol) bo'lsa qoldiramiz
       for (let y = 0; y < dsize; y++) {
         for (let x = 0; x < dsize; x++) {
           const i = (y * dsize + x) * 4;
@@ -667,9 +702,16 @@
           let fr = 1 - (dist / rad);                  // radial yumshatish
           fr = fr <= 0 ? 0 : (fr >= 0.4 ? 1 : fr / 0.4);
           fr = fr * fr * (3 - 2 * fr);
-          const L = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-          let mn = (bgL - L - 6) / 30;                // atrofdan to'q bo'lsa (hol)
-          mn = mn <= 0 ? 0 : (mn >= 1 ? 1 : mn);
+          const r = px[i], g = px[i + 1], b = px[i + 2];
+          const L = 0.299 * r + 0.587 * g + 0.114 * b;
+          // to'qlik (qora hol) — pastroq chegara, ishonchli saqlash
+          let lumDark = (bgL - L - 4) / 26;
+          lumDark = lumDark <= 0 ? 0 : (lumDark >= 1 ? 1 : lumDark);
+          // rang farqi (jigarrang hol)
+          const cdist = (Math.abs(r - mR) + Math.abs(g - mG) + Math.abs(b - mB)) / 3;
+          let cd = (cdist - 8) / 30;
+          cd = cd <= 0 ? 0 : (cd >= 1 ? 1 : cd);
+          let mn = Math.max(lumDark, cd);
           mn = mn * mn * (3 - 2 * mn);
           px[i + 3] = Math.round(fr * mn * 255);
         }
@@ -996,6 +1038,63 @@
     }
   }
 
+  // BATCH: hamma o'quvchini avtomatik retush + toza yuzlarni o'tkazib yuborish
+  async function autoRetouchAll() {
+    const btn = document.getElementById('gmpBatchBtn');
+    const students = (window.AppState && window.AppState.students) || [];
+    if (!students.length) { alert('Avval o\'quvchi rasmlarini yuklang.'); return; }
+
+    if (!getKey()) {
+      const k = prompt('Gemini API kalitini kiriting (faqat shu brauzerда saqlanadi):');
+      if (!k) return;
+      setKey(k); syncKeyUI();
+    }
+
+    const orig = btn ? btn.textContent : '';
+    if (btn) btn.disabled = true;
+    let cleaned = 0, skipped = 0, failed = 0;
+
+    for (let i = 0; i < students.length; i++) {
+      const s = students[i];
+      if (!s || !s.img) { continue; }
+      if (btn) btn.textContent = `\u23f3 ${i + 1}/${students.length} (\u2713${cleaned} \u23ed${skipped})`;
+      window.AppState.currentPreviewIdx = i;   // jarayonni ko'rsatish
+      try {
+        const base = s.origImg || s.img;
+        const faceNorm = await getFaceNorm(base, i);
+
+        // FILTR: dog' bormi? (arzon mapping) — toza bo'lsa generatsiya QILINMAYDI
+        let dets = [];
+        try { dets = await mapBlemishes(base, faceNorm); } catch (e) {}
+        const significant = dets.filter(d => d.type !== 'mole' && (d.severity || 2) >= 2);
+        if (significant.length === 0) { skipped++; continue; }
+
+        // tozalash kerak -> retush
+        let retouched = faceNorm
+          ? await geminiRetouchFace(base, faceNorm)
+          : await geminiRetouch(base);
+
+        const moles = moleBoxesFromPoints(base, faceNorm, s.keepMoles);
+        if (moles.length) retouched = await restoreMoles(base, retouched, moles);
+
+        if (!s.origImg) s.origImg = s.img;
+        s.img = retouched;
+        if (s.img.__rt) delete s.img.__rt;
+        cleaned++;
+      } catch (e) {
+        failed++;
+        console.warn('Batch retush xatosi (rasm ' + (i + 1) + '):', e);
+      }
+    }
+
+    if (typeof renderPreview === 'function') renderPreview();
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+    alert('Tayyor!\n\u2713 Tozalandi: ' + cleaned +
+          '\n\u23ed Toza (o\'tkazildi): ' + skipped +
+          (failed ? '\n\u26a0 Xato: ' + failed : '') +
+          '\n\nGeneratsiya faqat ' + cleaned + ' ta rasmga ishlatildi.');
+  }
+
   function syncKeyUI() {
     const has = !!getKey();
     const st = document.getElementById('gmpKeyStatus');
@@ -1032,6 +1131,9 @@
     const aiBtn = document.getElementById('gmpAiBtn');
     if (aiBtn) aiBtn.addEventListener('click', applyAiRetouch);
 
+    const batchBtn = document.getElementById('gmpBatchBtn');
+    if (batchBtn) batchBtn.addEventListener('click', autoRetouchAll);
+
     const moleBtn = document.getElementById('gmpMoleBtn');
     if (moleBtn) moleBtn.addEventListener('click', openMoleMarker);
     const moleCv = document.getElementById('gmpMoleCanvas');
@@ -1067,5 +1169,5 @@
     syncKeyUI();
   });
 
-  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, restoreMoles, openMoleMarker, applyAiRetouch, getKey, setKey };
+  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, restoreMoles, openMoleMarker, applyAiRetouch, autoRetouchAll, getKey, setKey };
 })();

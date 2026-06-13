@@ -110,11 +110,26 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
    yuborish + batch (50% arzon) — KEYINGI QADAM, hali qilinmagan.
 
    **OCHIQ MUAMMOLAR / keyingi qadamlar:**
-   - Juda TO'Q dog'lar teri-niqobdan tashqarida qolib, tozalanmay qolishi mumkin
-     (niqobga to'q dog'larni qamrash qo'shilishi mumkin).
-   - Batch: hamma o'quvchini bir tugmada retush.
-   - Faqat dog'li yuzlarni yuborish (mapping'ni "filtr" sifatida) → pul tejash.
    - Yuqori rezolyutsiya / Nano Banana 2 (`gemini-3.1-flash-image`).
+
+   **MINIMAL RETUSH + QAT'IY FILTR (qilindi):** Gemini yuzni o'zgartirardi.
+   - Prompt MINIMAL/konservativ qilindi: faqat aktiv akne/dog' olinadi, silliqlash/
+     "perfect yuz" yo'q, tuzilish/rang/yorug'lik tegilmaydi.
+   - `geminiRetouchFace` endi **FARQ-ASOSLI aralashtirish**: original va Gemini
+     natijasi o'rtasida sezilarli farq bo'lgan TERI piksellarigina almashtiriladi
+     (T0=14,T1=60 chegara + YCbCr teri + yuz ellipsi). Toza teri 100% ORIGINAL
+     qoladi → yuz o'zgarmaydi. (eski to'liq teri-niqob `buildSkinMask` o'rniga.)
+
+   **BATCH + TOZA YUZNI O'TKAZISH (qilindi) — `autoRetouchAll()`:**
+   - 🚀 "Hammasini avtomatik retush" tugmasi (`gmpBatchBtn`).
+   - Har o'quvchi: avval ARZON `mapBlemishes` (filtr). `type!=='mole' && severity>=2`
+     bo'lgan dog' bo'lmasa → TOZA deb generatsiya QILINMAYDI (pul tejaladi).
+     Aks holda `geminiRetouchFace` + belgilangan hollarni `restoreMoles`.
+     Oxirida hisobot: nechta tozalandi / o'tkazildi / xato.
+
+   **HOL QAYTARISH yaxshilandi:** `restoreMoles` endi dumaloq disk emas, faqat
+   holning o'zini transplant qiladi (to'qlik + RANG farqi, pastroq chegara →
+   belgilangan hol ishonchli saqlanadi, dumaloq yamoq yo'q).
 
    **HOLLARNI SAQLASH (qilindi):** retush hollarni o'chirib yuborardi.
    - Birinchi urinish (avtomatik Gemini `type==='mole'` tasnifi) ISHONCHSIZ
