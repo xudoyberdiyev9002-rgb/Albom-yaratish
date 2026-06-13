@@ -655,57 +655,86 @@
     return await canvasToImage(out);
   }
 
-  // ── QO'LDA HOL BELGILASH (ishonchli — operator tanlaydi) ──
+  // ── QO'LDA HOL BELGILASH (faqat yuzni kattalashtirib ko'rsatadi) ──
   let _moleStudent = null;
-  let _moleDispW = 0, _moleDispH = 0;
+  let _moleBox = null;      // yuz-crop (original px): {x0,y0,cw,ch}
+  let _moleImg = null;      // asl rasm
+
+  // to'liq-rasm normasi (nx,ny) -> canvas px
+  function moleNormToCanvas(nx, ny, canvas) {
+    const iw = _moleImg.naturalWidth || _moleImg.width;
+    const ih = _moleImg.naturalHeight || _moleImg.height;
+    const ox = nx * iw, oy = ny * ih;
+    const fx = (ox - _moleBox.x0) / _moleBox.cw;
+    const fy = (oy - _moleBox.y0) / _moleBox.ch;
+    return { x: fx * canvas.width, y: fy * canvas.height, in: fx >= 0 && fx <= 1 && fy >= 0 && fy <= 1 };
+  }
 
   function drawMoleMarker() {
     const canvas = document.getElementById('gmpMoleCanvas');
-    if (!canvas || !_moleStudent) return;
-    const img = _moleStudent.origImg || _moleStudent.img;
+    if (!canvas || !_moleStudent || !_moleBox) return;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const pts = _moleStudent.keepMoles || [];
-    pts.forEach(p => {
-      const x = p.nx * canvas.width, y = p.ny * canvas.height;
-      ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2);
+    // faqat yuz-crop ko'rsatiladi
+    ctx.drawImage(_moleImg, _moleBox.x0, _moleBox.y0, _moleBox.cw, _moleBox.ch,
+                  0, 0, canvas.width, canvas.height);
+    (_moleStudent.keepMoles || []).forEach(p => {
+      const c = moleNormToCanvas(p.nx, p.ny, canvas);
+      if (!c.in) return;
+      ctx.beginPath(); ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
       ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 2.5; ctx.stroke();
       ctx.fillStyle = 'rgba(57,217,138,0.35)'; ctx.fill();
     });
   }
 
-  function openMoleMarker() {
+  async function openMoleMarker() {
     const students = (window.AppState && window.AppState.students) || [];
     const idx = (window.AppState && window.AppState.currentPreviewIdx) || 0;
     const student = students[idx];
     if (!student || !student.img) { alert('Avval o\'quvchi rasmini yuklang.'); return; }
+
+    const btn = document.getElementById('gmpMoleBtn');
+    const bOrig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Yuz aniqlanmoqda...'; }
+
     _moleStudent = student;
+    _moleImg = student.origImg || student.img;
     if (!student.keepMoles) student.keepMoles = [];
 
-    const overlay = document.getElementById('gmpMoleOverlay');
+    const iw = _moleImg.naturalWidth || _moleImg.width;
+    const ih = _moleImg.naturalHeight || _moleImg.height;
+    try {
+      const faceNorm = await getFaceNorm(_moleImg, idx);
+      const box = faceEditBox(_moleImg, faceNorm);
+      _moleBox = box.full ? { x0: 0, y0: 0, cw: iw, ch: ih } : { x0: box.x0, y0: box.y0, cw: box.cw, ch: box.ch };
+    } catch (e) {
+      _moleBox = { x0: 0, y0: 0, cw: iw, ch: ih };
+    }
+
     const canvas = document.getElementById('gmpMoleCanvas');
-    const img = student.origImg || student.img;
-    const iw = img.naturalWidth || img.width;
-    const ih = img.naturalHeight || img.height;
-    const maxSide = 520;
-    const scale = Math.min(1, maxSide / Math.max(iw, ih));
-    canvas.width = Math.round(iw * scale);
-    canvas.height = Math.round(ih * scale);
-    _moleDispW = canvas.width; _moleDispH = canvas.height;
+    const maxSide = 540;
+    const scale = Math.min(1, maxSide / Math.max(_moleBox.cw, _moleBox.ch));
+    canvas.width = Math.round(_moleBox.cw * scale);
+    canvas.height = Math.round(_moleBox.ch * scale);
     drawMoleMarker();
-    overlay.style.display = 'flex';
+    document.getElementById('gmpMoleOverlay').style.display = 'flex';
+    if (btn) { btn.textContent = bOrig; btn.disabled = false; }
   }
 
   function onMoleCanvasClick(e) {
-    if (!_moleStudent) return;
+    if (!_moleStudent || !_moleBox) return;
     const canvas = document.getElementById('gmpMoleCanvas');
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    const nx = x / canvas.width, ny = y / canvas.height;
+    const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const cy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    // canvas px -> crop fraction -> to'liq-rasm normasi
+    const iw = _moleImg.naturalWidth || _moleImg.width;
+    const ih = _moleImg.naturalHeight || _moleImg.height;
+    const ox = _moleBox.x0 + (cx / canvas.width) * _moleBox.cw;
+    const oy = _moleBox.y0 + (cy / canvas.height) * _moleBox.ch;
+    const nx = ox / iw, ny = oy / ih;
     const pts = _moleStudent.keepMoles;
     // yaqin nuqta bo'lsa — olib tashlaymiz (toggle)
-    const hitR = 12 / canvas.width;   // nisbiy
+    const hitR = (14 / canvas.width) * (_moleBox.cw / iw);
     const i = pts.findIndex(p => Math.hypot(p.nx - nx, p.ny - ny) < hitR);
     if (i >= 0) pts.splice(i, 1);
     else pts.push({ nx, ny });
