@@ -121,7 +121,7 @@
       mole: '#00bbf9', redness: '#ff6f91',
     };
 
-    dets.forEach(d => {
+    dets.forEach((d, i) => {
       const b = d.box_2d || [];
       if (b.length < 4) return;
       // Gemini: [ymin,xmin,ymax,xmax] 0..1000
@@ -129,9 +129,22 @@
       const y = (b[0] / 1000) * h;
       const bw = ((b[3] - b[1]) / 1000) * w;
       const bh = ((b[2] - b[0]) / 1000) * h;
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = colors[d.type] || '#39ff14';
-      ctx.strokeRect(x, y, bw, bh);
+      const cx = x + bw / 2, cy = y + bh / 2;
+      const col = colors[d.type] || '#39ff14';
+      // markaz nuqtasi
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
+      // ko'rinadigan doira (min radius)
+      const rad = Math.max(11, bw / 2, bh / 2);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.stroke();
+      // raqam
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(String(i + 1), cx + rad + 2, cy + 4);
+      ctx.fillStyle = col;
+      ctx.fillText(String(i + 1), cx + rad + 1, cy + 3);
     });
 
     const counts = {};
