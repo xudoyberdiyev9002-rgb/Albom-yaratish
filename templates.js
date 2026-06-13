@@ -4,58 +4,62 @@
  */
 
 /**
- * Teri silliqlash — Portraiture uslubidagi: TERI-RANG MASKASI + chastota ajratish.
+ * Maqsadli "spot-healing" (dog' tozalash) - Photoshop "Spot Healing" uslubida.
  *
- * Farqi (oldingi "smart blur" dan):
- *   • Silliqlash FAQAT teri rangidagi piksellarga qo'llanadi (YCbCr maskasi)
- *     → fon, soch, kiyim, ko'z, qosh, kiprik umuman tegmaydi.
- *   • Teri ichida ham kuchli chekkalar (lab cheti, burun) saqlanadi.
- *   • Tekstura qisman saqlanadi (plastik/"yasama" ko'rinish bo'lmaydi).
+ * Butun yuzni silliqlash O'RNIGA:
+ *   - Faqat TERI zonasidagi dog'/husnbuzar (atrofdan ajralib turgan qora/qizil/
+ *     yaltiroq kichik nuqtalar) topiladi va atrofdagi SOG'LOM teri rangi bilan
+ *     to'ldiriladi (healing).
+ *   - Toza teri O'TKIR va tabiiy qoladi (tekstura/pora saqlanadi).
+ *   - Qolgan teriga juda yengil tekislash (blotch/qizarishni kamaytirish).
+ *   - Ko'z, qosh, soch, fon, kiyim - tegilmaydi (teri maskasi tashqarisida).
  *
- *  img        : manba rasm (data-URL canvas — taint emas)
+ *  img        : manba rasm
  *  tw, th     : chizilayotgan o'lcham (px)
- *  amount     : 0..100 silliqlash kuchi
- *  -> silliqlangan <canvas> (yoki xato bo'lsa null)
+ *  amount     : 0..100 tozalash kuchi
+ *  -> tozalangan <canvas> (yoki xato bo'lsa null)
  */
-function rtSkinSmooth(img, tw, th, amount) {
+function rtSpotHeal(img, tw, th, amount) {
   try {
     tw = Math.max(1, Math.round(tw));
     th = Math.max(1, Math.round(th));
     const total = tw * th;
-    const key = tw + '_' + th + '_' + amount;
+    const key = 'h' + tw + '_' + th + '_' + amount;   // 'h' = spot-heal keshi
 
-    // Kichik rasmlar (preview / grid) — keshlanadi (tez)
     const cacheable = total <= 600000;
     if (cacheable && img.__rt && img.__rt.key === key) return img.__rt.canvas;
 
-    // 1) Manba (chizilgan o'lchamda)
+    // 1) Manba
     const src  = document.createElement('canvas');
     src.width  = tw; src.height = th;
     const sctx = src.getContext('2d');
     sctx.drawImage(img, 0, 0, tw, th);
 
-    // 2) Past-chastota (rang/ton) qatlami — Gauss blur (GPU, tez)
+    // 2) "Toza teri" bazasi - dog' o'lchamidan kattaroq blur (dog'lar yo'qoladi,
+    //    katta xususiyatlar: ko'z/burun/lab saqlanadi)
     const minDim = Math.min(tw, th);
-    const radius = Math.max(0.8, (amount / 100) * minDim * 0.02);
-    const low  = document.createElement('canvas');
-    low.width  = tw; low.height = th;
-    const lctx = low.getContext('2d');
-    lctx.filter = `blur(${radius}px)`;
-    lctx.drawImage(src, 0, 0);
-    lctx.filter = 'none';
+    const radius = Math.max(2, minDim * 0.012);
+    const base = document.createElement('canvas');
+    base.width = tw; base.height = th;
+    const bctx = base.getContext('2d');
+    bctx.filter = `blur(${radius}px)`;
+    bctx.drawImage(src, 0, 0);
+    bctx.filter = 'none';
 
-    // 3) Teri maskasi + chekka-saqlovchi aralashtirish (bitta o'tishda)
     const o  = sctx.getImageData(0, 0, tw, th);
-    const lo = lctx.getImageData(0, 0, tw, th);
-    const od = o.data, ld = lo.data;
-    const strength = amount / 100;        // 0..1
-    const t0 = 4, t1 = 26;                // chekka chegaralari (detallik, 0..255)
-    const tinv = 1 / (t1 - t0);
+    const bd = bctx.getImageData(0, 0, tw, th).data;
+    const od = o.data;
+    const strength = amount / 100;                 // 0..1
+
+    const s0 = 6, s1 = 34, sinv = 1 / (s1 - s0);   // dog' chegaralari (bazadan og'ish)
+    const d0 = 6, d1 = 40, dinv = 1 / (d1 - d0);   // yengil tekislash chekka chegaralari
+    const healMax = Math.min(1, strength * 1.7);   // dog' uchun maksimal kuch
+    const lightK  = strength * 0.30;               // toza teri uchun juda yengil tekislash
 
     for (let i = 0; i < od.length; i += 4) {
       const r = od[i], g = od[i + 1], b = od[i + 2];
 
-      // — TERI maskasi (YCbCr, yumshoq chegaralar) —
+      // - TERI maskasi (YCbCr, yumshoq chegaralar) -
       const Cb = -0.169 * r - 0.331 * g + 0.5   * b + 128;
       const Cr =  0.5   * r - 0.419 * g - 0.081 * b + 128;
       let skin = 1;
@@ -67,16 +71,34 @@ function rtSkinSmooth(img, tw, th, amount) {
         else if (Cb < 85)  skin *= (Cb - 73) / 12;
         else if (Cb > 135) skin  = (Cb > 147) ? 0 : skin * (147 - Cb) / 12;
       }
-      if (skin <= 0) continue;            // teri emas → o'zgartirmaymiz (tiniq)
+      if (skin <= 0) continue;             // teri emas -> tegmaymiz
 
-      // — chekka saqlash (teri ichidagi kuchli detallar) —
-      const lr = ld[i], lg = ld[i + 1], lb = ld[i + 2];
+      const lr = bd[i], lg = bd[i + 1], lb = bd[i + 2];
+
+      // - DOG' bahosi: bazadan (atrof teridan) og'ish -
+      const L  = 0.299 * r  + 0.587 * g  + 0.114 * b;
+      const Lb = 0.299 * lr + 0.587 * lg + 0.114 * lb;
+      const dL = L - Lb;                              // <0 -> atrofdan qora
+      const redDev = (r - g) - (lr - lg);             // >0 -> atrofdan qizil
+      const darkScore   = dL < 0 ? -dL : 0;
+      const brightScore = dL > 0 ?  dL : 0;
+      const redScore    = redDev > 0 ? redDev : 0;
+      const score = darkScore * 0.6 + redScore * 1.1 + brightScore * 0.35;
+
+      // dog' uchun "healing" kuchi
+      let h = (score - s0) * sinv;
+      if (h < 0) h = 0; else if (h > 1) h = 1;
+      h = h * h * (3 - 2 * h);                        // smoothstep
+      const healW = h * healMax * skin;
+
+      // toza teri uchun yengil tekislash (haqiqiy chekkalarni saqlab)
       const detail = (Math.abs(r - lr) + Math.abs(g - lg) + Math.abs(b - lb)) * 0.3333;
-      let e = (detail - t0) * tinv;
+      let e = (detail - d0) * dinv;
       if (e < 0) e = 0; else if (e > 1) e = 1;
-      e = e * e * (3 - 2 * e);            // smoothstep
+      e = e * e * (3 - 2 * e);
+      const lightW = lightK * (1 - e) * skin;
 
-      const w = strength * skin * (1 - e);
+      const w = healW > lightW ? healW : lightW;     // ikkalasidan kuchlisi
       if (w > 0) {
         od[i]     = r + (lr - r) * w;
         od[i + 1] = g + (lg - g) * w;
@@ -88,7 +110,7 @@ function rtSkinSmooth(img, tw, th, amount) {
     if (cacheable) img.__rt = { key, canvas: src };
     return src;
   } catch (e) {
-    return null;   // xato (masalan taint) bo'lsa — oddiy chizishga qaytamiz
+    return null;   // xato (masalan taint) bo'lsa - oddiy chizishga qaytamiz
   }
 }
 
@@ -1384,9 +1406,9 @@ window.TEMPLATES = [
             `saturate(${1 + (R.saturation || 0) / 100}) ` +
             `sepia(${sepia})`;
         }
-        // Teri silliqlash: teri-rang maskasi + chastota ajratish (global blur EMAS)
+        // Teri tozalash: maqsadli dog'-healing (butun yuzni silliqlash EMAS)
         let smoothed = null;
-        if (R.smooth > 0) smoothed = rtSkinSmooth(img, dw, dh, R.smooth);
+        if (R.smooth > 0) smoothed = rtSpotHeal(img, dw, dh, R.smooth);
         if (smoothed) ctx.drawImage(smoothed, dx, dy, dw, dh);
         else          ctx.drawImage(img, dx, dy, dw, dh);
         ctx.filter = 'none';
