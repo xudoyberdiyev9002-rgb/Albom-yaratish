@@ -452,7 +452,13 @@
     if (btn) { btn.disabled = true; btn.textContent = '🪄 AI retush qilinmoqda...'; }
     try {
       const base = student.origImg || student.img;     // har doim asldan ishlaymiz
-      const retouched = await geminiRetouch(base);
+      if (btn) btn.textContent = '⏳ Yuz aniqlanmoqda...';
+      const faceNorm = await getFaceNorm(base, idx);
+      if (btn) btn.textContent = '🪄 AI retush qilinmoqda...';
+      // Yuz topilsa — kesib retush (yuqori sifat), aks holda butun rasm
+      const retouched = faceNorm
+        ? await geminiRetouchFace(base, faceNorm)
+        : await geminiRetouch(base);
       if (!student.origImg) student.origImg = student.img;
       student.img = retouched;
       if (student.img.__rt) delete student.img.__rt;
@@ -462,6 +468,75 @@
       alert('AI retush xatosi: ' + (e.message || e));
       if (btn) { btn.textContent = orig; btn.disabled = false; }
     }
+  }
+
+  // ── YUZNI KESIB RETUSH + QAYTA JOYLASH (yuqori sifat) ─────
+  // Yuz sohasi kesilib Gemini'ga yuboriladi (detal yuqori), natija
+  // original to'liq o'lchamli rasmga yumshoq chegara bilan qaytariladi.
+
+  // Retush uchun kengroq yuz-crop (kontekst bilan)
+  function faceEditBox(img, faceNorm) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    if (!faceNorm || !faceNorm.fh) return { x0: 0, y0: 0, cw: iw, ch: ih, full: true };
+    const fhpx = faceNorm.fh * ih;
+    const cxp = faceNorm.cx * iw;
+    const cyp = faceNorm.cy * ih;
+    let cw = Math.min(iw, fhpx * 1.9);
+    let ch = Math.min(ih, fhpx * 2.3);
+    let x0 = cxp - cw / 2;
+    let y0 = cyp - ch * 0.5;
+    x0 = Math.max(0, Math.min(iw - cw, x0));
+    y0 = Math.max(0, Math.min(ih - ch, y0));
+    return { x0: Math.round(x0), y0: Math.round(y0), cw: Math.round(cw), ch: Math.round(ch), full: false };
+  }
+
+  async function geminiRetouchFace(img, faceNorm) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const box = faceEditBox(img, faceNorm);
+
+    // 1) Yuz kropini ajratib olamiz (original o'lchamda)
+    const crop = document.createElement('canvas');
+    crop.width = box.cw; crop.height = box.ch;
+    crop.getContext('2d').drawImage(img, box.x0, box.y0, box.cw, box.ch, 0, 0, box.cw, box.ch);
+
+    // 2) Gemini bilan retush (crop kadrni to'ldiradi -> detal yuqori)
+    const retouched = await geminiRetouch(crop);
+
+    // 3) Original to'liq o'lchamli rasmga qaytarib joylash
+    const out = document.createElement('canvas');
+    out.width = iw; out.height = ih;
+    const octx = out.getContext('2d');
+    octx.drawImage(img, 0, 0, iw, ih);
+
+    if (box.full) {
+      octx.drawImage(retouched, 0, 0, iw, ih);
+      return await canvasToImage(out);
+    }
+
+    // Yumshoq chegara (feather) niqobi — chok ko'rinmasligi uchun
+    const feather = Math.max(6, Math.min(box.cw, box.ch) * 0.10);
+    const masked = document.createElement('canvas');
+    masked.width = box.cw; masked.height = box.ch;
+    const mctx = masked.getContext('2d');
+    mctx.drawImage(retouched, 0, 0, box.cw, box.ch);   // retush rasm crop o'lchamiga
+    // alfa niqob: ichki to'liq, chetlar yumshoq
+    mctx.globalCompositeOperation = 'destination-in';
+    const mk = document.createElement('canvas');
+    mk.width = box.cw; mk.height = box.ch;
+    const kctx = mk.getContext('2d');
+    kctx.fillStyle = '#000';
+    kctx.fillRect(0, 0, box.cw, box.ch);
+    kctx.filter = `blur(${feather}px)`;
+    kctx.fillStyle = '#fff';
+    kctx.fillRect(feather * 1.5, feather * 1.5, box.cw - feather * 3, box.ch - feather * 3);
+    kctx.filter = 'none';
+    mctx.drawImage(mk, 0, 0);
+    mctx.globalCompositeOperation = 'source-over';
+
+    octx.drawImage(masked, box.x0, box.y0);
+    return await canvasToImage(out);
   }
 
   // ── Natijani modalda ko'rsatish (rasm + belgilar) ─────────
@@ -636,5 +711,5 @@
     syncKeyUI();
   });
 
-  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, applyAiRetouch, getKey, setKey };
+  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, applyAiRetouch, getKey, setKey };
 })();
