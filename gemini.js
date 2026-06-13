@@ -608,8 +608,10 @@
   }
 
   // ── HOLLARNI SAQLASH ──────────────────────────────────────
-  // Retushdan keyin aniqlangan hol joylarini ORIGINALDAN qaytarib qo'yamiz.
-  // O'lcham mustaqil: koordinatalar 0..1000 normada, har rasmga moslab.
+  // Retushdan keyin belgilangan hol joylarini ORIGINALDAN qaytaramiz.
+  // MUHIM: butun dumaloq disk emas, faqat HOLNING O'ZI (atrofdan to'qroq
+  // piksellar) qaytariladi — atrofdagi teri retush holicha qoladi, shuning
+  // uchun dumaloq "yamoq" chegarasi ko'rinmaydi.
   async function restoreMoles(originalImg, resultImg, moles) {
     const ow = originalImg.naturalWidth || originalImg.width;
     const oh = originalImg.naturalHeight || originalImg.height;
@@ -628,27 +630,51 @@
       const rcy = ((b[0] + b[2]) / 2 / 1000) * rh;
       const rbw = ((b[3] - b[1]) / 1000) * rw;
       const rbh = ((b[2] - b[0]) / 1000) * rh;
-      const rad = Math.max(4, Math.max(rbw, rbh) / 2 * 1.35);
-      const dsize = Math.round(rad * 2);
-      const dx = rcx - rad, dy = rcy - rad;
+      const rad = Math.max(5, Math.max(rbw, rbh) / 2 * 1.6);
+      const dsize = Math.max(4, Math.round(rad * 2));
+      const dx = Math.round(rcx - rad), dy = Math.round(rcy - rad);
 
+      // originaldan shu zonani olamiz
       const tmp = document.createElement('canvas');
       tmp.width = dsize; tmp.height = dsize;
       const tctx = tmp.getContext('2d');
-      // originaldan shu zonani olamiz (o'lchamga moslab)
       tctx.drawImage(originalImg,
-        (dx) * sxr, (dy) * syr, dsize * sxr, dsize * syr,
+        dx * sxr, dy * syr, dsize * sxr, dsize * syr,
         0, 0, dsize, dsize);
-      // radial yumshoq niqob (markaz to'liq, chetga shaffof)
-      tctx.globalCompositeOperation = 'destination-in';
-      const g = tctx.createRadialGradient(rad, rad, 0, rad, rad, rad);
-      g.addColorStop(0, 'rgba(0,0,0,1)');
-      g.addColorStop(0.6, 'rgba(0,0,0,1)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      tctx.fillStyle = g;
-      tctx.fillRect(0, 0, dsize, dsize);
-      tctx.globalCompositeOperation = 'source-over';
 
+      const im = tctx.getImageData(0, 0, dsize, dsize);
+      const px = im.data;
+      const c = dsize / 2;
+
+      // atrofdagi SOG'LOM teri yorug'ligi (tashqi halqa)
+      let bgSum = 0, bgN = 0;
+      for (let y = 0; y < dsize; y++) {
+        for (let x = 0; x < dsize; x++) {
+          const dist = Math.hypot(x - c, y - c);
+          if (dist < rad * 0.6 || dist > rad * 0.98) continue;
+          const i = (y * dsize + x) * 4;
+          bgSum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          bgN++;
+        }
+      }
+      const bgL = bgN ? bgSum / bgN : 128;
+
+      // har piksel: faqat atrofdan TO'Q (hol) bo'lsa va doira ichida bo'lsa qoldiramiz
+      for (let y = 0; y < dsize; y++) {
+        for (let x = 0; x < dsize; x++) {
+          const i = (y * dsize + x) * 4;
+          const dist = Math.hypot(x - c, y - c);
+          let fr = 1 - (dist / rad);                  // radial yumshatish
+          fr = fr <= 0 ? 0 : (fr >= 0.4 ? 1 : fr / 0.4);
+          fr = fr * fr * (3 - 2 * fr);
+          const L = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          let mn = (bgL - L - 6) / 30;                // atrofdan to'q bo'lsa (hol)
+          mn = mn <= 0 ? 0 : (mn >= 1 ? 1 : mn);
+          mn = mn * mn * (3 - 2 * mn);
+          px[i + 3] = Math.round(fr * mn * 255);
+        }
+      }
+      tctx.putImageData(im, 0, 0);
       ctx.drawImage(tmp, dx, dy);
     });
 
