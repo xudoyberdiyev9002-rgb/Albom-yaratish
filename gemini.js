@@ -391,8 +391,9 @@
       "clean, natural and healthy-looking skin that still keeps realistic texture and " +
       "pores (NOT plastic or over-smoothed). CRITICAL: keep the exact same person — do " +
       "not change identity, facial features, face shape, expression, skin tone, makeup, " +
-      "hair, clothing, pose, lighting or background. Do not slim or beautify. " +
-      "Return ONLY the edited photograph.";
+      "hair, clothing, pose, lighting or background. Keep the EXACT same framing, " +
+      "composition, head size and position — do NOT zoom, crop, rotate or shift. " +
+      "Do not slim or beautify. Return ONLY the edited photograph at the same dimensions.";
 
     const body = {
       contents: [{
@@ -474,7 +475,7 @@
   // Yuz sohasi kesilib Gemini'ga yuboriladi (detal yuqori), natija
   // original to'liq o'lchamli rasmga yumshoq chegara bilan qaytariladi.
 
-  // Retush uchun kengroq yuz-crop (kontekst bilan)
+  // Retush uchun KVADRAT yuz-crop (Gemini nisbatni buzmasligi uchun)
   function faceEditBox(img, faceNorm) {
     const iw = img.naturalWidth || img.width;
     const ih = img.naturalHeight || img.height;
@@ -482,13 +483,59 @@
     const fhpx = faceNorm.fh * ih;
     const cxp = faceNorm.cx * iw;
     const cyp = faceNorm.cy * ih;
-    let cw = Math.min(iw, fhpx * 1.9);
-    let ch = Math.min(ih, fhpx * 2.3);
-    let x0 = cxp - cw / 2;
-    let y0 = cyp - ch * 0.5;
-    x0 = Math.max(0, Math.min(iw - cw, x0));
-    y0 = Math.max(0, Math.min(ih - ch, y0));
-    return { x0: Math.round(x0), y0: Math.round(y0), cw: Math.round(cw), ch: Math.round(ch), full: false };
+    let side = Math.min(iw, ih, fhpx * 1.9);
+    let x0 = cxp - side / 2;
+    let y0 = cyp - side * 0.52;            // peshonani ham qamrash uchun biroz yuqori
+    x0 = Math.max(0, Math.min(iw - side, x0));
+    y0 = Math.max(0, Math.min(ih - side, y0));
+    return {
+      x0: Math.round(x0), y0: Math.round(y0),
+      cw: Math.round(side), ch: Math.round(side),
+      fcx: cxp - x0, fcy: cyp - y0, fhpx, full: false,
+    };
+  }
+
+  // TERI niqobi — faqat teri almashtirilsin (ko'z, lab, qosh, soch original qolsin)
+  function buildSkinMask(srcData, w, h, fcx, fcy, rx, ry) {
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const octx = out.getContext('2d');
+    const md = octx.createImageData(w, h);
+    const d = srcData;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        // teri ehtimoli (YCbCr, yumshoq)
+        const Cb = -0.169 * r - 0.331 * g + 0.5 * b + 128;
+        const Cr = 0.5 * r - 0.419 * g - 0.081 * b + 128;
+        let skin = 1;
+        if (Cr < 123) skin = 0;
+        else if (Cr < 135) skin *= (Cr - 123) / 12;
+        else if (Cr > 180) skin = (Cr > 192) ? 0 : skin * (192 - Cr) / 12;
+        if (skin > 0) {
+          if (Cb < 73) skin = 0;
+          else if (Cb < 85) skin *= (Cb - 73) / 12;
+          else if (Cb > 135) skin = (Cb > 147) ? 0 : skin * (147 - Cb) / 12;
+        }
+        // yuz ellipsi ichida (chetga yumshoq)
+        const dx = (x - fcx) / rx, dy = (y - fcy) / ry;
+        let e = 1 - (dx * dx + dy * dy);
+        e = e <= 0 ? 0 : (e >= 0.35 ? 1 : e / 0.35);
+        const m = Math.max(0, Math.min(1, skin)) * e;
+        md.data[i] = 255; md.data[i + 1] = 255; md.data[i + 2] = 255;
+        md.data[i + 3] = Math.round(m * 255);
+      }
+    }
+    octx.putImageData(md, 0, 0);
+    // niqobni yumshatish (feather) — chok bilinmasin, mayda teshiklar to'lsin
+    const blurAmt = Math.max(3, Math.round(Math.min(w, h) * 0.02));
+    const bl = document.createElement('canvas');
+    bl.width = w; bl.height = h;
+    const bctx = bl.getContext('2d');
+    bctx.filter = `blur(${blurAmt}px)`;
+    bctx.drawImage(out, 0, 0);
+    return bl;
   }
 
   async function geminiRetouchFace(img, faceNorm) {
@@ -496,46 +543,55 @@
     const ih = img.naturalHeight || img.height;
     const box = faceEditBox(img, faceNorm);
 
-    // 1) Yuz kropini ajratib olamiz (original o'lchamda)
-    const crop = document.createElement('canvas');
-    crop.width = box.cw; crop.height = box.ch;
-    crop.getContext('2d').drawImage(img, box.x0, box.y0, box.cw, box.ch, 0, 0, box.cw, box.ch);
-
-    // 2) Gemini bilan retush (crop kadrni to'ldiradi -> detal yuqori)
-    const retouched = await geminiRetouch(crop);
-
-    // 3) Original to'liq o'lchamli rasmga qaytarib joylash
-    const out = document.createElement('canvas');
-    out.width = iw; out.height = ih;
-    const octx = out.getContext('2d');
-    octx.drawImage(img, 0, 0, iw, ih);
-
+    // To'liq rasm (yuz topilmagan) — eski yo'l
     if (box.full) {
-      octx.drawImage(retouched, 0, 0, iw, ih);
+      const retouched = await geminiRetouch(img);
+      const out = document.createElement('canvas');
+      out.width = iw; out.height = ih;
+      out.getContext('2d').drawImage(retouched, 0, 0, iw, ih);
       return await canvasToImage(out);
     }
 
-    // Yumshoq chegara (feather) niqobi — chok ko'rinmasligi uchun
-    const feather = Math.max(6, Math.min(box.cw, box.ch) * 0.10);
-    const masked = document.createElement('canvas');
-    masked.width = box.cw; masked.height = box.ch;
-    const mctx = masked.getContext('2d');
-    mctx.drawImage(retouched, 0, 0, box.cw, box.ch);   // retush rasm crop o'lchamiga
-    // alfa niqob: ichki to'liq, chetlar yumshoq
-    mctx.globalCompositeOperation = 'destination-in';
-    const mk = document.createElement('canvas');
-    mk.width = box.cw; mk.height = box.ch;
-    const kctx = mk.getContext('2d');
-    kctx.fillStyle = '#000';
-    kctx.fillRect(0, 0, box.cw, box.ch);
-    kctx.filter = `blur(${feather}px)`;
-    kctx.fillStyle = '#fff';
-    kctx.fillRect(feather * 1.5, feather * 1.5, box.cw - feather * 3, box.ch - feather * 3);
-    kctx.filter = 'none';
-    mctx.drawImage(mk, 0, 0);
-    mctx.globalCompositeOperation = 'source-over';
+    const S = box.cw;   // kvadrat tomoni
 
-    octx.drawImage(masked, box.x0, box.y0);
+    // 1) Kvadrat yuz kropi (original o'lchamda)
+    const crop = document.createElement('canvas');
+    crop.width = S; crop.height = S;
+    crop.getContext('2d').drawImage(img, box.x0, box.y0, S, S, 0, 0, S, S);
+
+    // 2) Gemini retush (kvadrat -> nisbat buzilmaydi)
+    const retouchedImg = await geminiRetouch(crop);
+
+    // 3) Retushni aniq S×S ga keltiramiz
+    const rcv = document.createElement('canvas');
+    rcv.width = S; rcv.height = S;
+    const rctx = rcv.getContext('2d');
+    rctx.drawImage(retouchedImg, 0, 0, S, S);
+
+    // 4) Teri niqobi (original kropdan)
+    const ocv = document.createElement('canvas');
+    ocv.width = S; ocv.height = S;
+    const octx = ocv.getContext('2d');
+    octx.drawImage(crop, 0, 0);
+    const srcData = octx.getImageData(0, 0, S, S).data;
+    const rx = box.fhpx * 0.58, ry = box.fhpx * 0.74;
+    const mask = buildSkinMask(srcData, S, S, box.fcx, box.fcy, rx, ry);
+
+    // 5) Retushga niqob alfasini qo'yamiz (faqat teri qoladi)
+    rctx.globalCompositeOperation = 'destination-in';
+    rctx.drawImage(mask, 0, 0);
+    rctx.globalCompositeOperation = 'source-over';
+
+    // 6) Original krop ustiga teri-retushni qo'yamiz
+    //    -> ko'z/lab/qosh/soch ORIGINAL, faqat teri tozalangan
+    octx.drawImage(rcv, 0, 0);
+
+    // 7) To'liq o'lchamli rasmga qaytarib joylash
+    const out = document.createElement('canvas');
+    out.width = iw; out.height = ih;
+    const fctx = out.getContext('2d');
+    fctx.drawImage(img, 0, 0, iw, ih);
+    fctx.drawImage(ocv, box.x0, box.y0);
     return await canvasToImage(out);
   }
 
