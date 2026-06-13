@@ -879,13 +879,14 @@ function analyzeRetouch(img, faceNorm) {
     const sat   = sumSat / n;
     const tex   = sumTex / n;
 
-    // ── O'lchovlarni slider qiymatlariga aylantirish ──
-    const brightness = Math.round(rtClamp((175 - meanL) / 2.2, -25, 30)); // yorug'lik balansi
-    const contrast   = Math.round(rtClamp((42 - stdL) * 0.6,   -15, 22)); // yassi → +kontrast
-    const warmth     = Math.round(rtClamp((meanB - meanR + 18) * 1.4, 0, 45)); // sovuq → +iliqlik
-    const saturation = Math.round(rtClamp((0.32 - sat) * 120,  -15, 28)); // xira → +to'yinganlik
-    const smooth     = Math.round(rtClamp((tex - 3) * 4.5,       0, 60)); // tekstura/dog' → silliqlash
-    const vignette   = 12;                                                // yengil portret vignette
+    // ── O'lchovlarni slider qiymatlariga aylantirish (YUMSHOQ — "kuydirmaslik") ──
+    // Rang/yorug'lik faqat YENGIL tuzatiladi; asosiy effekt — silliqlash.
+    const brightness = Math.round(rtClamp((160 - meanL) / 4,    -8, 10)); // faqat yengil ekspozitsiya
+    const contrast   = Math.round(rtClamp((40 - stdL) * 0.35,   -8,  8)); // yassi → ozgina +kontrast
+    const warmth     = Math.round(rtClamp((meanB - meanR + 12),  0, 16)); // sovuq → ozgina iliqlik
+    const saturation = Math.round(rtClamp((0.30 - sat) * 60,   -12,  6)); // oshirib yubormaslik (kuyish oldini olish)
+    const smooth     = Math.round(rtClamp((tex - 3) * 4.5,       0, 55)); // tekstura/dog' → silliqlash (asosiy)
+    const vignette   = 8;                                                 // juda yengil vignette
 
     return { smooth, warmth, brightness, contrast, saturation, vignette };
   } catch (e) {
