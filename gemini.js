@@ -655,35 +655,80 @@
     return await canvasToImage(out);
   }
 
-  // ── QO'LDA HOL BELGILASH (faqat yuzni kattalashtirib ko'rsatadi) ──
+  // ── QO'LDA HOL BELGILASH (yuz crop + zoom + pan) ──────────
   let _moleStudent = null;
-  let _moleBox = null;      // yuz-crop (original px): {x0,y0,cw,ch}
-  let _moleImg = null;      // asl rasm
+  let _moleImg = null;       // asl rasm
+  let _moleView = null;      // ko'rsatilayotgan soha (original px): {x0,y0,w,h}
+  let _moleFit = null;       // boshlang'ich (fit) soha — reset uchun
+  let _moleDrag = null;      // pan/klik holati
 
-  // to'liq-rasm normasi (nx,ny) -> canvas px
+  function moleCanvas() { return document.getElementById('gmpMoleCanvas'); }
+
+  // to'liq-rasm normasi (nx,ny) -> canvas px (joriy view bo'yicha)
   function moleNormToCanvas(nx, ny, canvas) {
     const iw = _moleImg.naturalWidth || _moleImg.width;
     const ih = _moleImg.naturalHeight || _moleImg.height;
     const ox = nx * iw, oy = ny * ih;
-    const fx = (ox - _moleBox.x0) / _moleBox.cw;
-    const fy = (oy - _moleBox.y0) / _moleBox.ch;
+    const fx = (ox - _moleView.x0) / _moleView.w;
+    const fy = (oy - _moleView.y0) / _moleView.h;
     return { x: fx * canvas.width, y: fy * canvas.height, in: fx >= 0 && fx <= 1 && fy >= 0 && fy <= 1 };
   }
 
   function drawMoleMarker() {
-    const canvas = document.getElementById('gmpMoleCanvas');
-    if (!canvas || !_moleStudent || !_moleBox) return;
+    const canvas = moleCanvas();
+    if (!canvas || !_moleStudent || !_moleView) return;
     const ctx = canvas.getContext('2d');
-    // faqat yuz-crop ko'rsatiladi
-    ctx.drawImage(_moleImg, _moleBox.x0, _moleBox.y0, _moleBox.cw, _moleBox.ch,
+    ctx.imageSmoothingEnabled = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(_moleImg, _moleView.x0, _moleView.y0, _moleView.w, _moleView.h,
                   0, 0, canvas.width, canvas.height);
     (_moleStudent.keepMoles || []).forEach(p => {
       const c = moleNormToCanvas(p.nx, p.ny, canvas);
       if (!c.in) return;
-      ctx.beginPath(); ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(c.x, c.y, 11, 0, Math.PI * 2);
+      ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 3; ctx.stroke();
       ctx.fillStyle = 'rgba(57,217,138,0.35)'; ctx.fill();
     });
+    const zl = document.getElementById('gmpMoleZoomLabel');
+    if (zl && _moleFit) zl.textContent = Math.round((_moleFit.w / _moleView.w) * 100) + '%';
+  }
+
+  function clampMoleView() {
+    const iw = _moleImg.naturalWidth || _moleImg.width;
+    const ih = _moleImg.naturalHeight || _moleImg.height;
+    const v = _moleView;
+    if (v.w > iw) v.w = iw;
+    if (v.h > ih) v.h = ih;
+    if (v.x0 < 0) v.x0 = 0;
+    if (v.y0 < 0) v.y0 = 0;
+    if (v.x0 + v.w > iw) v.x0 = iw - v.w;
+    if (v.y0 + v.h > ih) v.y0 = ih - v.h;
+  }
+
+  function moleZoom(factor, cxCanvas, cyCanvas) {
+    const canvas = moleCanvas();
+    const iw = _moleImg.naturalWidth || _moleImg.width;
+    const ih = _moleImg.naturalHeight || _moleImg.height;
+    const v = _moleView;
+    // kursor ostidagi original nuqta
+    const px = v.x0 + (cxCanvas / canvas.width) * v.w;
+    const py = v.y0 + (cyCanvas / canvas.height) * v.h;
+    const minW = 40, maxW = Math.min(iw, _moleFit.w);   // fit'dan ko'p uzoqlashmaymiz
+    let nw = v.w / factor;
+    nw = Math.max(minW, Math.min(maxW, nw));
+    const nh = nw * (v.h / v.w);
+    v.x0 = px - (cxCanvas / canvas.width) * nw;
+    v.y0 = py - (cyCanvas / canvas.height) * nh;
+    v.w = nw; v.h = nh;
+    clampMoleView();
+    drawMoleMarker();
+  }
+
+  function setMoleCanvasSize() {
+    const canvas = moleCanvas();
+    const side = Math.max(280, Math.min(window.innerWidth * 0.62, window.innerHeight * 0.72, 820));
+    canvas.width = Math.round(side);
+    canvas.height = Math.round(side);   // yuz crop kvadrat
   }
 
   async function openMoleMarker() {
@@ -705,40 +750,72 @@
     try {
       const faceNorm = await getFaceNorm(_moleImg, idx);
       const box = faceEditBox(_moleImg, faceNorm);
-      _moleBox = box.full ? { x0: 0, y0: 0, cw: iw, ch: ih } : { x0: box.x0, y0: box.y0, cw: box.cw, ch: box.ch };
+      _moleFit = box.full
+        ? { x0: 0, y0: 0, w: iw, h: ih }
+        : { x0: box.x0, y0: box.y0, w: box.cw, h: box.ch };
     } catch (e) {
-      _moleBox = { x0: 0, y0: 0, cw: iw, ch: ih };
+      _moleFit = { x0: 0, y0: 0, w: iw, h: ih };
     }
+    _moleView = { ..._moleFit };
 
-    const canvas = document.getElementById('gmpMoleCanvas');
-    const maxSide = 540;
-    const scale = Math.min(1, maxSide / Math.max(_moleBox.cw, _moleBox.ch));
-    canvas.width = Math.round(_moleBox.cw * scale);
-    canvas.height = Math.round(_moleBox.ch * scale);
+    setMoleCanvasSize();
     drawMoleMarker();
     document.getElementById('gmpMoleOverlay').style.display = 'flex';
     if (btn) { btn.textContent = bOrig; btn.disabled = false; }
   }
 
-  function onMoleCanvasClick(e) {
-    if (!_moleStudent || !_moleBox) return;
-    const canvas = document.getElementById('gmpMoleCanvas');
+  // klik = belgilash, sudrash = pan
+  function moleDown(e) {
+    if (!_moleStudent || !_moleView) return;
+    const canvas = moleCanvas();
     const rect = canvas.getBoundingClientRect();
+    _moleDrag = {
+      sx: e.clientX, sy: e.clientY, moved: false,
+      vx0: _moleView.x0, vy0: _moleView.y0,
+      fx: canvas.width / rect.width, fy: canvas.height / rect.height,
+    };
+  }
+  function moleMove(e) {
+    if (!_moleDrag) return;
+    const dx = e.clientX - _moleDrag.sx, dy = e.clientY - _moleDrag.sy;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) _moleDrag.moved = true;
+    if (!_moleDrag.moved) return;
+    const canvas = moleCanvas();
+    _moleView.x0 = _moleDrag.vx0 - (dx * _moleDrag.fx) * (_moleView.w / canvas.width);
+    _moleView.y0 = _moleDrag.vy0 - (dy * _moleDrag.fy) * (_moleView.h / canvas.height);
+    clampMoleView();
+    drawMoleMarker();
+  }
+  function moleUp(e) {
+    if (!_moleDrag) return;
+    const wasClick = !_moleDrag.moved;
+    const canvas = moleCanvas();
+    const rect = canvas.getBoundingClientRect();
+    _moleDrag = null;
+    if (!wasClick) return;
+    // belgilash
     const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const cy = (e.clientY - rect.top) * (canvas.height / rect.height);
-    // canvas px -> crop fraction -> to'liq-rasm normasi
     const iw = _moleImg.naturalWidth || _moleImg.width;
     const ih = _moleImg.naturalHeight || _moleImg.height;
-    const ox = _moleBox.x0 + (cx / canvas.width) * _moleBox.cw;
-    const oy = _moleBox.y0 + (cy / canvas.height) * _moleBox.ch;
+    const ox = _moleView.x0 + (cx / canvas.width) * _moleView.w;
+    const oy = _moleView.y0 + (cy / canvas.height) * _moleView.h;
     const nx = ox / iw, ny = oy / ih;
     const pts = _moleStudent.keepMoles;
-    // yaqin nuqta bo'lsa — olib tashlaymiz (toggle)
-    const hitR = (14 / canvas.width) * (_moleBox.cw / iw);
+    const hitR = (16 / canvas.width) * (_moleView.w / iw);
     const i = pts.findIndex(p => Math.hypot(p.nx - nx, p.ny - ny) < hitR);
     if (i >= 0) pts.splice(i, 1);
     else pts.push({ nx, ny });
     drawMoleMarker();
+  }
+  function moleWheel(e) {
+    if (!_moleView) return;
+    e.preventDefault();
+    const canvas = moleCanvas();
+    const rect = canvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const cy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    moleZoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, cx, cy);
   }
 
   // keepMoles (nuqtalar) -> restoreMoles uchun box_2d (0..1000) ga aylantirish
@@ -931,8 +1008,22 @@
 
     const moleBtn = document.getElementById('gmpMoleBtn');
     if (moleBtn) moleBtn.addEventListener('click', openMoleMarker);
-    const moleCanvas = document.getElementById('gmpMoleCanvas');
-    if (moleCanvas) moleCanvas.addEventListener('click', onMoleCanvasClick);
+    const moleCv = document.getElementById('gmpMoleCanvas');
+    if (moleCv) {
+      moleCv.addEventListener('mousedown', moleDown);
+      window.addEventListener('mousemove', moleMove);
+      window.addEventListener('mouseup', moleUp);
+      moleCv.addEventListener('wheel', moleWheel, { passive: false });
+    }
+    const mzIn = document.getElementById('gmpMoleZoomIn');
+    if (mzIn) mzIn.addEventListener('click', () => moleZoom(1.25, moleCanvas().width / 2, moleCanvas().height / 2));
+    const mzOut = document.getElementById('gmpMoleZoomOut');
+    if (mzOut) mzOut.addEventListener('click', () => moleZoom(1 / 1.25, moleCanvas().width / 2, moleCanvas().height / 2));
+    const mzRst = document.getElementById('gmpMoleZoomReset');
+    if (mzRst) mzRst.addEventListener('click', () => { if (_moleFit) { _moleView = { ..._moleFit }; drawMoleMarker(); } });
+    window.addEventListener('resize', () => {
+      if (document.getElementById('gmpMoleOverlay').style.display === 'flex') { setMoleCanvasSize(); drawMoleMarker(); }
+    });
     const moleClose = document.getElementById('gmpMoleClose');
     if (moleClose) moleClose.addEventListener('click', () => {
       document.getElementById('gmpMoleOverlay').style.display = 'none';
