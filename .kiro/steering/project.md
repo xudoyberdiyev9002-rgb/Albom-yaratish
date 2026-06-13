@@ -116,6 +116,11 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
    - Faqat dog'li yuzlarni yuborish (mapping'ni "filtr" sifatida) → pul tejash.
    - Yuqori rezolyutsiya / Nano Banana 2 (`gemini-3.1-flash-image`).
 
+   **HOLLARNI SAQLASH (qilindi):** retush hollarni o'chirib yuborardi. Yechim:
+   (1) prompt'da "hollarni saqla" deyildi; (2) KAFOLAT — `applyAiRetouch` avval
+   `mapBlemishes` bilan `type==='mole'` joylarini topadi, retushdan keyin
+   `restoreMoles()` o'sha nuqtalarni ORIGINALDAN radial-feather bilan qaytaradi.
+
 ## Eslatma
 
 Foydalanuvchi bilan o'zbek tilida muloqot qilinadi.
