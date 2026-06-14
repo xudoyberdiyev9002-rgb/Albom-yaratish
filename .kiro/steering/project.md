@@ -56,6 +56,19 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 
 ## Qabul qilingan qarorlar / ishlar tarixi
 
+> **MUHIM (joriy holat):** Gemini AI retush funksiyasi QAYTA YOQILDI va faol.
+> (Photoshop/Evoto yo'li vaqtincha pauza qilindi.) Gemini UI, modallar va
+> `<script src="gemini.js">` `index.html`da tiklangan.
+> **So'nggi tuzatishlar (foydalanuvchi talabi):**
+> 1. Yuz tuzilishi/ifodasi o'zgarmasligi (og'iz ochilib qolardi) → face-api
+>    **landmark** himoyasi: og'iz, ko'z, qosh niqobdan o'chiriladi (ellips+blur)
+>    → bu zonalar 100% ORIGINALDAN qoladi. `getFaceLandmarks` + `eraseLandmarkEllipse`.
+> 2. Dog'larni kattalashtirmaslik/yangi qo'shmaslik → prompt qat'iy: "do NOT add,
+>    invent, darken or enlarge any spot; do NOT open mouth / show teeth / change
+>    expression".
+> Gemini ishi to'liq quyida (4-band) hujjatlashtirilgan.
+
+
 1. **`minecraft2d (1).html` vizual buglar tuzatildi** (PR #15,
    branch `fix/minecraft2d-visual-bugs`):
    ikki marta ishga tushgan game loop (2x tezlik), devorga urilganda tinmay
