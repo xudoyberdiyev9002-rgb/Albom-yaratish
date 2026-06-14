@@ -56,6 +56,18 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 
 ## Qabul qilingan qarorlar / ishlar tarixi
 
+> **MUHIM (joriy holat):** Gemini AI retush funksiyasi **ZAXIRAGA** olingan.
+> Foydalanuvchi qarori: rasmlarni **Photoshopda qo'lda** filtrlab, tayyor
+> rasmni shablonga joylaydi (sifatli, tez, tekin). Shuning uchun:
+> - `gemini.js` fayli repoda **saqlanadi** (zaxira, o'chirilmagan).
+> - `index.html`da Gemini UI paneli, ikkala modal va `<script src="gemini.js">`
+>   ulanishi **olib tashlangan** (script qatori izoh ichida turibdi).
+> - Sayt yana oddiy holatda: shablon + rasm joylash + lokal retush sliderlar.
+> - **Qayta yoqish uchun:** `index.html` oxiridagi `<!-- <script src="gemini.js"> -->`
+>   izohini oching va Gemini tugmalari/modallarini (git tarixidan) tiklang.
+> Gemini ishi to'liq quyida (4-band) hujjatlashtirilgan.
+
+
 1. **`minecraft2d (1).html` vizual buglar tuzatildi** (PR #15,
    branch `fix/minecraft2d-visual-bugs`):
    ikki marta ishga tushgan game loop (2x tezlik), devorga urilganda tinmay
