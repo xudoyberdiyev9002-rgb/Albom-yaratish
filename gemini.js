@@ -25,10 +25,10 @@
 
   // ── RATE LIMIT (rpm) ──────────────────────────────────────
   // Rasm-generatsiya modeli RPM limiti. Hisobingiz limitiga moslang.
-  // Bepul/past tarif: 2.  To'lovli (Tier 1+): ancha yuqori (masalan 30-60).
-  // localStorage 'GEMINI_IMG_RPM' orqali UI'dan ham o'zgartiriladi.
-  function imgRpm() { return Math.max(1, parseInt(localStorage.getItem('GEMINI_IMG_RPM')) || 2); }
-  const MAP_RPM = 10;   // Vision modeli odatda kengroq limitga ega
+  // Sizning limit: 500 RPM. Default 30 (tez + xavfsiz), UI'dan oshirsa bo'ladi.
+  // localStorage 'GEMINI_IMG_RPM' orqali UI'dan o'zgartiriladi.
+  function imgRpm() { return Math.max(1, parseInt(localStorage.getItem('GEMINI_IMG_RPM')) || 30); }
+  const MAP_RPM = 60;   // Vision modeli (filtr) — kengroq
 
   // so'rov vaqtlarini kuzatib, RPM dan oshmaslik uchun kutadi
   const _gateTimes = { img: [], map: [] };
@@ -1135,8 +1135,8 @@
       }
     }
 
-    // Bir vaqtda 4 tadan ishlovchi "pool"
-    const CONCURRENCY = 4;
+    // Bir vaqtda 6 tadan ishlovchi "pool"
+    const CONCURRENCY = 6;
     async function worker() {
       while (true) {
         const i = next++;
