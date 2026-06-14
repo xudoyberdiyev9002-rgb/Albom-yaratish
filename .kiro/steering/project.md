@@ -56,15 +56,16 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 
 ## Qabul qilingan qarorlar / ishlar tarixi
 
-> **MUHIM (joriy holat):** Gemini AI retush funksiyasi **ZAXIRAGA** olingan.
-> Foydalanuvchi qarori: rasmlarni **Photoshopda qo'lda** filtrlab, tayyor
-> rasmni shablonga joylaydi (sifatli, tez, tekin). Shuning uchun:
-> - `gemini.js` fayli repoda **saqlanadi** (zaxira, o'chirilmagan).
-> - `index.html`da Gemini UI paneli, ikkala modal va `<script src="gemini.js">`
->   ulanishi **olib tashlangan** (script qatori izoh ichida turibdi).
-> - Sayt yana oddiy holatda: shablon + rasm joylash + lokal retush sliderlar.
-> - **Qayta yoqish uchun:** `index.html` oxiridagi `<!-- <script src="gemini.js"> -->`
->   izohini oching va Gemini tugmalari/modallarini (git tarixidan) tiklang.
+> **MUHIM (joriy holat):** Gemini AI retush funksiyasi QAYTA YOQILDI va faol.
+> (Photoshop/Evoto yo'li vaqtincha pauza qilindi.) Gemini UI, modallar va
+> `<script src="gemini.js">` `index.html`da tiklangan.
+> **So'nggi tuzatishlar (foydalanuvchi talabi):**
+> 1. Yuz tuzilishi/ifodasi o'zgarmasligi (og'iz ochilib qolardi) → face-api
+>    **landmark** himoyasi: og'iz, ko'z, qosh niqobdan o'chiriladi (ellips+blur)
+>    → bu zonalar 100% ORIGINALDAN qoladi. `getFaceLandmarks` + `eraseLandmarkEllipse`.
+> 2. Dog'larni kattalashtirmaslik/yangi qo'shmaslik → prompt qat'iy: "do NOT add,
+>    invent, darken or enlarge any spot; do NOT open mouth / show teeth / change
+>    expression".
 > Gemini ishi to'liq quyida (4-band) hujjatlashtirilgan.
 
 
