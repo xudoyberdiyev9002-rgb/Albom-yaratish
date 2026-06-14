@@ -1039,6 +1039,7 @@
   }
 
   // BATCH: hamma o'quvchini avtomatik retush + toza yuzlarni o'tkazib yuborish
+  // Parallel (bir vaqtda bir nechta) — tezroq, lekin API limitiga urilmaslik uchun cheklangan.
   async function autoRetouchAll() {
     const btn = document.getElementById('gmpBatchBtn');
     const students = (window.AppState && window.AppState.students) || [];
@@ -1052,31 +1053,38 @@
 
     const orig = btn ? btn.textContent : '';
     if (btn) btn.disabled = true;
-    let cleaned = 0, skipped = 0, failed = 0;
 
-    for (let i = 0; i < students.length; i++) {
+    // Yuz modelini oldindan bir marta yuklab olamiz (parallel ishda takror yuklanmasin)
+    if (typeof faceapi !== 'undefined' && !window._faceModelsLoaded) {
+      try {
+        if (btn) btn.textContent = '⏳ Model yuklanmoqda...';
+        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
+        window._faceModelsLoaded = true;
+      } catch (e) {}
+    }
+
+    const total = students.length;
+    let next = 0, done = 0, cleaned = 0, skipped = 0, failed = 0;
+    const update = () => { if (btn) btn.textContent = `⏳ ${done}/${total} (✓${cleaned} ⏭${skipped})`; };
+    update();
+
+    async function processOne(i) {
       const s = students[i];
-      if (!s || !s.img) { continue; }
-      if (btn) btn.textContent = `\u23f3 ${i + 1}/${students.length} (\u2713${cleaned} \u23ed${skipped})`;
-      window.AppState.currentPreviewIdx = i;   // jarayonni ko'rsatish
+      if (!s || !s.img) return;
       try {
         const base = s.origImg || s.img;
         const faceNorm = await getFaceNorm(base, i);
-
         // FILTR: dog' bormi? (arzon mapping) — toza bo'lsa generatsiya QILINMAYDI
         let dets = [];
         try { dets = await mapBlemishes(base, faceNorm); } catch (e) {}
         const significant = dets.filter(d => d.type !== 'mole' && (d.severity || 2) >= 2);
-        if (significant.length === 0) { skipped++; continue; }
-
+        if (significant.length === 0) { skipped++; return; }
         // tozalash kerak -> retush
         let retouched = faceNorm
           ? await geminiRetouchFace(base, faceNorm)
           : await geminiRetouch(base);
-
         const moles = moleBoxesFromPoints(base, faceNorm, s.keepMoles);
         if (moles.length) retouched = await restoreMoles(base, retouched, moles);
-
         if (!s.origImg) s.origImg = s.img;
         s.img = retouched;
         if (s.img.__rt) delete s.img.__rt;
@@ -1087,11 +1095,26 @@
       }
     }
 
+    // Bir vaqtda 4 tadan ishlovchi "pool"
+    const CONCURRENCY = 4;
+    async function worker() {
+      while (true) {
+        const i = next++;
+        if (i >= total) break;
+        await processOne(i);
+        done++; update();
+        if (typeof renderPreview === 'function') { window.AppState.currentPreviewIdx = i; renderPreview(); }
+      }
+    }
+    const workers = [];
+    for (let w = 0; w < Math.min(CONCURRENCY, total); w++) workers.push(worker());
+    await Promise.all(workers);
+
     if (typeof renderPreview === 'function') renderPreview();
     if (btn) { btn.textContent = orig; btn.disabled = false; }
-    alert('Tayyor!\n\u2713 Tozalandi: ' + cleaned +
-          '\n\u23ed Toza (o\'tkazildi): ' + skipped +
-          (failed ? '\n\u26a0 Xato: ' + failed : '') +
+    alert('Tayyor!\n✓ Tozalandi: ' + cleaned +
+          '\n⏭ Toza (o\'tkazildi): ' + skipped +
+          (failed ? '\n⚠ Xato: ' + failed : '') +
           '\n\nGeneratsiya faqat ' + cleaned + ' ta rasmga ishlatildi.');
   }
 
