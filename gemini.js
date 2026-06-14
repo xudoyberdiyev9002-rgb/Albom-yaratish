@@ -23,6 +23,46 @@
   const ENDPOINT = m =>
     `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
 
+  // ── RATE LIMIT (rpm) ──────────────────────────────────────
+  // Rasm-generatsiya modeli RPM limiti. Hisobingiz limitiga moslang.
+  // Bepul/past tarif: 2.  To'lovli (Tier 1+): ancha yuqori (masalan 30-60).
+  // localStorage 'GEMINI_IMG_RPM' orqali UI'dan ham o'zgartiriladi.
+  function imgRpm() { return Math.max(1, parseInt(localStorage.getItem('GEMINI_IMG_RPM')) || 2); }
+  const MAP_RPM = 10;   // Vision modeli odatda kengroq limitga ega
+
+  // so'rov vaqtlarini kuzatib, RPM dan oshmaslik uchun kutadi
+  const _gateTimes = { img: [], map: [] };
+  async function rateGate(kind, rpm) {
+    const arr = _gateTimes[kind];
+    /* eslint-disable no-constant-condition */
+    while (true) {
+      const now = Date.now();
+      while (arr.length && now - arr[0] >= 60000) arr.shift();
+      if (arr.length < rpm) { arr.push(now); return; }
+      const wait = 60000 - (now - arr[0]) + 60;
+      await new Promise(r => setTimeout(r, wait));
+    }
+  }
+
+  // 429/503 bo'lsa avtomatik qayta urinish (eksponensial backoff)
+  async function fetchRetry(url, opts, kind, rpm, tries) {
+    tries = tries || 5;
+    for (let attempt = 0; attempt < tries; attempt++) {
+      await rateGate(kind, rpm);
+      const res = await fetch(url, opts);
+      if (res.status !== 429 && res.status !== 503) return res;
+      // limitга urildik — kutib qayta urinamiz
+      let wait = Math.min(60000, 1500 * Math.pow(2, attempt));
+      const ra = res.headers.get('retry-after');
+      if (ra && !isNaN(+ra)) wait = Math.max(wait, (+ra) * 1000);
+      console.warn(`[Gemini] ${res.status} rate-limit, ${Math.round(wait / 1000)}s kutyapti (urinish ${attempt + 1}/${tries})`);
+      await new Promise(r => setTimeout(r, wait));
+    }
+    // oxirgi urinish (xato bo'lsa qaytaradi)
+    await rateGate(kind, rpm);
+    return fetch(url, opts);
+  }
+
   // ── Kalit boshqaruvi ──────────────────────────────────────
   function getKey() {
     return (localStorage.getItem(KEY_LS) || '').trim();
@@ -125,11 +165,11 @@
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
     };
 
-    const res = await fetch(ENDPOINT(MODEL) + '?key=' + encodeURIComponent(key), {
+    const res = await fetchRetry(ENDPOINT(MODEL) + '?key=' + encodeURIComponent(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    });
+    }, 'map', MAP_RPM);
 
     if (!res.ok) {
       const t = await res.text().catch(() => '');
@@ -406,11 +446,11 @@
       }],
     };
 
-    const res = await fetch(ENDPOINT(IMG_MODEL) + '?key=' + encodeURIComponent(key), {
+    const res = await fetchRetry(ENDPOINT(IMG_MODEL) + '?key=' + encodeURIComponent(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    });
+    }, 'img', imgRpm());
 
     if (!res.ok) {
       const t = await res.text().catch(() => '');
@@ -1139,6 +1179,16 @@
     }
     const clearBtn = document.getElementById('gmpKeyClear');
     if (clearBtn) clearBtn.addEventListener('click', () => { setKey(''); syncKeyUI(); });
+
+    const rpmInput = document.getElementById('gmpRpmInput');
+    if (rpmInput) {
+      rpmInput.value = imgRpm();
+      rpmInput.addEventListener('change', () => {
+        const v = Math.max(1, Math.min(120, parseInt(rpmInput.value) || 2));
+        localStorage.setItem('GEMINI_IMG_RPM', String(v));
+        rpmInput.value = v;
+      });
+    }
 
     const close = document.getElementById('gmpClose');
     if (close) close.addEventListener('click', () => {
