@@ -102,6 +102,36 @@
     return null;
   }
 
+  const MODEL_URI = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+
+  // Yuz landmarklari (og'iz, ko'z, qosh) — bularni HIMOYALAB, originaldan qoldiramiz
+  async function getFaceLandmarks(img) {
+    if (typeof faceapi === 'undefined') return null;
+    try {
+      if (!window._faceModelsLoaded) {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URI);
+        window._faceModelsLoaded = true;
+      }
+      if (!window._faceLmLoaded) {
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URI);
+        window._faceLmLoaded = true;
+      }
+      const opt = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 });
+      const det = await faceapi.detectSingleFace(img, opt).withFaceLandmarks();
+      if (!det) return null;
+      const lm = det.landmarks;
+      const conv = pts => pts.map(p => ({ x: p.x !== undefined ? p.x : p._x, y: p.y !== undefined ? p.y : p._y }));
+      return {
+        mouth: conv(lm.getMouth()),
+        leftEye: conv(lm.getLeftEye()),
+        rightEye: conv(lm.getRightEye()),
+        leftBrow: conv(lm.getLeftEyeBrow()),
+        rightBrow: conv(lm.getRightEyeBrow()),
+        nose: conv(lm.getNose()),
+      };
+    } catch (e) { return null; }
+  }
+
   // Yuz normalga qarab crop to'rtburchagini (manba px) hisoblaydi
   function faceCropBox(img, faceNorm) {
     const iw = img.naturalWidth || img.width;
@@ -117,6 +147,23 @@
     x0 = Math.max(0, Math.min(iw - cw, x0));
     y0 = Math.max(0, Math.min(ih - ch, y0));
     return { x0, y0, cw, ch, full: false };
+  }
+
+  // Landmark nuqtalaridan ellips chizib, niqobdan O'CHIRADI (himoya zonasi)
+  function eraseLandmarkEllipse(ctx, pts, box, padXr, padYr) {
+    if (!pts || !pts.length) return;
+    let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+    pts.forEach(p => {
+      const x = p.x - box.x0, y = p.y - box.y0;
+      if (x < minx) minx = x; if (x > maxx) maxx = x;
+      if (y < miny) miny = y; if (y > maxy) maxy = y;
+    });
+    const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+    const w = Math.max(2, maxx - minx), h = Math.max(2, maxy - miny);
+    const rx = w / 2 * (1 + padXr), ry = h / 2 * (1 + padYr);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // ── Rasmni (yoki crop'ni) base64 JPEG ga aylantirish ──────
@@ -425,15 +472,19 @@
     const data = imgToDataB64(img, 1280);
 
     const prompt =
-      "Retouch the facial skin in this portrait like a careful, natural studio " +
-      "retoucher. Remove acne, pimples, whiteheads, blackheads, scars and obvious " +
-      "skin redness, and clearly reduce dark spots. Keep the skin looking NATURAL " +
-      "with its real texture and pores — do NOT over-smooth, blur or airbrush, do NOT " +
-      "make it look plastic. KEEP natural moles and beauty marks. CRITICAL: keep the " +
-      "exact same person — do NOT change face shape, jaw, nose, eyes, eyebrows, lips, " +
-      "teeth, expression, makeup, hair, skin tone, lighting, pose, background, framing " +
-      "or head size/position. Do NOT zoom, crop, rotate or shift. Do not beautify or " +
-      "slim. Return ONLY the edited photograph at the same dimensions.";
+      "Retouch ONLY the facial skin in this portrait, like a careful natural studio " +
+      "retoucher. Fully remove acne, pimples, whiteheads, blackheads, scars and skin " +
+      "redness, and clearly reduce dark spots — but do NOT add, invent, darken or " +
+      "enlarge ANY spot, blemish or mark, and do NOT create new texture. Keep the skin " +
+      "natural with its real pores — do NOT over-smooth, blur or airbrush. KEEP natural " +
+      "moles and beauty marks. " +
+      "ABSOLUTELY CRITICAL — preserve the face EXACTLY: do NOT change the mouth or lips " +
+      "in any way — if the mouth is closed keep it closed, do NOT open the mouth, do " +
+      "NOT show or add teeth, do NOT change the smile or expression. Do NOT change the " +
+      "eyes, eyebrows, gaze, face shape, jaw, nose, head angle, makeup, hair, skin " +
+      "tone, lighting, pose, background, framing or head size/position. Do NOT zoom, " +
+      "crop, rotate, shift or beautify. Keep the EXACT same person and expression, only " +
+      "with blemishes cleaned. Return ONLY the edited photograph at the same dimensions.";
 
     const body = {
       contents: [{
@@ -629,6 +680,26 @@
     const srcData = octx.getImageData(0, 0, S, S).data;
     const rx = box.fhpx * 0.58, ry = box.fhpx * 0.74;
     const mask = buildSkinMask(srcData, S, S, box.fcx, box.fcy, rx, ry);
+
+    // 4b) LANDMARK HIMOYASI: og'iz, ko'z, qosh niqobdan o'chiriladi
+    //     -> bu zonalar 100% ORIGINALDAN qoladi (og'iz ochilmaydi, ko'z/ifoda o'zgarmaydi)
+    const lm = await getFaceLandmarks(img);
+    if (lm) {
+      const mctx = mask.getContext('2d');
+      mctx.save();
+      mctx.globalCompositeOperation = 'destination-out';
+      mctx.filter = `blur(${Math.max(4, Math.round(S * 0.012))}px)`;
+      mctx.fillStyle = '#fff';
+      // og'iz — kengroq (lab + atrof), ifoda buzilmasin
+      eraseLandmarkEllipse(mctx, lm.mouth, box, 0.45, 0.85);
+      // ko'zlar
+      eraseLandmarkEllipse(mctx, lm.leftEye, box, 0.6, 0.9);
+      eraseLandmarkEllipse(mctx, lm.rightEye, box, 0.6, 0.9);
+      // qoshlar
+      eraseLandmarkEllipse(mctx, lm.leftBrow, box, 0.3, 1.1);
+      eraseLandmarkEllipse(mctx, lm.rightBrow, box, 0.3, 1.1);
+      mctx.restore();
+    }
 
     // 5) Retushga niqob alfasini qo'yamiz (faqat teri qoladi)
     rctx.globalCompositeOperation = 'destination-in';
@@ -1061,12 +1132,18 @@
     const orig = btn ? btn.textContent : '';
     if (btn) btn.disabled = true;
 
-    // Yuz modelini oldindan bir marta yuklab olamiz (parallel ishda takror yuklanmasin)
-    if (typeof faceapi !== 'undefined' && !window._faceModelsLoaded) {
+    // Yuz modellarini oldindan bir marta yuklab olamiz (parallel ishda takror yuklanmasin)
+    if (typeof faceapi !== 'undefined') {
       try {
         if (btn) btn.textContent = '⏳ Model yuklanmoqda...';
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model');
-        window._faceModelsLoaded = true;
+        if (!window._faceModelsLoaded) {
+          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URI);
+          window._faceModelsLoaded = true;
+        }
+        if (!window._faceLmLoaded) {
+          await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URI);
+          window._faceLmLoaded = true;
+        }
       } catch (e) {}
     }
 
@@ -1209,5 +1286,5 @@
     syncKeyUI();
   });
 
-  window.GeminiMap = { mapBlemishes, getFaceNorm, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, restoreMoles, openMoleMarker, applyAiRetouch, autoRetouchAll, getKey, setKey };
+  window.GeminiMap = { mapBlemishes, getFaceNorm, getFaceLandmarks, healSpots, applyHeal, revertHeal, geminiRetouch, geminiRetouchFace, restoreMoles, openMoleMarker, applyAiRetouch, autoRetouchAll, getKey, setKey };
 })();
