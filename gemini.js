@@ -425,17 +425,15 @@
     const data = imgToDataB64(img, 1280);
 
     const prompt =
-      "You are doing MINIMAL, conservative skin retouching on this portrait. " +
-      "ONLY remove clearly temporary skin problems: active acne, pimples, " +
-      "whiteheads, blackheads and obvious red inflammation. You MAY lightly reduce " +
-      "very strong dark spots. DO NOTHING ELSE. " +
-      "STRICT RULES — you MUST obey: do NOT smooth or blur the skin, do NOT even out " +
-      "skin tone, do NOT remove natural texture, pores, freckles, moles or beauty " +
-      "marks. Do NOT change the face shape, jaw, nose, eyes, eyebrows, lips, teeth, " +
-      "expression, makeup, hair, skin color, lighting, pose, framing, head size or " +
-      "background. Do NOT beautify, slim, brighten or 'improve' the face. Keep the " +
-      "EXACT same person and the EXACT same image, only with active blemishes gone. " +
-      "Return ONLY the edited photograph at the same dimensions.";
+      "Retouch the facial skin in this portrait like a careful, natural studio " +
+      "retoucher. Remove acne, pimples, whiteheads, blackheads, scars and obvious " +
+      "skin redness, and clearly reduce dark spots. Keep the skin looking NATURAL " +
+      "with its real texture and pores — do NOT over-smooth, blur or airbrush, do NOT " +
+      "make it look plastic. KEEP natural moles and beauty marks. CRITICAL: keep the " +
+      "exact same person — do NOT change face shape, jaw, nose, eyes, eyebrows, lips, " +
+      "teeth, expression, makeup, hair, skin tone, lighting, pose, background, framing " +
+      "or head size/position. Do NOT zoom, crop, rotate or shift. Do not beautify or " +
+      "slim. Return ONLY the edited photograph at the same dimensions.";
 
     const body = {
       contents: [{
@@ -621,57 +619,26 @@
     const rctx = rcv.getContext('2d');
     rctx.drawImage(retouchedImg, 0, 0, S, S);
 
-    // 4) FARQ-ASOSLI minimal aralashtirish:
-    //    faqat original va retush O'RTASIDAGI sezilarli farq (= olingan dog')
-    //    bo'lgan teri piksellari almashtiriladi. Qolgan teri 100% ORIGINAL qoladi
-    //    -> yuz o'zgarmaydi, faqat dog'lar ketadi.
+    // 4) Teri niqobi (original kropdan) — faqat teri almashtiriladi,
+    //    ko'z/lab/qosh/soch ORIGINAL qoladi. (farq-asosli usul siljishga
+    //    sezgir bo'lib, soxta dog' chiqargani uchun bu ishonchli usulга qaytdik.)
     const ocv = document.createElement('canvas');
     ocv.width = S; ocv.height = S;
     const octx = ocv.getContext('2d');
     octx.drawImage(crop, 0, 0);
-    const O = octx.getImageData(0, 0, S, S);
-    const R = rctx.getImageData(0, 0, S, S);
-    const od = O.data, rd = R.data;
+    const srcData = octx.getImageData(0, 0, S, S).data;
     const rx = box.fhpx * 0.58, ry = box.fhpx * 0.74;
-    const T0 = 14, T1 = 60;   // farq chegaralari (kichik farq = teginilmaydi)
+    const mask = buildSkinMask(srcData, S, S, box.fcx, box.fcy, rx, ry);
 
-    for (let y = 0; y < S; y++) {
-      for (let x = 0; x < S; x++) {
-        const i = (y * S + x) * 4;
-        const r = od[i], g = od[i + 1], b = od[i + 2];
-        // teri ehtimoli (YCbCr)
-        const Cb = -0.169 * r - 0.331 * g + 0.5 * b + 128;
-        const Cr = 0.5 * r - 0.419 * g - 0.081 * b + 128;
-        let skin = 1;
-        if (Cr < 123) skin = 0;
-        else if (Cr < 135) skin *= (Cr - 123) / 12;
-        else if (Cr > 180) skin = (Cr > 192) ? 0 : skin * (192 - Cr) / 12;
-        if (skin > 0) {
-          if (Cb < 73) skin = 0;
-          else if (Cb < 85) skin *= (Cb - 73) / 12;
-          else if (Cb > 135) skin = (Cb > 147) ? 0 : skin * (147 - Cb) / 12;
-        }
-        if (skin <= 0) continue;                 // teri emas -> original qoladi
-        // yuz ellipsi
-        const ex = (x - box.fcx) / rx, ey = (y - box.fcy) / ry;
-        let e = 1 - (ex * ex + ey * ey);
-        e = e <= 0 ? 0 : (e >= 0.35 ? 1 : e / 0.35);
-        if (e <= 0) continue;
-        // original vs retush farqi (qancha o'zgargan = dog'mi)
-        const dist = (Math.abs(r - rd[i]) + Math.abs(g - rd[i + 1]) + Math.abs(b - rd[i + 2])) / 3;
-        let a = (dist - T0) / (T1 - T0);
-        a = a <= 0 ? 0 : (a >= 1 ? 1 : a);
-        a = a * a * (3 - 2 * a);
-        const w2 = a * Math.min(1, skin) * e;
-        if (w2 <= 0) continue;
-        od[i]     = r + (rd[i] - r) * w2;
-        od[i + 1] = g + (rd[i + 1] - g) * w2;
-        od[i + 2] = b + (rd[i + 2] - b) * w2;
-      }
-    }
-    octx.putImageData(O, 0, 0);
+    // 5) Retushga niqob alfasini qo'yamiz (faqat teri qoladi)
+    rctx.globalCompositeOperation = 'destination-in';
+    rctx.drawImage(mask, 0, 0);
+    rctx.globalCompositeOperation = 'source-over';
 
-    // 5) To'liq o'lchamli rasmga qaytarib joylash
+    // 6) Original krop ustiga teri-retushni qo'yamiz
+    octx.drawImage(rcv, 0, 0);
+
+    // 7) To'liq o'lchamli rasmga qaytarib joylash
     const out = document.createElement('canvas');
     out.width = iw; out.height = ih;
     const fctx = out.getContext('2d');

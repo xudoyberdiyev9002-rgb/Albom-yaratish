@@ -112,13 +112,15 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
    **OCHIQ MUAMMOLAR / keyingi qadamlar:**
    - Yuqori rezolyutsiya / Nano Banana 2 (`gemini-3.1-flash-image`).
 
-   **MINIMAL RETUSH + QAT'IY FILTR (qilindi):** Gemini yuzni o'zgartirardi.
-   - Prompt MINIMAL/konservativ qilindi: faqat aktiv akne/dog' olinadi, silliqlash/
-     "perfect yuz" yo'q, tuzilish/rang/yorug'lik tegilmaydi.
-   - `geminiRetouchFace` endi **FARQ-ASOSLI aralashtirish**: original va Gemini
-     natijasi o'rtasida sezilarli farq bo'lgan TERI piksellarigina almashtiriladi
-     (T0=14,T1=60 chegara + YCbCr teri + yuz ellipsi). Toza teri 100% ORIGINAL
-     qoladi → yuz o'zgarmaydi. (eski to'liq teri-niqob `buildSkinMask` o'rniga.)
+   **MINIMAL RETUSH + QAT'IY FILTR:** Gemini yuzni o'zgartirardi.
+   - Prompt balansланган: akne/dog'/shram/qizarish olinadi, lekin haddan ortiq
+     silliqlash YO'Q (tabiiy tekstura/pora saqlanadi), hol saqlanadi.
+   - **MUHIM TAJRIBA:** "farq-asosli aralashtirish" sinaldi (faqat original/retush
+     farqi katta piksellar) — LEKIN Gemini natijasi biroz siljishi/masshtablanishi
+     tufayli SOXTA dog' chiqdi (husnbuzar paydo bo'ldi, kichigi kattalashdi).
+     Shuning uchun BEKOR qilindi. Hozir ishonchli **teri-niqobli** (`buildSkinMask`)
+     to'liq teri almashtirish ishlatiladi (ko'z/lab/qosh/soch original). Bu usul
+     foydalanuvchi "yaxshilandi" degan versiya.
 
    **BATCH + TOZA YUZNI O'TKAZISH (qilindi) — `autoRetouchAll()`:**
    - 🚀 "Hammasini avtomatik retush" tugmasi (`gmpBatchBtn`).
