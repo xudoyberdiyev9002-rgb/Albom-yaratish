@@ -56,6 +56,18 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 
 ## Qabul qilingan qarorlar / ishlar tarixi
 
+> **YANGI ICHKI SHABLON `bitiruvchi-poster-inner` (qilindi):** Landscape (1280×960),
+> qora fon. Tartib: CHAP — sinf rahbari katta portreti + ismi + "Mening aziz
+> bitiruvchilarim!" sarlavhasi + xat paragrafi (default matn `cfg.teacherMessage`
+> yoki `data.teacherMessage` bilan override qilinadi). MARKAZ — katta sinf raqami
+> (`className`dan ajratiladi: "11" + harf "B" + kursiv "Sinf") + vertikal
+> "BITIRUVCHILAR / XAYR MAKTAB" + `25.05.<yil> YIL`. O'NG — o'quvchilar grid
+> (6 ustun, egasi 1-o'rinda gold ramka bilan). O'NG CHEKKA — vertikal
+> "YANGI BOSQICH YANGI IMKONIYATLARI!" + yirik gold yil. `type:'inner'` →
+> boshqa inner shablonlar kabi `allStudents/ownerIndex/teacherImg` ishlatadi,
+> shuning uchun generatsiya + retush avtomatik ishlaydi. `editor.js`da
+> tanlovda maxsus defaultlar (1280×960, rect, qora fon, #d4af37 aksent).
+
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
 > (vinyetka, default `bitiruvchi-cover`). Oqim: 1 Shablon → 2 Yuklash →
