@@ -809,6 +809,9 @@ function renderPreview() {
       allStudents: students,
       ownerIndex:  idx,
       teacherImg:  window.AppState.teacherImg,
+      transforms:  window.AppState.transforms,   // free-transform (qo'lda sudrash/zoom)
+      faces:       window.AppState.faces,         // avtomatik yuz kadrlash
+      hitRegions:  _hit,                          // rasm hududlari (hit-test)
     });
     // Preview label yangilash
     document.querySelector('.preview-label').textContent =

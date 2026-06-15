@@ -1257,27 +1257,128 @@ window.TEMPLATES = [
         ctx.restore();
       }
 
-      // To'rtburchak portret (yupqa oq ramka)
-      function drawPortrait(img, x, y, pw, ph, featured) {
+      // ── FREE-TRANSFORM + AUTO-YUZ + RETUSH (split-inner dagi kabi) ──
+      // Bu funksiyalar editor orqali uzatiladi:
+      //   transforms – qo'lda sudrash/masshtab (key bo'yicha)
+      //   faces      – avtomatik yuz kadrlash (student index bo'yicha)
+      //   retouchMap – har o'quvchi uchun rang/teri retushi
+      //   hitRegions – sichqoncha bilan sudrash uchun hudud ro'yxati
+      const transforms = cfg.transforms || {};
+      const hitRegions = cfg.hitRegions || null;
+      const faces      = cfg.faces || {};
+
+      // Bitta rasmni transform + auto-yuz + retush bilan chizadi (clip ichida chaqiriladi).
+      // x,y,w,h – allaqachon clip qilingan ko'rinadigan hudud.
+      function drawImgT(img, x, y, w, h, key, faceIdx, targetFrac) {
+        const iw = (img && (img.naturalWidth || img.width)) || 0;
+        const ih = (img && (img.naturalHeight || img.height)) || 0;
+        if (!(iw > 0 && ih > 0)) return false;
+        if (hitRegions) hitRegions.push({ key, x, y, w, h });
+
+        const sc0 = Math.max(w / iw, h / ih);
+        const store = transforms[key];
+        let s, ox, oy;
+
+        if (store && store.src === 'manual') {
+          s = Math.max(1, Math.min(8, store.scale || 1));
+          const scs0 = sc0 * s, dw0 = iw * scs0, dh0 = ih * scs0;
+          const mOx = (dw0 - w) / (2 * w), mOy = (dh0 - h) / (2 * h);
+          ox = Math.max(-mOx, Math.min(mOx, store.ox || 0));
+          oy = Math.max(-mOy, Math.min(mOy, store.oy || 0));
+          store.scale = s; store.ox = ox; store.oy = oy;
+        } else {
+          const face = (faceIdx != null) ? faces[faceIdx] : null;
+          if (face) {
+            const tf = (cfg.autoFaceFrac != null ? cfg.autoFaceFrac : (targetFrac || 0.55));
+            const fhPx = Math.max(1, face.fh * ih);
+            const fcxPx = face.cx * iw, fcyPx = face.cy * ih;
+            s = Math.max(1, Math.min(8, (tf * h) / (fhPx * sc0)));
+            const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
+            ox = (0.5 * w - (w - dw) / 2 - fcxPx * scs) / w;
+            const vy = (cfg.autoFaceY != null ? cfg.autoFaceY : 0.43);
+            oy = (vy * h - (h - dh) / 2 - fcyPx * scs) / h;
+            const mOx = (dw - w) / (2 * w), mOy = (dh - h) / (2 * h);
+            ox = Math.max(-mOx, Math.min(mOx, ox));
+            oy = Math.max(-mOy, Math.min(mOy, oy));
+          } else {
+            s = 1;
+            const scs = sc0, dw = iw * scs, dh = ih * scs;
+            const mOy = (dh - h) / (2 * h);
+            ox = 0;
+            oy = Math.max(-mOy, Math.min(mOy, -0.06));
+          }
+          transforms[key] = { scale: s, ox, oy, src: 'auto' };
+        }
+
+        const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
+        const dx = x + (w - dw) / 2 + ox * w, dy = y + (h - dh) / 2 + oy * h;
+
+        // ── RETUSH (Portret filtri) — har bir rasm uchun alohida (retouchMap) ──
+        const R = (cfg.retouchMap && faceIdx != null && cfg.retouchMap[faceIdx]) || {};
+        const hasColor = (R.brightness || R.contrast || R.saturation || R.warmth > 0);
+        if (hasColor) {
+          const sepia = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
+          ctx.filter =
+            `brightness(${1 + (R.brightness || 0) / 100}) ` +
+            `contrast(${1 + (R.contrast || 0) / 100}) ` +
+            `saturate(${1 + (R.saturation || 0) / 100}) ` +
+            `sepia(${sepia})`;
+        }
+        let smoothed = null;
+        if (R.smooth > 0) smoothed = rtSpotHeal(img, dw, dh, R.smooth);
+        if (smoothed) ctx.drawImage(smoothed, dx, dy, dw, dh);
+        else          ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.filter = 'none';
+
+        // sovuq ton (iliqlik manfiy bo'lsa)
+        if (R.warmth < 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.globalAlpha = (-R.warmth) / 100 * 0.18;
+          ctx.fillStyle = '#3a6ea5';
+          ctx.fillRect(x, y, w, h);
+          ctx.restore();
+        }
+        // vignette
+        if (R.vignette > 0) {
+          const g = ctx.createRadialGradient(x + w/2, y + h/2, Math.min(w,h)*0.35, x + w/2, y + h/2, Math.max(w,h)*0.72);
+          g.addColorStop(0, 'rgba(0,0,0,0)');
+          g.addColorStop(1, `rgba(0,0,0,${(R.vignette / 100) * 0.6})`);
+          ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+        }
+        return true;
+      }
+
+      // To'rtburchak portret (yupqa ramka + drawImgT bilan rasm)
+      // key/faceIdx berilsa: free-transform, auto-yuz va retush ishlaydi.
+      function drawPortrait(img, x, y, pw, ph, featured, key, faceIdx, targetFrac) {
         ctx.save();
         ctx.strokeStyle = featured ? accentColor : 'rgba(255,255,255,0.5)';
         ctx.lineWidth   = featured ? 2 : 1;
         ctx.strokeRect(x, y, pw, ph);
+        ctx.restore();
+
+        ctx.save();
         ctx.beginPath();
         ctx.rect(x + 1, y + 1, pw - 2, ph - 2);
         ctx.clip();
-        if (img && img.complete && img.naturalWidth > 0) {
-          const iw = img.naturalWidth, ih = img.naturalHeight;
-          const sc = Math.max(pw / iw, ph / ih);
-          const dw = iw * sc, dh = ih * sc;
-          ctx.drawImage(img, x + 1 + (pw - 2 - dw) / 2, y + 1 + (ph - 2 - dh) / 2, dw, dh);
-        } else {
-          ctx.fillStyle = '#1e1e1e';
-          ctx.fillRect(x + 1, y + 1, pw - 2, ph - 2);
-          ctx.fillStyle = 'rgba(255,255,255,0.18)';
-          ctx.font = `${Math.round(ph * 0.32)}px sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('👤', x + pw / 2, y + ph / 2);
+        const ok = (key != null)
+          ? drawImgT(img, x + 1, y + 1, pw - 2, ph - 2, key, faceIdx, targetFrac)
+          : false;
+        if (!ok) {
+          if (img && img.complete && img.naturalWidth > 0) {
+            const iw = img.naturalWidth, ih = img.naturalHeight;
+            const sc = Math.max(pw / iw, ph / ih);
+            const dw = iw * sc, dh = ih * sc;
+            ctx.drawImage(img, x + 1 + (pw - 2 - dw) / 2, y + 1 + (ph - 2 - dh) / 2, dw, dh);
+          } else {
+            ctx.fillStyle = '#1e1e1e';
+            ctx.fillRect(x + 1, y + 1, pw - 2, ph - 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.font = `${Math.round(ph * 0.32)}px sans-serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('👤', x + pw / 2, y + ph / 2);
+          }
         }
         ctx.restore();
       }
@@ -1334,7 +1435,7 @@ window.TEMPLATES = [
       if (tW > leftW * 0.98) { tW = Math.round(leftW * 0.98); }
       const tX = leftCx - tW / 2;
       const tY = Math.round(h * 0.045);
-      drawPortrait(teacherImg, tX, tY, tW, tH, true);
+      drawPortrait(teacherImg, tX, tY, tW, tH, true, 'T', null, 0.42);
 
       // O'qituvchi ismi
       let cursorY = tY + tH + Math.round(h * 0.045);
@@ -1407,7 +1508,12 @@ window.TEMPLATES = [
       // ══════════════════════════════════════════════════════
       // 4. O'NG BLOK – O'QUVCHILAR GRID (egasi 1-o'rinda)
       // ══════════════════════════════════════════════════════
-      const ordered = buildOrderedStudents(allStudents, ownerIndex);
+      // EGASI birinchi o'ringa, asl indekslar saqlanadi
+      // (faces / retush / transform kalitlari asl indeksga bog'lanadi)
+      let order = allStudents.map((_, i) => i);
+      if (order.length > 0 && ownerIndex > 0 && ownerIndex < order.length) {
+        order = [ownerIndex, ...order.filter(i => i !== ownerIndex)];
+      }
       const COLS    = 6;
       const gridX   = Math.round(w * 0.375);
       const gridR   = Math.round(w * 0.875);
@@ -1415,7 +1521,7 @@ window.TEMPLATES = [
       const gridBot = Math.round(h * 0.965);
       const gridW   = gridR - gridX;
 
-      const ROWS    = Math.max(4, Math.ceil((ordered.length || 1) / COLS));
+      const ROWS    = Math.max(4, Math.ceil((order.length || 1) / COLS));
       const cellGapX = Math.round(gridW * 0.018);
       const cellW    = Math.floor((gridW - cellGapX * (COLS - 1)) / COLS);
       const rowGap   = Math.round((gridBot - gridTop) * 0.018);
@@ -1424,13 +1530,15 @@ window.TEMPLATES = [
       const pH       = Math.round(rowH * 0.78);
       const nameFS   = Math.max(8, Math.round(rowH * 0.085));
 
-      ordered.forEach((st, idx) => {
+      order.forEach((origIndex, idx) => {
+        const st  = allStudents[origIndex] || null;
         const col = idx % COLS;
         const row = Math.floor(idx / COLS);
         const cx  = gridX + col * (cellW + cellGapX);
         const cyy = gridTop + row * (rowH + rowGap);
 
-        drawPortrait(st?.img || null, cx, cyy, pW, pH, idx === 0);
+        // Foto: free-transform + auto-yuz + retush (kalit = asl indeks)
+        drawPortrait(st?.img || null, cx, cyy, pW, pH, idx === 0, `g${origIndex}`, origIndex, 0.55);
 
         // Ism (1-2 qator)
         const nm = (st?.name || '').trim();
