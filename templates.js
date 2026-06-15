@@ -1197,6 +1197,270 @@ window.TEMPLATES = [
   },
 
   // ============================================================
+  // 6.b BITIRUVCHI POSTER ICHKI – Qora landscape
+  //
+  //  Chap:  sinf rahbari (katta portret) + ism + "Mening aziz
+  //         bitiruvchilarim!" xati (paragraf).
+  //  Markaz: katta sinf raqami "11" + harf "B" + "Sinf" + vertikal
+  //         "BITIRUVCHILAR · XAYR MAKTAB" + sana.
+  //  O'ng:  o'quvchilar grid (6 ustun, egasi 1-o'rinda, belgilangan).
+  //  O'ng chekka: vertikal "YANGI BOSQICH YANGI IMKONIYATLARI!" + yil.
+  //
+  //  Boshqa inner shablonlar kabi: allStudents / ownerIndex / teacherImg
+  //  ishlatiladi → generatsiya + retush hamma o'quvchi uchun ishlaydi.
+  // ============================================================
+  {
+    id: 'bitiruvchi-poster-inner',
+    type: 'inner',
+    name: 'Bitiruvchi Poster',
+    desc: 'Qora · O\'qituvchi xati + katta sinf raqami + grid',
+    emoji: '📜',
+    defaultW: 1280,
+    defaultH: 960,
+    bgColor1:   '#0a0a0a',
+    bgColor2:   '#000000',
+    accentColor:'#d4af37',
+    nameColor:  '#ffffff',
+    schoolColor:'#cccccc',
+
+    draw(ctx, data, cfg) {
+      const {
+        w, h,
+        allStudents = [],
+        ownerIndex  = 0,
+        teacherImg  = null,
+        nameColor   = '#ffffff',
+        accentColor = '#d4af37',
+        photoScale  = 100,
+      } = cfg;
+
+      // O'qituvchi xati — cfg/data orqali override qilinishi mumkin, bo'lmasa default
+      const teacherMsg = (cfg.teacherMessage || data.teacherMessage ||
+        "Maktab har doim yuragingizda eng yorqin va quvonchli xotira bo'lib qoladi, " +
+        "garchi hamma narsa har doim ham silliq va oson bo'lmagan bo'lsa ham. Sizni " +
+        "oldinda yangi yo'l kutmoqda: yangi uchrashuvlar va xayrlashuvlar, yuksalishlar " +
+        "va qulashlar, yangi orzular va jo'shqin qalblar bilan. Yangi yo'lingiz omadli " +
+        "bo'lsin! O'zingizga va hayotiy tamoyillaringizga sodiq qoling!");
+
+      // ── YORDAMCHILAR ───────────────────────────────────────
+      // Vertikal (pastdan yuqoriga o'qiladigan) matn
+      function drawVertical(text, x, yC, font, color, spacing) {
+        ctx.save();
+        ctx.translate(x, yC);
+        ctx.rotate(-Math.PI / 2);
+        ctx.font = font;
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (spacing) drawSpacedText(ctx, text, 0, 0, spacing);
+        else ctx.fillText(text, 0, 0);
+        ctx.restore();
+      }
+
+      // To'rtburchak portret (yupqa oq ramka)
+      function drawPortrait(img, x, y, pw, ph, featured) {
+        ctx.save();
+        ctx.strokeStyle = featured ? accentColor : 'rgba(255,255,255,0.5)';
+        ctx.lineWidth   = featured ? 2 : 1;
+        ctx.strokeRect(x, y, pw, ph);
+        ctx.beginPath();
+        ctx.rect(x + 1, y + 1, pw - 2, ph - 2);
+        ctx.clip();
+        if (img && img.complete && img.naturalWidth > 0) {
+          const iw = img.naturalWidth, ih = img.naturalHeight;
+          const sc = Math.max(pw / iw, ph / ih);
+          const dw = iw * sc, dh = ih * sc;
+          ctx.drawImage(img, x + 1 + (pw - 2 - dw) / 2, y + 1 + (ph - 2 - dh) / 2, dw, dh);
+        } else {
+          ctx.fillStyle = '#1e1e1e';
+          ctx.fillRect(x + 1, y + 1, pw - 2, ph - 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          ctx.font = `${Math.round(ph * 0.32)}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('👤', x + pw / 2, y + ph / 2);
+        }
+        ctx.restore();
+      }
+
+      // ── 1. QORA FON + TEKSTURA ─────────────────────────────
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.42, h * 0.1, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+      bgGrad.addColorStop(0, '#161616');
+      bgGrad.addColorStop(1, '#040404');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Fon vatermark — yirik xira serif harflar
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.028)';
+      ctx.font = `700 ${Math.round(h * 0.5)}px Georgia, 'Times New Roman', serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('M', w * 0.07, h * 0.28);
+      ctx.fillText('V', w * 0.04, h * 0.74);
+      ctx.fillText('C', w * 0.45, h * 0.5);
+      ctx.restore();
+
+      // Mayda scratch chiziqlar
+      ctx.save();
+      for (let i = 0; i < 120; i++) {
+        const x1 = Math.random() * w, y1 = Math.random() * h;
+        const len = 4 + Math.random() * 18, ang = Math.random() * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1 + Math.cos(ang) * len, y1 + Math.sin(ang) * len);
+        ctx.strokeStyle = `rgba(255,255,255,${0.015 + Math.random() * 0.02})`;
+        ctx.lineWidth = 0.5 + Math.random() * 0.6;
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // ── MA'LUMOTLAR ────────────────────────────────────────
+      const clsRaw    = (data.className || '11 B').trim();
+      const clsMatch  = clsRaw.match(/(\d+)\s*[-"'\s]*([A-Za-zА-Яа-яЎўҚқҒғҲҳ’'`]+)?/);
+      const clsNum    = clsMatch ? clsMatch[1] : clsRaw;
+      const clsLetter = (clsMatch && clsMatch[2]) ? clsMatch[2].toUpperCase().replace(/["'`’]/g, '') : '';
+      const year      = (data.schoolYear || '2026').split('-').pop().trim() || '2026';
+
+      // ══════════════════════════════════════════════════════
+      // 2. CHAP BLOK – O'qituvchi + ism + xat
+      // ══════════════════════════════════════════════════════
+      const leftX  = Math.round(w * 0.025);
+      const leftW  = Math.round(w * 0.205);
+      const leftCx = leftX + leftW / 2;
+
+      // O'qituvchi portreti (katta vertikal)
+      const tH = Math.round(h * 0.40 * (photoScale / 100));
+      let   tW = Math.round(tH * 0.66);
+      if (tW > leftW * 0.98) { tW = Math.round(leftW * 0.98); }
+      const tX = leftCx - tW / 2;
+      const tY = Math.round(h * 0.045);
+      drawPortrait(teacherImg, tX, tY, tW, tH, true);
+
+      // O'qituvchi ismi
+      let cursorY = tY + tH + Math.round(h * 0.045);
+      ctx.fillStyle   = nameColor;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font        = `600 ${Math.round(h * 0.03)}px Georgia, 'Times New Roman', serif`;
+      ctx.fillText(data.teacherName || 'Sinf rahbari', leftCx, cursorY);
+
+      // "Sinf rahbari"
+      cursorY += Math.round(h * 0.032);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font      = `italic 400 ${Math.round(h * 0.018)}px Georgia, serif`;
+      ctx.fillText('Sinf rahbari', leftCx, cursorY);
+
+      // Sarlavha: "Mening aziz bitiruvchilarim!"
+      cursorY += Math.round(h * 0.05);
+      ctx.fillStyle = nameColor;
+      ctx.font      = `italic 700 ${Math.round(h * 0.0225)}px Georgia, serif`;
+      ctx.fillText('Mening aziz bitiruvchilarim!', leftCx, cursorY);
+
+      // Xat matni (paragraf)
+      cursorY += Math.round(h * 0.035);
+      ctx.fillStyle    = 'rgba(255,255,255,0.85)';
+      ctx.textBaseline = 'top';
+      const msgFS   = Math.round(h * 0.0165);
+      const msgLH   = Math.round(msgFS * 1.55);
+      ctx.font      = `400 ${msgFS}px Inter, 'Segoe UI', sans-serif`;
+      const maxLines = Math.max(4, Math.floor((tY + h * 0.93 - cursorY) / msgLH));
+      wrapTextCentered(ctx, teacherMsg, leftCx, cursorY, leftW * 0.98, msgLH, maxLines);
+
+      // ══════════════════════════════════════════════════════
+      // 3. MARKAZ – Katta sinf raqami + vertikal yozuv
+      // ══════════════════════════════════════════════════════
+      const ctrCx = Math.round(w * 0.30);
+
+      // "11" — yirik serif
+      let cy = Math.round(h * 0.06);
+      ctx.fillStyle   = nameColor;
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'top';
+      ctx.font = `700 ${Math.round(h * 0.13)}px Georgia, 'Times New Roman', serif`;
+      ctx.fillText(clsNum, ctrCx, cy);
+
+      // Harf "B"
+      cy += Math.round(h * 0.125);
+      if (clsLetter) {
+        ctx.font = `700 ${Math.round(h * 0.058)}px Georgia, serif`;
+        ctx.fillText(clsLetter, ctrCx, cy);
+        cy += Math.round(h * 0.062);
+      }
+
+      // "Sinf" — kursiv
+      ctx.font = `italic 400 ${Math.round(h * 0.05)}px Georgia, 'Times New Roman', serif`;
+      ctx.fillText('Sinf', ctrCx, cy);
+      cy += Math.round(h * 0.075);
+
+      // Vertikal yozuvlar (pastdan yuqoriga)
+      const vTop = cy;
+      const vBot = Math.round(h * 0.93);
+      const vMid = (vTop + vBot) / 2;
+
+      drawVertical('BITIRUVCHILAR', ctrCx - Math.round(w * 0.022), vMid,
+        `600 ${Math.round(h * 0.024)}px Inter, sans-serif`, nameColor, Math.round(h * 0.004));
+      drawVertical('XAYR MAKTAB', ctrCx + Math.round(w * 0.004), vMid,
+        `400 ${Math.round(h * 0.017)}px Inter, sans-serif`, 'rgba(255,255,255,0.7)', Math.round(h * 0.003));
+      drawVertical(`25.05.${year} YIL`, ctrCx + Math.round(w * 0.028), vMid,
+        `400 ${Math.round(h * 0.016)}px Inter, sans-serif`, accentColor, Math.round(h * 0.003));
+
+      // ══════════════════════════════════════════════════════
+      // 4. O'NG BLOK – O'QUVCHILAR GRID (egasi 1-o'rinda)
+      // ══════════════════════════════════════════════════════
+      const ordered = buildOrderedStudents(allStudents, ownerIndex);
+      const COLS    = 6;
+      const gridX   = Math.round(w * 0.375);
+      const gridR   = Math.round(w * 0.875);
+      const gridTop = Math.round(h * 0.065);
+      const gridBot = Math.round(h * 0.965);
+      const gridW   = gridR - gridX;
+
+      const ROWS    = Math.max(4, Math.ceil((ordered.length || 1) / COLS));
+      const cellGapX = Math.round(gridW * 0.018);
+      const cellW    = Math.floor((gridW - cellGapX * (COLS - 1)) / COLS);
+      const rowGap   = Math.round((gridBot - gridTop) * 0.018);
+      const rowH     = Math.floor((gridBot - gridTop - rowGap * (ROWS - 1)) / ROWS);
+      const pW       = cellW;
+      const pH       = Math.round(rowH * 0.78);
+      const nameFS   = Math.max(8, Math.round(rowH * 0.085));
+
+      ordered.forEach((st, idx) => {
+        const col = idx % COLS;
+        const row = Math.floor(idx / COLS);
+        const cx  = gridX + col * (cellW + cellGapX);
+        const cyy = gridTop + row * (rowH + rowGap);
+
+        drawPortrait(st?.img || null, cx, cyy, pW, pH, idx === 0);
+
+        // Ism (1-2 qator)
+        const nm = (st?.name || '').trim();
+        ctx.fillStyle    = nameColor;
+        ctx.font         = `300 ${nameFS}px Inter, sans-serif`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'top';
+        const nameY  = cyy + pH + Math.round(rowH * 0.04);
+        const parts  = nm.split(/\s+/);
+        if (parts.length >= 2) {
+          ctx.fillText(parts[0], cx + pW / 2, nameY);
+          ctx.fillText(parts.slice(1).join(' '), cx + pW / 2, nameY + nameFS * 1.15);
+        } else if (nm) {
+          ctx.fillText(nm, cx + pW / 2, nameY);
+        }
+      });
+
+      // ══════════════════════════════════════════════════════
+      // 5. O'NG CHEKKA – Vertikal shior + yil
+      // ══════════════════════════════════════════════════════
+      drawVertical('YANGI BOSQICH  YANGI IMKONIYATLARI!', Math.round(w * 0.912), h * 0.32,
+        `600 ${Math.round(h * 0.02)}px Inter, sans-serif`, nameColor, Math.round(h * 0.002));
+
+      // Yil — yirik vertikal (gold)
+      drawVertical(year, Math.round(w * 0.962), h * 0.72,
+        `700 ${Math.round(h * 0.11)}px Georgia, 'Times New Roman', serif`, accentColor, 0);
+    }
+  },
+
+  // ============================================================
   // 7. SPLIT INNER – 305×400mm Landscape, chap portret + o'ng grid
   // ============================================================
   {
