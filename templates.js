@@ -217,18 +217,55 @@ window.TEMPLATES = [
       ctx.lineWidth = 1;
       ctx.strokeRect(photoX - 1, photoY - 1, photoW + 2, photoH + 2);
 
-      // Rasmni clipping bilan chizish
+      // Rasmni clipping bilan chizish — free-transform + auto-yuz (Katta rasm slayderlari)
       ctx.save();
       ctx.beginPath();
       ctx.rect(photoX, photoY, photoW, photoH);
       ctx.clip();
 
+      const cvTrans = cfg.transforms || {};
+      const cvFaces = cfg.faces || {};
+      const cvHit   = cfg.hitRegions || null;
+      const cvFi    = (cfg.faceIdx != null) ? cfg.faceIdx : 0;
+      const cvKey   = 'cover' + cvFi;
+
       if (photo && photo.complete && photo.naturalWidth > 0) {
         const iw = photo.naturalWidth, ih = photo.naturalHeight;
-        const scale = Math.max(photoW / iw, photoH / ih);
-        const dw = iw * scale, dh = ih * scale;
-        const dx = photoX + (photoW - dw) / 2;
-        const dy = photoY + (photoH - dh) / 2;
+        if (cvHit) cvHit.push({ key: cvKey, x: photoX, y: photoY, w: photoW, h: photoH });
+        const sc0 = Math.max(photoW / iw, photoH / ih);
+        const store = cvTrans[cvKey];
+        let s, ox, oy;
+        if (store && store.src === 'manual') {
+          s = Math.max(1, Math.min(8, store.scale || 1));
+          const dw0 = iw * sc0 * s, dh0 = ih * sc0 * s;
+          const mOx = (dw0 - photoW) / (2 * photoW), mOy = (dh0 - photoH) / (2 * photoH);
+          ox = Math.max(-mOx, Math.min(mOx, store.ox || 0));
+          oy = Math.max(-mOy, Math.min(mOy, store.oy || 0));
+          store.scale = s; store.ox = ox; store.oy = oy;
+        } else {
+          const face = cvFaces[cvFi];
+          const tf = (cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft : 0.42);
+          const vy = (cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft : 0.43);
+          if (face) {
+            const fhPx = Math.max(1, face.fh * ih), fcx = face.cx * iw, fcy = face.cy * ih;
+            s = Math.max(1, Math.min(8, (tf * photoH) / (fhPx * sc0)));
+            const dw = iw * sc0 * s, dh = ih * sc0 * s;
+            ox = (0.5 * photoW - (photoW - dw) / 2 - fcx * s * sc0) / photoW;
+            oy = (vy * photoH - (photoH - dh) / 2 - fcy * s * sc0) / photoH;
+            const mOx = (dw - photoW) / (2 * photoW), mOy = (dh - photoH) / (2 * photoH);
+            ox = Math.max(-mOx, Math.min(mOx, ox)); oy = Math.max(-mOy, Math.min(mOy, oy));
+          } else {
+            s = Math.max(1, Math.min(8, tf / 0.27));
+            const dw = iw * sc0 * s, dh = ih * sc0 * s;
+            const mOy = (dh - photoH) / (2 * photoH);
+            const t = (vy - 0.25) / 0.40;
+            ox = 0; oy = Math.max(-mOy, Math.min(mOy, (0.5 - t) * 2 * mOy));
+          }
+          cvTrans[cvKey] = { scale: s, ox, oy, src: 'auto' };
+        }
+        const dw = iw * sc0 * s, dh = ih * sc0 * s;
+        const dx = photoX + (photoW - dw) / 2 + ox * photoW;
+        const dy = photoY + (photoH - dh) / 2 + oy * photoH;
         ctx.drawImage(photo, dx, dy, dw, dh);
       } else {
         // Placeholder
@@ -1283,7 +1320,7 @@ window.TEMPLATES = [
 
       // Bitta rasmni transform + auto-yuz + retush bilan chizadi (clip ichida chaqiriladi).
       // x,y,w,h – allaqachon clip qilingan ko'rinadigan hudud.
-      function drawImgT(img, x, y, w, h, key, faceIdx, targetFrac) {
+      function drawImgT(img, x, y, w, h, key, faceIdx, targetFrac, isLeft) {
         const iw = (img && (img.naturalWidth || img.width)) || 0;
         const ih = (img && (img.naturalHeight || img.height)) || 0;
         if (!(iw > 0 && ih > 0)) return false;
@@ -1302,18 +1339,32 @@ window.TEMPLATES = [
           store.scale = s; store.ox = ox; store.oy = oy;
         } else {
           const face = (faceIdx != null) ? faces[faceIdx] : null;
+          // "Katta rasm" (isLeft) → afFaceLeft/afFaceYLeft slayderlari; aks holda oddiy
+          const tf = isLeft
+            ? (cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft : (targetFrac || 0.42))
+            : (cfg.autoFaceFrac     != null ? cfg.autoFaceFrac     : (targetFrac || 0.55));
+          const vy = isLeft
+            ? (cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft : 0.43)
+            : (cfg.autoFaceY     != null ? cfg.autoFaceY     : 0.43);
           if (face) {
-            const tf = (cfg.autoFaceFrac != null ? cfg.autoFaceFrac : (targetFrac || 0.55));
             const fhPx = Math.max(1, face.fh * ih);
             const fcxPx = face.cx * iw, fcyPx = face.cy * ih;
             s = Math.max(1, Math.min(8, (tf * h) / (fhPx * sc0)));
             const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
             ox = (0.5 * w - (w - dw) / 2 - fcxPx * scs) / w;
-            const vy = (cfg.autoFaceY != null ? cfg.autoFaceY : 0.43);
             oy = (vy * h - (h - dh) / 2 - fcyPx * scs) / h;
             const mOx = (dw - w) / (2 * w), mOy = (dh - h) / (2 * h);
             ox = Math.max(-mOx, Math.min(mOx, ox));
             oy = Math.max(-mOy, Math.min(mOy, oy));
+          } else if (isLeft) {
+            // Yuzi aniqlanmagan katta rasm (masalan sinf rahbari) — slayderlar
+            // zoom (yuz kattaligi) + vertikal pan sifatida ishlaydi.
+            s = Math.max(1, Math.min(8, tf / 0.27));
+            const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
+            const mOy = (dh - h) / (2 * h);
+            const t = (vy - 0.25) / 0.40;   // slayder oralig'i 0.25..0.65
+            ox = 0;
+            oy = Math.max(-mOy, Math.min(mOy, (0.5 - t) * 2 * mOy));
           } else {
             s = 1;
             const scs = sc0, dw = iw * scs, dh = ih * scs;
@@ -1377,7 +1428,7 @@ window.TEMPLATES = [
 
       // Portret (ramka + drawImgT bilan rasm). shape — foto shakli.
       // key/faceIdx berilsa: free-transform, auto-yuz va retush ishlaydi.
-      function drawPortrait(img, x, y, pw, ph, featured, key, faceIdx, targetFrac, shape) {
+      function drawPortrait(img, x, y, pw, ph, featured, key, faceIdx, targetFrac, shape, isLeft) {
         shape = shape || 'rect';
         ctx.save();
         shapePath(x, y, pw, ph, shape);
@@ -1390,7 +1441,7 @@ window.TEMPLATES = [
         shapePath(x + 1, y + 1, pw - 2, ph - 2, shape);
         ctx.clip();
         const ok = (key != null)
-          ? drawImgT(img, x + 1, y + 1, pw - 2, ph - 2, key, faceIdx, targetFrac)
+          ? drawImgT(img, x + 1, y + 1, pw - 2, ph - 2, key, faceIdx, targetFrac, isLeft)
           : false;
         if (!ok) {
           if (img && img.complete && img.naturalWidth > 0) {
@@ -1482,7 +1533,7 @@ window.TEMPLATES = [
       if (tW > leftW * 0.98) { tW = Math.round(leftW * 0.98); }
       const tX = leftCx - tW / 2;
       const tY = Math.round(h * 0.045);
-      drawPortrait(teacherImg, tX, tY, tW, tH, true, 'T', null, 0.42, 'rect');
+      drawPortrait(teacherImg, tX, tY, tW, tH, true, 'T', null, 0.42, 'rect', true);
 
       // O'qituvchi ismi
       let cursorY = tY + tH + Math.round(h * 0.045);

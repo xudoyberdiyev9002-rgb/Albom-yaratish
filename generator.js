@@ -38,7 +38,7 @@ window.Generator = {
         canvas = await this._renderInner(students, i, template, config);
       } else {
         // Oddiy shablon: faqat shu o'quvchi
-        canvas = await this._renderOne(student, template, config);
+        canvas = await this._renderOne(student, template, config, i);
       }
 
       const item = {
@@ -114,7 +114,7 @@ window.Generator = {
   // ────────────────────────────────────────────────────────────
   // Oddiy shablon uchun render (vinyetka, id-card)
   // ────────────────────────────────────────────────────────────
-  async _renderOne(student, template, config) {
+  async _renderOne(student, template, config, faceIdx) {
     const quality = parseInt(config.exportQuality) || 2;
     const w = parseInt(config.canvasW) || template.defaultW;
     const h = parseInt(config.canvasH) || template.defaultH;
@@ -130,6 +130,7 @@ window.Generator = {
       w, h,
       photo:         student.img,
       studentName:   student.name,
+      faceIdx:       (faceIdx != null ? faceIdx : 0),   // cover auto-yuz/transform kaliti
       nameFontSize:  parseInt(config.nameFontSize)  || 22,
       schoolFontSize:parseInt(config.schoolFontSize)|| 13,
       nameColor:     config.nameColor   || template.nameColor,
