@@ -246,7 +246,8 @@ window.TEMPLATES = [
           const face = cvFaces[cvFi];
           const tf = (cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft : 0.42);
           const vy = (cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft : 0.43);
-          if (face) {
+          const cvScale = (cfg.coverScale != null ? cfg.coverScale : 1);   // slayder zoom
+          if (face && cvScale <= 1.001) {
             const fhPx = Math.max(1, face.fh * ih), fcx = face.cx * iw, fcy = face.cy * ih;
             s = Math.max(1, Math.min(8, (tf * photoH) / (fhPx * sc0)));
             const dw = iw * sc0 * s, dh = ih * sc0 * s;
@@ -255,7 +256,8 @@ window.TEMPLATES = [
             const mOx = (dw - photoW) / (2 * photoW), mOy = (dh - photoH) / (2 * photoH);
             ox = Math.max(-mOx, Math.min(mOx, ox)); oy = Math.max(-mOy, Math.min(mOy, oy));
           } else {
-            s = Math.max(1, Math.min(8, tf / 0.27));
+            // Slayder bilan kattalashtirish (qatorlar yo'q — zoom sifatida)
+            s = Math.max(1, Math.min(8, cvScale));
             const dw = iw * sc0 * s, dh = ih * sc0 * s;
             const mOy = (dh - photoH) / (2 * photoH);
             const t = (vy - 0.25) / 0.40;

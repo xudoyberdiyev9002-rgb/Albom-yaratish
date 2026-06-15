@@ -551,6 +551,11 @@ function initEditorControls() {
   const afFLV = document.getElementById('afFaceLeftVal');
   if (afFL) afFL.addEventListener('input', () => { if (afFLV) afFLV.textContent = afFL.value + '%'; renderPreview(); });
 
+  // Ustki muqova rasm kattaligi (zoom) slayderi
+  const cvS  = document.getElementById('coverScale');
+  const cvSV = document.getElementById('coverScaleVal');
+  if (cvS) cvS.addEventListener('input', () => { if (cvSV) cvSV.textContent = cvS.value + '%'; renderPreview(); });
+
   const afYL = document.getElementById('afFaceYLeft');
   const afYLV = document.getElementById('afFaceYLeftVal');
   if (afYL) afYL.addEventListener('input', () => { if (afYLV) afYLV.textContent = afYL.value + '%'; renderPreview(); });
@@ -982,10 +987,10 @@ const CFG_CONTROL_IDS = [
   'canvasW','canvasH','bgColor1','bgColor2','accentColor','nameColor','schoolColor',
   'nameFontSize','schoolFontSize','photoScale','photoOffsetY','photoShape',
   'splitBgColor','splitBgColor2','splitNameColor','splitPhotoShape','splitBorderColor',
-  'splitDivider','splitNamePos','splitMaxCols','leftLabel','splitBgType',
+  'splitDivider','splitNamePos','splitMaxCols','leftLabel','splitBgType','coverScale',
   'ovType','ovTitle','ovSchoolNum','ovClass','ovYear','ovCity',
 ];
-const CFG_LABEL_SFX = { nameFontSize:'px', schoolFontSize:'px', photoScale:'%', photoOffsetY:'px' };
+const CFG_LABEL_SFX = { nameFontSize:'px', schoolFontSize:'px', photoScale:'%', photoOffsetY:'px', coverScale:'%' };
 
 function snapshotControls() {
   const o = {};
@@ -1121,6 +1126,8 @@ function getEditorConfig() {
     coverClass:     ($('ovClass')     || {}).value,
     coverYear:      ($('ovYear')      || {}).value,
     coverCity:      ($('ovCity')      || {}).value,
+    // Ustki muqova rasm kattaligi (zoom) — % → koeffitsient
+    coverScale:     (parseInt(($('coverScale') || {}).value) || 100) / 100,
   };
 }
 
