@@ -124,14 +124,14 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 > Katak o'lchami `maxItems` (eng keng qator) bo'yicha hisoblanadi → barcha qatorlar
 > sig'adi. Egasi (1-o'rin) `sIdx===0`.
 
-> **USTKI MUQOVA — "Rasm kattaligi" zoom slayderi (qilindi):** ustki qadamda
-> grid/qatorlar yo'qligi sababli `outerControlsCard` (`.outer-only`) ga yangi
-> **`coverScale`** slayderi qo'shildi (100–300% → ×1..×3). `getEditorConfig`
-> `coverScale` ni beradi; `bitiruvchi-cover` auto holatda: yuz bo'lsa va slayder
-> tegilmagan (`≤1`) bo'lsa yuz-kadrlash, aks holda slayder qiymati zoom bo'ladi
-> (`s = coverScale`). Sudrash baribir manual override. `CFG_CONTROL_IDS` ga
-> `coverScale` qo'shildi → ustki snapshot/generatsiyada saqlanadi. Slayder faqat
-> ustki qadamda ko'rinadi.
+> **USTKI MUQOVA — "Rasm kattaligi (albom bo'ylab)" slayderi (qilindi):** ustki
+> qadamda `outerControlsCard` (`.outer-only`) ga **`coverScale`** slayderi (50–180%,
+> default 100). U muqovadagi rasm **RAMKASI** o'lchamini boshqaradi (albom bo'ylab
+> katta/kichik), ICHKI kontent zoomi emas. `bitiruvchi-cover`: `photoH =
+> (photoBottom-photoTop) * (photoScale/100) * coverScale`, ramka MARKAZDAN o'sadi
+> (`photoCenterY`), shuning uchun scale=1 da joyi o'zgarmaydi. Ichki kadrlash
+> avvalgicha (yuz-kadrlash / sudrash, zoomsiz). `coverScale` `CFG_CONTROL_IDS` da →
+> ustki snapshot/generatsiyada saqlanadi; slayder faqat ustki qadamda ko'rinadi.
 
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
