@@ -18,8 +18,9 @@ window.Generator = {
   // ────────────────────────────────────────────────────────────
   // Asosiy generatsiya
   // ────────────────────────────────────────────────────────────
-  async generate(students, template, config, onProgress, onDone) {
-    this.canvases = [];
+  async generate(students, template, config, onProgress, onDone, opts) {
+    opts = opts || {};
+    if (!opts.append) this.canvases = [];
     const total     = students.length;
     const isInner   = template.type === 'inner';
     const isSplit   = template.type === 'split-inner' || template.type === 'poster-inner';
@@ -43,6 +44,7 @@ window.Generator = {
       const item = {
         name:        student.name,
         index:       i,
+        folder:      opts.folder || null,    // 'ichki' | 'tashqi'
         format:      template.exportFormat || 'png',
         jpegQuality: template.jpegQuality  || 0.92,
       };
@@ -184,15 +186,21 @@ window.Generator = {
   // ────────────────────────────────────────────────────────────
   async downloadZip(canvases, onProgress) {
     const zip    = new JSZip();
-    const folder = zip.folder('vinyetkalar');
+    const root   = zip.folder('albom');
     const total  = canvases.length;
+    // qism papkalari (ichki / tashqi). Agar folder bo'lmasa — to'g'ridan-to'g'ri albom ichida.
+    const sub = {};
+    const getFolder = (name) => {
+      if (!name) return root;
+      if (!sub[name]) sub[name] = root.folder(name);
+      return sub[name];
+    };
 
     for (let i = 0; i < total; i++) {
       const item     = canvases[i];
       const safeName = sanitizeFilename(item.name);
       const num      = String(item.index + 1).padStart(2, '0');
 
-      // Format: JPEG yoki PNG
       const isJpeg   = item.format === 'jpeg';
       const mime     = isJpeg ? 'image/jpeg' : 'image/png';
       const ext      = isJpeg ? 'jpg' : 'png';
@@ -200,7 +208,7 @@ window.Generator = {
       const filename = `${num}_${safeName}.${ext}`;
 
       const blob = item.blob ? item.blob : await canvasToBlob(item.canvas, mime, q);
-      folder.file(filename, blob);
+      getFolder(item.folder).file(filename, blob);
 
       if (onProgress) onProgress(i + 1, total);
       await sleep(5);
@@ -210,7 +218,7 @@ window.Generator = {
       if (onProgress) onProgress(Math.round(meta.percent / 100 * total), total);
     });
 
-    triggerDownload(zipBlob, 'vinyetkalar.zip');
+    triggerDownload(zipBlob, 'albom.zip');
   },
 
   getPreviewURL(canvas) {
