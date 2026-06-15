@@ -67,6 +67,18 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 > boshqa inner shablonlar kabi `allStudents/ownerIndex/teacherImg` ishlatadi,
 > shuning uchun generatsiya + retush avtomatik ishlaydi. `editor.js`da
 > tanlovda maxsus defaultlar (1280×960, rect, qora fon, #d4af37 aksent).
+>
+> **Split-inner funksiyalari poster shablonga ko'chirildi (qilindi):** `bitiruvchi-poster-inner`
+> endi `split-inner`dagi to'liq `drawImgT` ni o'z ichiga oladi — har bir foto uchun:
+> (1) FREE-TRANSFORM — sichqoncha bilan sudrash/g'ildirak zoom/dblclick reset
+> (`transforms[key]`, `hitRegions`); (2) AVTOMATIK YUZ KADRLASH (`faces[idx]`,
+> `autoFaceFrac`/`autoFaceY`); (3) HAR O'QUVCHI RETUSHI (`retouchMap[idx]` —
+> brightness/contrast/saturation/warmth/smooth(`rtSpotHeal`)/vignette). Grid asl
+> indeks bo'yicha ishlaydi (`g${origIndex}`, egasi 1-o'rinda); o'qituvchi fotosi
+> alohida kalit `'T'` (faqat qo'lda transform, yuz/retush yo'q — u o'quvchi emas).
+> `editor.js` inner render shoxiga `hitRegions: _hit` (+ transforms/faces) qo'shildi —
+> shusiz sudrash ishlamasdi. `runAutoFit` (avto-yuz) va Portret-filtri kontrollari
+> inner rejimda ko'rinadi, shuning uchun avtomatik ishlaydi.
 
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
