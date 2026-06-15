@@ -79,6 +79,19 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 > `editor.js` inner render shoxiga `hitRegions: _hit` (+ transforms/faces) qo'shildi —
 > shusiz sudrash ishlamasdi. `runAutoFit` (avto-yuz) va Portret-filtri kontrollari
 > inner rejimda ko'rinadi, shuning uchun avtomatik ishlaydi.
+>
+> **OCHIQ (keyingi qadam) — poster shablonga split-inning 100% kontrollari:**
+> foydalanuvchi talabi: poster `split-inner` bilan FAQAT ko'rinishi farq qilsin,
+> qolgan barcha funksiya/kontrol bir xil bo'lsin. Hali ko'chirilmagan kontrollar
+> (`splitControlsCard`dagi): fon turi (rang/gradient/rasm + fon rasm yuklash),
+> o'rtadagi ajratgich turi, ism joylashuvi (pastda/ustida/ustiga/yo'q), maksimal
+> ustunlar soni, o'quvchi rasmi shakli (yumaloq/to'rtburchak/doira/oval), ism/ramka
+> rangi, chap yozuv (leftLabel). Eng ishonchli yo'l — poster `type`ini
+> `'split-inner'` ga o'tkazish (shunda editor render shoxi, `splitControlsCard` va
+> `_renderSplitInner` AVTOMATIK ulanadi); so'ng `draw()`ni shu cfg'larni hisobga
+> oladigan qilib poster ko'rinishida yozish + chap blokda o'qituvchi rasmini
+> ko'rsatish uchun `teacherImg`ni split render shoxi va `_renderSplitInner`ga uzatish,
+> hamda shu `id` uchun `teacherUploadWrap`ni ko'rsatish.
 
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
