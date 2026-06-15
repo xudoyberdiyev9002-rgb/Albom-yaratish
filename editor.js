@@ -733,12 +733,10 @@ function renderPreview() {
 
   const _hit = [];  // free-transform uchun rasm hududlari
 
-  // Editor kartalarini shablon turiga qarab ko'rsat/yashir.
-  // MUHIM: panel ko'rinishi ICHKI shablonga bog'lanadi — shunda ustki qadamga
-  // o'tganda ham xuddi shu kontrollar qoladi (o'zgarib ketmaydi).
-  const panelTpl     = window.AppState.innerTemplate || tpl;
-  const isSplitMode  = panelTpl.type === 'split-inner';
-  const isPosterMode = panelTpl.type === 'poster-inner';
+  // Editor kartalarini FAOL shablon turiga qarab ko'rsat/yashir.
+  // (Har qism o'zi ishlatadigan kontrollarni ko'rsatadi — shunda ishlaydi.)
+  const isSplitMode  = tpl.type === 'split-inner';
+  const isPosterMode = tpl.type === 'poster-inner';
   const hideGeneric  = isSplitMode || isPosterMode;
   document.querySelectorAll('.generic-ctrl').forEach(c => c.style.display = hideGeneric ? 'none' : '');
   const splitCard = document.getElementById('splitControlsCard');
