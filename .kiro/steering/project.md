@@ -67,6 +67,12 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 > - `Generator.generate(...opts{append,folder})` ikkala qismni `Generator.canvases`ga
 >   yig'adi; `downloadZip` ZIPда `albom/ichki/` va `albom/tashqi/` papkalariga ajratadi.
 > - Ustki shabloni hozir default; chooser keyin qo'shiladi.
+> - **Ustki qadam kontrollari:** inner-only bloklar (Gemini, Retush) yashiriladi;
+>   `outerControlsCard` (`.outer-only`) ko'rsatiladi — muqova matnlari tahriri:
+>   `ovType` (maktab=sinf / oliy=guruh), `ovTitle`, `ovSchoolNum`, `ovClass`,
+>   `ovYear`, `ovCity`. `getEditorConfig` ularni `cover*` sifatida beradi;
+>   `bitiruvchi-cover.draw` `cfg.cover*` ni `data`(classInfo)dan ustun qo'yadi.
+>   Muqovada ISM va SINF RAHBARI yo'q (faqat sinf/guruh + maktab + yil + shahar).
 
 
 > **MUHIM (joriy holat):** Gemini AI retush funksiyasi QAYTA YOQILDI va faol.

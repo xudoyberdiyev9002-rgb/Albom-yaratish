@@ -375,6 +375,23 @@
             <input type="text" id="leftLabel" placeholder="(bo'sh = o'quvchi ismi)"/>
           </div>
 
+          <div id="outerControlsCard" class="outer-only" style="display:none">
+            <h4 style="margin-top:14px">🎓 Ustki (muqova) matnlari</h4>
+            <div class="ctrl-group">
+              <label>Muassasa turi</label>
+              <select id="ovType">
+                <option value="school">Maktab (sinf)</option>
+                <option value="uni">Oliy ta'lim (guruh)</option>
+              </select>
+            </div>
+            <div class="ctrl-group"><label>Sarlavha</label><input type="text" id="ovTitle" value="BITIRUVCHI ALBOM"/></div>
+            <div class="ctrl-group"><label>Maktab / Muassasa №</label><input type="text" id="ovSchoolNum" placeholder="№ 65 maktab"/></div>
+            <div class="ctrl-group"><label id="ovClassLabel">Sinf</label><input type="text" id="ovClass" placeholder="11-A"/></div>
+            <div class="ctrl-group"><label>Yil</label><input type="text" id="ovYear" placeholder="2026"/></div>
+            <div class="ctrl-group"><label>Tuman / Shahar</label><input type="text" id="ovCity" placeholder="Toshkent"/></div>
+          </div>
+
+          <div class="inner-only">
           <h4 style="margin-top:14px">🧪 Gemini Mapping (test)</h4>
           <div class="ctrl-group" style="margin-bottom:6px">
             <label style="display:flex;justify-content:space-between">
@@ -410,6 +427,7 @@
           <div class="ctrl-group"><label>Kontrast <span id="rtContrastVal">0</span></label><input type="range" id="rtContrast" min="-50" max="50" value="0"/></div>
           <div class="ctrl-group"><label>To'yinganlik <span id="rtSatVal">0</span></label><input type="range" id="rtSat" min="-50" max="50" value="0"/></div>
           <div class="ctrl-group"><label>Vignette <span id="rtVignetteVal">0</span></label><input type="range" id="rtVignette" min="0" max="100" value="0"/></div>
+          </div><!-- /.inner-only -->
         </div>
 
         <button class="btn-refresh-preview" id="refreshPreview">🔄 Preview yangilash</button>

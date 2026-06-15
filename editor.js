@@ -471,6 +471,13 @@ function initEditorControls() {
     if (el) ['input', 'change'].forEach(ev => el.addEventListener(ev, debRender));
   });
 
+  // Ustki (muqova) matn kontrollari
+  document.querySelectorAll('#ovTitle,#ovSchoolNum,#ovClass,#ovYear,#ovCity').forEach(el => {
+    if (el) ['input', 'change'].forEach(ev => el.addEventListener(ev, debRender));
+  });
+  const ovTypeEl = document.getElementById('ovType');
+  if (ovTypeEl) ovTypeEl.addEventListener('change', () => { updateOvClassLabel(); renderPreview(); });
+
   // splitMaxCols slider + label
   const maxColsEl = document.getElementById('splitMaxCols');
   const maxColsVal = document.getElementById('splitMaxColsVal');
@@ -944,6 +951,7 @@ const CFG_CONTROL_IDS = [
   'nameFontSize','schoolFontSize','photoScale','photoOffsetY','photoShape',
   'splitBgColor','splitBgColor2','splitNameColor','splitPhotoShape','splitBorderColor',
   'splitDivider','splitNamePos','splitMaxCols','leftLabel','splitBgType',
+  'ovType','ovTitle','ovSchoolNum','ovClass','ovYear','ovCity',
 ];
 const CFG_LABEL_SFX = { nameFontSize:'px', schoolFontSize:'px', photoScale:'%', photoOffsetY:'px' };
 
@@ -974,6 +982,24 @@ function seedTemplateDefaults(tpl) {
   if (tpl.type === 'vinyetka') set('photoShape', 'circle');
 }
 
+// Muqova matnlarini classInfo dan birinchi marta to'ldirish
+function seedOuterTexts() {
+  collectClassInfo();
+  const ci = window.AppState.classInfo || {};
+  const set = (id, v) => { const el = document.getElementById(id); if (el && !el.value) el.value = v || ''; };
+  set('ovSchoolNum', ci.schoolNumber);
+  set('ovClass',     ci.className);
+  set('ovYear',      ci.schoolYear);
+  set('ovCity',      ci.cityName);
+}
+
+// "Sinf" / "Guruh" yorlig'ini muassasa turiga qarab yangilash
+function updateOvClassLabel() {
+  const type = (document.getElementById('ovType') || {}).value || 'school';
+  const lbl = document.getElementById('ovClassLabel');
+  if (lbl) lbl.textContent = type === 'uni' ? 'Guruh' : 'Sinf';
+}
+
 // Tahrirlash qismini almashtirish ('inner' yoki 'outer')
 function switchEditPart(part) {
   const st = window.AppState;
@@ -989,7 +1015,15 @@ function switchEditPart(part) {
 
   const saved = part === 'inner' ? st.cfgInner : st.cfgOuter;
   if (saved) restoreControls(saved);
-  else seedTemplateDefaults(tpl);   // birinchi marta
+  else {
+    seedTemplateDefaults(tpl);   // birinchi marta
+    if (part === 'outer') seedOuterTexts();   // muqova matnlarini classInfo dan to'ldirish
+  }
+
+  // inner-only / outer-only kontrollarni ko'rsat/yashir
+  document.querySelectorAll('.inner-only').forEach(el => el.style.display = part === 'inner' ? '' : 'none');
+  document.querySelectorAll('.outer-only').forEach(el => el.style.display = part === 'outer' ? '' : 'none');
+  updateOvClassLabel();
 
   // qism sarlavhasi
   const titleEl = document.getElementById('editPartTitle');
@@ -1043,6 +1077,13 @@ function getEditorConfig() {
     autoFaceFracLeft: (parseInt(($('afFaceLeft')  || {}).value) || 27) / 100,
     autoFaceYLeft:    (parseInt(($('afFaceYLeft') || {}).value) || 43) / 100,
     retouchMap:    window.AppState.retouchMap,   // har bir o'quvchi uchun alohida retush
+    // Ustki (muqova) matn override'lari
+    coverType:      ($('ovType')      || {}).value || 'school',
+    coverTitle:     ($('ovTitle')     || {}).value,
+    coverSchoolNum: ($('ovSchoolNum') || {}).value,
+    coverClass:     ($('ovClass')     || {}).value,
+    coverYear:      ($('ovYear')      || {}).value,
+    coverCity:      ($('ovCity')      || {}).value,
   };
 }
 
