@@ -132,6 +132,18 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 > (`photoCenterY`), shuning uchun scale=1 da joyi o'zgarmaydi. Ichki kadrlash
 > avvalgicha (yuz-kadrlash / sudrash, zoomsiz). `coverScale` `CFG_CONTROL_IDS` da →
 > ustki snapshot/generatsiyada saqlanadi; slayder faqat ustki qadamda ko'rinadi.
+>
+> **USTKI MUQOVA — vertikal joy + sarlavha overlap + retush tuzatildi (qilindi):**
+> 1. **Vertikal joy:** yangi `coverOffsetY` slayderi (−100..100, `outer-only`) →
+>    ramkani vertikal siljitadi (`photoY += coverOffsetY * h * 0.30`). `CFG_CONTROL_IDS`
+>    da, snapshot/generatsiyada saqlanadi.
+> 2. **Sarlavha ustiga chiqishi:** ramka endi MARKAZDAN emas, TEPADAN o'sadi
+>    (`photoY = photoTop + photoOffsetY + offset`) va `minTop = h*0.115` bilan
+>    cheklangan → "BITIRUVCHI" sarlavhasi ustiga chiqmaydi.
+> 3. **Retush:** `bitiruvchi-cover` endi `retouchMap[faceIdx]` ni qo'llaydi
+>    (brightness/contrast/saturation/warmth/smooth(`rtSpotHeal`)/vignette) — xuddi
+>    `drawImgT` kabi. Retush sliderlari `.inner-only` (ustki qadamda ham ko'rinadi),
+>    Gemini retush esa `student.img` ni to'g'ridan-to'g'ri o'zgartiradi.
 
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**

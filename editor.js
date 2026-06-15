@@ -556,6 +556,11 @@ function initEditorControls() {
   const cvSV = document.getElementById('coverScaleVal');
   if (cvS) cvS.addEventListener('input', () => { if (cvSV) cvSV.textContent = cvS.value + '%'; renderPreview(); });
 
+  // Ustki muqova rasm vertikal joyi slayderi
+  const cvY  = document.getElementById('coverOffsetY');
+  const cvYV = document.getElementById('coverOffsetYVal');
+  if (cvY) cvY.addEventListener('input', () => { if (cvYV) cvYV.textContent = cvY.value; renderPreview(); });
+
   const afYL = document.getElementById('afFaceYLeft');
   const afYLV = document.getElementById('afFaceYLeftVal');
   if (afYL) afYL.addEventListener('input', () => { if (afYLV) afYLV.textContent = afYL.value + '%'; renderPreview(); });
@@ -987,7 +992,7 @@ const CFG_CONTROL_IDS = [
   'canvasW','canvasH','bgColor1','bgColor2','accentColor','nameColor','schoolColor',
   'nameFontSize','schoolFontSize','photoScale','photoOffsetY','photoShape',
   'splitBgColor','splitBgColor2','splitNameColor','splitPhotoShape','splitBorderColor',
-  'splitDivider','splitNamePos','splitMaxCols','leftLabel','splitBgType','coverScale',
+  'splitDivider','splitNamePos','splitMaxCols','leftLabel','splitBgType','coverScale','coverOffsetY',
   'ovType','ovTitle','ovSchoolNum','ovClass','ovYear','ovCity',
 ];
 const CFG_LABEL_SFX = { nameFontSize:'px', schoolFontSize:'px', photoScale:'%', photoOffsetY:'px', coverScale:'%' };
@@ -1128,6 +1133,7 @@ function getEditorConfig() {
     coverCity:      ($('ovCity')      || {}).value,
     // Ustki muqova rasm kattaligi (zoom) — % → koeffitsient
     coverScale:     (parseInt(($('coverScale') || {}).value) || 100) / 100,
+    coverOffsetY:   (parseInt(($('coverOffsetY') || {}).value) || 0) / 100,
   };
 }
 

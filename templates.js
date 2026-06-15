@@ -209,11 +209,14 @@ window.TEMPLATES = [
       // Rasm ramkasi o'lchami: generic photoScale * coverScale (albom bo'ylab katta-kichik).
       // Markazdan o'sadi (scale=1 da avvalgi joyida turadi).
       const cvFrame  = (cfg.coverScale != null ? cfg.coverScale : 1);
+      const cvOffY   = (cfg.coverOffsetY != null ? cfg.coverOffsetY : 0);   // -1..1 vertikal siljitish
       const photoH = Math.round((photoBottom - photoTop) * (photoScale / 100) * cvFrame);
       const photoW = Math.round(photoH * 0.72); // 3:4 nisbat
       const photoX = Math.round(w / 2 - photoW / 2);
-      const photoCenterY = (photoTop + photoBottom) / 2;
-      const photoY = Math.round(photoCenterY - photoH / 2) + photoOffsetY;
+      // Tepadan boshlanadi (sarlavha ustiga chiqmasin) + vertikal siljitish slayderi
+      const minTop = Math.round(h * 0.115);   // sarlavha ostidagi yuqori chegara
+      let photoY = photoTop + photoOffsetY + Math.round(cvOffY * h * 0.30);
+      if (photoY < minTop) photoY = minTop;
 
       // Yengil oq border
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -269,7 +272,36 @@ window.TEMPLATES = [
         const dw = iw * sc0 * s, dh = ih * sc0 * s;
         const dx = photoX + (photoW - dw) / 2 + ox * photoW;
         const dy = photoY + (photoH - dh) / 2 + oy * photoH;
-        ctx.drawImage(photo, dx, dy, dw, dh);
+        // RETUSH (portret filtri) — har o'quvchi uchun retouchMap[cvFi]
+        const R = (cfg.retouchMap && cfg.retouchMap[cvFi]) || {};
+        const hasColor = (R.brightness || R.contrast || R.saturation || R.warmth > 0);
+        if (hasColor) {
+          const sepia = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
+          ctx.filter =
+            `brightness(${1 + (R.brightness || 0) / 100}) ` +
+            `contrast(${1 + (R.contrast || 0) / 100}) ` +
+            `saturate(${1 + (R.saturation || 0) / 100}) ` +
+            `sepia(${sepia})`;
+        }
+        let smoothed = null;
+        if (R.smooth > 0) smoothed = rtSpotHeal(photo, dw, dh, R.smooth);
+        if (smoothed) ctx.drawImage(smoothed, dx, dy, dw, dh);
+        else          ctx.drawImage(photo, dx, dy, dw, dh);
+        ctx.filter = 'none';
+        if (R.warmth < 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.globalAlpha = (-R.warmth) / 100 * 0.18;
+          ctx.fillStyle = '#3a6ea5';
+          ctx.fillRect(photoX, photoY, photoW, photoH);
+          ctx.restore();
+        }
+        if (R.vignette > 0) {
+          const g = ctx.createRadialGradient(photoX + photoW / 2, photoY + photoH / 2, Math.min(photoW, photoH) * 0.35, photoX + photoW / 2, photoY + photoH / 2, Math.max(photoW, photoH) * 0.72);
+          g.addColorStop(0, 'rgba(0,0,0,0)');
+          g.addColorStop(1, `rgba(0,0,0,${(R.vignette / 100) * 0.6})`);
+          ctx.fillStyle = g; ctx.fillRect(photoX, photoY, photoW, photoH);
+        }
       } else {
         // Placeholder
         const grad = ctx.createLinearGradient(photoX, photoY, photoX, photoY + photoH);
