@@ -828,6 +828,10 @@ function renderPreview() {
       w: cfg.canvasW, h: cfg.canvasH,
       photo:       student.img,
       studentName: student.name,
+      faceIdx:     idx,                            // cover auto-yuz/transform kaliti uchun
+      transforms:  window.AppState.transforms,     // free-transform (cover rasmi)
+      faces:       window.AppState.faces,           // avtomatik yuz kadrlash
+      hitRegions:  _hit,                            // rasm hududlari (hit-test)
     });
     document.querySelector('.preview-label').textContent =
       `Ko'rish — ${idx + 1}-o'quvchi namunasi`;

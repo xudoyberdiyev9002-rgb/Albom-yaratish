@@ -101,6 +101,22 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 >   1-o'rinda). O'qituvchi fotosi kaliti `'T'` (qo'lda transform; u o'quvchi
 >   bo'lmagani uchun yuz/retush yo'q).
 
+> **KATTA RASM POZITSIYA KONTROLI — teacher + cover ga ulandi (qilindi):**
+> "Katta rasm — yuz kattaligi / vertikal joyi" slayderlari (`afFaceLeft`/`afFaceYLeft`
+> → `autoFaceFracLeft`/`autoFaceYLeft`) + sichqoncha sudrash/zoom endi:
+> - **Sinf rahbari (poster chap katta rasm):** `drawImgT` ga `isLeft` qo'shildi;
+>   yuzi aniqlanmagan katta rasmda slayderlar zoom (`tf/0.27`) + vertikal pan
+>   sifatida ishlaydi. Kaliti `'T'`.
+> - **Ustki muqova (`bitiruvchi-cover`) rasmi:** rasm bloki transform + auto-yuz
+>   (`faces[idx]`) + chap-slayderlar bilan qayta yozildi; har o'quvchi uchun
+>   alohida `cover<idx>` kaliti. Default (slayder tegmagan) ko'rinish o'zgarmaydi
+>   (`tf=0.27 → s=1`, markazda). Sabab: poster `split-inner` turi bo'lgani uchun
+>   ustki qadamda `.generic-ctrl` (Rasm o'lchami/vertikal pozitsiya) yashirin edi →
+>   cover'ni siljitib bo'lmas edi; endi ko'rinadigan chap-slayderlar + sudrash.
+> - `editor.js`: vinyetka (else) render shoxiga `hitRegions/transforms/faces/faceIdx`
+>   qo'shildi. `generator._renderOne` endi `faceIdx`(=o'quvchi indeksi) uzatadi →
+>   preview va generatsiyada bir xil `cover<idx>` transform.
+
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
 > (vinyetka, default `bitiruvchi-cover`). Oqim: 1 Shablon → 2 Yuklash →
