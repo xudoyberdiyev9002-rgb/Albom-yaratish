@@ -1211,7 +1211,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'bitiruvchi-poster-inner',
-    type: 'inner',
+    type: 'split-inner',
     name: 'Bitiruvchi Poster',
     desc: 'Qora · O\'qituvchi xati + katta sinf raqami + grid',
     emoji: '📜',
@@ -1224,15 +1224,29 @@ window.TEMPLATES = [
     schoolColor:'#cccccc',
 
     draw(ctx, data, cfg) {
-      const {
-        w, h,
-        allStudents = [],
-        ownerIndex  = 0,
-        teacherImg  = null,
-        nameColor   = '#ffffff',
-        accentColor = '#d4af37',
-        photoScale  = 100,
-      } = cfg;
+      const w = cfg.w || cfg.canvasW || 1280;
+      const h = cfg.h || cfg.canvasH || 960;
+      const allStudents = cfg.allStudents || [];
+      const ownerIndex  = cfg.ownerIndex != null ? cfg.ownerIndex : 0;
+      const teacherImg  = cfg.teacherImg ||
+        (typeof window !== 'undefined' && window.AppState && window.AppState.teacherImg) || null;
+      const nameColor   = cfg.nameColor   || '#ffffff';
+      const accentColor = cfg.accentColor || '#d4af37';
+      const photoScale  = cfg.photoScale  || 100;
+
+      // ── SPLIT-INNER KONTROLLARI (faqat ko'rinish farqli — funksiya bir xil) ──
+      const bgType     = cfg.bgType    || 'color';
+      const bgColor1   = cfg.bgColor1  || '#0a0a0a';
+      const bgColor2   = cfg.bgColor2  || '#000000';
+      const gradDir    = cfg.gradDir   || 'tb';
+      const bgImg      = cfg.bgImg     || null;
+      const bgOverlay  = cfg.bgOverlay != null ? cfg.bgOverlay : 0.45;
+      const bgOvColor  = cfg.bgOvColor || '#000000';
+      const maxCols    = Math.max(2, cfg.maxCols || 6);
+      const photoShape = cfg.photoShape || 'rect';
+      const namePos    = cfg.namePos   || 'bottom';
+      const divider    = cfg.divider   || 'line';
+      const leftLabel  = (cfg.leftLabel || '').trim();
 
       // O'qituvchi xati — cfg/data orqali override qilinishi mumkin, bo'lmasa default
       const teacherMsg = (cfg.teacherMessage || data.teacherMessage ||
@@ -1349,18 +1363,31 @@ window.TEMPLATES = [
         return true;
       }
 
-      // To'rtburchak portret (yupqa ramka + drawImgT bilan rasm)
+      // Foto shakli bo'yicha clip yo'li (split-inner photoShape: rect/rounded/circle/oval)
+      function shapePath(x, y, pw, ph, shape) {
+        ctx.beginPath();
+        const r = Math.min(pw, ph) * 0.12;
+        switch (shape) {
+          case 'circle': ctx.arc(x + pw / 2, y + ph / 2, Math.min(pw, ph) / 2, 0, Math.PI * 2); break;
+          case 'oval':   ctx.ellipse(x + pw / 2, y + ph / 2, pw / 2, ph / 2, 0, 0, Math.PI * 2); break;
+          case 'rounded':ctx.roundRect(x, y, pw, ph, r); break;
+          default:       ctx.rect(x, y, pw, ph);   // 'rect'
+        }
+      }
+
+      // Portret (ramka + drawImgT bilan rasm). shape — foto shakli.
       // key/faceIdx berilsa: free-transform, auto-yuz va retush ishlaydi.
-      function drawPortrait(img, x, y, pw, ph, featured, key, faceIdx, targetFrac) {
+      function drawPortrait(img, x, y, pw, ph, featured, key, faceIdx, targetFrac, shape) {
+        shape = shape || 'rect';
         ctx.save();
+        shapePath(x, y, pw, ph, shape);
         ctx.strokeStyle = featured ? accentColor : 'rgba(255,255,255,0.5)';
         ctx.lineWidth   = featured ? 2 : 1;
-        ctx.strokeRect(x, y, pw, ph);
+        ctx.stroke();
         ctx.restore();
 
         ctx.save();
-        ctx.beginPath();
-        ctx.rect(x + 1, y + 1, pw - 2, ph - 2);
+        shapePath(x + 1, y + 1, pw - 2, ph - 2, shape);
         ctx.clip();
         const ok = (key != null)
           ? drawImgT(img, x + 1, y + 1, pw - 2, ph - 2, key, faceIdx, targetFrac)
@@ -1383,37 +1410,57 @@ window.TEMPLATES = [
         ctx.restore();
       }
 
-      // ── 1. QORA FON + TEKSTURA ─────────────────────────────
-      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.42, h * 0.1, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
-      bgGrad.addColorStop(0, '#161616');
-      bgGrad.addColorStop(1, '#040404');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Fon vatermark — yirik xira serif harflar
-      ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.028)';
-      ctx.font = `700 ${Math.round(h * 0.5)}px Georgia, 'Times New Roman', serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('M', w * 0.07, h * 0.28);
-      ctx.fillText('V', w * 0.04, h * 0.74);
-      ctx.fillText('C', w * 0.45, h * 0.5);
-      ctx.restore();
-
-      // Mayda scratch chiziqlar
-      ctx.save();
-      for (let i = 0; i < 120; i++) {
-        const x1 = Math.random() * w, y1 = Math.random() * h;
-        const len = 4 + Math.random() * 18, ang = Math.random() * Math.PI;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x1 + Math.cos(ang) * len, y1 + Math.sin(ang) * len);
-        ctx.strokeStyle = `rgba(255,255,255,${0.015 + Math.random() * 0.02})`;
-        ctx.lineWidth = 0.5 + Math.random() * 0.6;
-        ctx.stroke();
+      // ── 1. FON (split-inner kontrollari: rang / gradient / rasm) ──
+      function hexA(hex, a) {
+        const n = parseInt((hex || '#000').replace('#', ''), 16);
+        return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
       }
-      ctx.restore();
+      if (bgType === 'image' && bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
+        const iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
+        const sc = Math.max(w / iw, h / ih);
+        ctx.drawImage(bgImg, (w - iw * sc) / 2, (h - ih * sc) / 2, iw * sc, ih * sc);
+        if (bgOverlay > 0.01) { ctx.fillStyle = hexA(bgOvColor, bgOverlay); ctx.fillRect(0, 0, w, h); }
+      } else if (bgType === 'gradient') {
+        let g;
+        if (gradDir === 'radial') g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.75);
+        else if (gradDir === 'lr') g = ctx.createLinearGradient(0, 0, w, 0);
+        else if (gradDir === 'diag') g = ctx.createLinearGradient(0, 0, w, h);
+        else g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, bgColor1); g.addColorStop(1, bgColor2);
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      } else {
+        const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.42, h * 0.1, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+        bgGrad.addColorStop(0, bgColor1);
+        bgGrad.addColorStop(1, bgColor2);
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // Fon vatermark + scratch (faqat rasm fon bo'lmaganda)
+      if (bgType !== 'image') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.028)';
+        ctx.font = `700 ${Math.round(h * 0.5)}px Georgia, 'Times New Roman', serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('M', w * 0.07, h * 0.28);
+        ctx.fillText('V', w * 0.04, h * 0.74);
+        ctx.fillText('C', w * 0.45, h * 0.5);
+        ctx.restore();
+
+        ctx.save();
+        for (let i = 0; i < 120; i++) {
+          const x1 = Math.random() * w, y1 = Math.random() * h;
+          const len = 4 + Math.random() * 18, ang = Math.random() * Math.PI;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x1 + Math.cos(ang) * len, y1 + Math.sin(ang) * len);
+          ctx.strokeStyle = `rgba(255,255,255,${0.015 + Math.random() * 0.02})`;
+          ctx.lineWidth = 0.5 + Math.random() * 0.6;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
 
       // ── MA'LUMOTLAR ────────────────────────────────────────
       const clsRaw    = (data.className || '11 B').trim();
@@ -1435,7 +1482,7 @@ window.TEMPLATES = [
       if (tW > leftW * 0.98) { tW = Math.round(leftW * 0.98); }
       const tX = leftCx - tW / 2;
       const tY = Math.round(h * 0.045);
-      drawPortrait(teacherImg, tX, tY, tW, tH, true, 'T', null, 0.42);
+      drawPortrait(teacherImg, tX, tY, tW, tH, true, 'T', null, 0.42, 'rect');
 
       // O'qituvchi ismi
       let cursorY = tY + tH + Math.round(h * 0.045);
@@ -1443,7 +1490,7 @@ window.TEMPLATES = [
       ctx.textAlign   = 'center';
       ctx.textBaseline = 'middle';
       ctx.font        = `600 ${Math.round(h * 0.03)}px Georgia, 'Times New Roman', serif`;
-      ctx.fillText(data.teacherName || 'Sinf rahbari', leftCx, cursorY);
+      ctx.fillText(leftLabel || data.teacherName || 'Sinf rahbari', leftCx, cursorY);
 
       // "Sinf rahbari"
       cursorY += Math.round(h * 0.032);
@@ -1514,7 +1561,7 @@ window.TEMPLATES = [
       if (order.length > 0 && ownerIndex > 0 && ownerIndex < order.length) {
         order = [ownerIndex, ...order.filter(i => i !== ownerIndex)];
       }
-      const COLS    = 6;
+      const COLS    = maxCols;
       const gridX   = Math.round(w * 0.375);
       const gridR   = Math.round(w * 0.875);
       const gridTop = Math.round(h * 0.065);
@@ -1527,8 +1574,21 @@ window.TEMPLATES = [
       const rowGap   = Math.round((gridBot - gridTop) * 0.018);
       const rowH     = Math.floor((gridBot - gridTop - rowGap * (ROWS - 1)) / ROWS);
       const pW       = cellW;
-      const pH       = Math.round(rowH * 0.78);
+      const hasName  = (namePos !== 'none');
+      const pH       = Math.round(rowH * (hasName ? 0.78 : 0.96));
       const nameFS   = Math.max(8, Math.round(rowH * 0.085));
+
+      // O'rtadagi ajratgich (split-inner divider kontroli)
+      if (divider === 'line') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(gridX - Math.round(w * 0.014), gridTop);
+        ctx.lineTo(gridX - Math.round(w * 0.014), gridBot);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       order.forEach((origIndex, idx) => {
         const st  = allStudents[origIndex] || null;
@@ -1537,22 +1597,45 @@ window.TEMPLATES = [
         const cx  = gridX + col * (cellW + cellGapX);
         const cyy = gridTop + row * (rowH + rowGap);
 
-        // Foto: free-transform + auto-yuz + retush (kalit = asl indeks)
-        drawPortrait(st?.img || null, cx, cyy, pW, pH, idx === 0, `g${origIndex}`, origIndex, 0.55);
+        // Foto: free-transform + auto-yuz + retush (kalit = asl indeks) + foto shakli
+        drawPortrait(st?.img || null, cx, cyy, pW, pH, idx === 0, `g${origIndex}`, origIndex, 0.55, photoShape);
 
-        // Ism (1-2 qator)
+        // Ism (split-inner namePos kontroli: none/over/bottom/top)
         const nm = (st?.name || '').trim();
-        ctx.fillStyle    = nameColor;
-        ctx.font         = `300 ${nameFS}px Inter, sans-serif`;
-        ctx.textAlign    = 'center';
-        ctx.textBaseline = 'top';
-        const nameY  = cyy + pH + Math.round(rowH * 0.04);
-        const parts  = nm.split(/\s+/);
-        if (parts.length >= 2) {
-          ctx.fillText(parts[0], cx + pW / 2, nameY);
-          ctx.fillText(parts.slice(1).join(' '), cx + pW / 2, nameY + nameFS * 1.15);
-        } else if (nm) {
-          ctx.fillText(nm, cx + pW / 2, nameY);
+        if (hasName && nm) {
+          const parts = nm.split(/\s+/);
+          const l1 = parts[0] || '';
+          const l2 = parts.length >= 2 ? parts.slice(1).join(' ') : '';
+          ctx.save();
+          ctx.font      = `300 ${nameFS}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          if (namePos === 'over') {
+            // Foto pastiga qoramtir overlay + ism
+            ctx.save();
+            shapePath(cx + 1, cyy + 1, pW - 2, pH - 2, photoShape);
+            ctx.clip();
+            const ovH = Math.round(pH * 0.3);
+            const og = ctx.createLinearGradient(0, cyy + pH - ovH, 0, cyy + pH);
+            og.addColorStop(0, 'rgba(0,0,0,0)'); og.addColorStop(1, 'rgba(0,0,0,0.72)');
+            ctx.fillStyle = og; ctx.fillRect(cx, cyy + pH - ovH, pW, ovH);
+            ctx.restore();
+            ctx.fillStyle = nameColor;
+            ctx.textBaseline = 'bottom';
+            if (l2) {
+              ctx.fillText(l1, cx + pW / 2, cyy + pH - Math.round(nameFS * 1.15) - 3);
+              ctx.fillText(l2, cx + pW / 2, cyy + pH - 3);
+            } else {
+              ctx.fillText(l1, cx + pW / 2, cyy + pH - 3);
+            }
+          } else {
+            // 'bottom' (default) yoki 'top' — foto ostida
+            ctx.fillStyle = nameColor;
+            ctx.textBaseline = 'top';
+            const nameY = cyy + pH + Math.round(rowH * 0.04);
+            ctx.fillText(l1, cx + pW / 2, nameY);
+            if (l2) ctx.fillText(l2, cx + pW / 2, nameY + nameFS * 1.15);
+          }
+          ctx.restore();
         }
       });
 

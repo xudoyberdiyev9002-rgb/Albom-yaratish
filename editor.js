@@ -188,21 +188,25 @@ function selectTemplate(card, tpl) {
     document.getElementById('accentColor').value = '#ffffff';
   }
 
-  // Bitiruvchi Poster ichki sahifa uchun maxsus defaultlar
+  // Bitiruvchi Poster ichki sahifa uchun maxsus defaultlar (type: split-inner)
   if (tpl.id === 'bitiruvchi-poster-inner') {
-    document.getElementById('photoShape').value = 'rect';
-    document.getElementById('photoScale').value = 100;
-    document.getElementById('photoScaleVal').textContent = '100%';
-    document.getElementById('canvasW').value = 1280;
-    document.getElementById('canvasH').value = 960;
-    document.getElementById('nameFontSize').value = 12;
-    document.getElementById('nameFontSizeVal').textContent = '12px';
-    document.getElementById('schoolFontSize').value = 11;
-    document.getElementById('schoolFontSizeVal').textContent = '11px';
-    document.getElementById('bgColor1').value = '#0a0a0a';
-    document.getElementById('bgColor2').value = '#000000';
-    document.getElementById('nameColor').value = '#ffffff';
-    document.getElementById('accentColor').value = '#d4af37';
+    const setV = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+    const setT = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+    setV('canvasW', 1280);
+    setV('canvasH', 960);
+    // Poster = qora fon, 6 ustun, to'rtburchak foto, gold aksent
+    setV('splitBgType',   'color');
+    setV('splitBgColor',  '#0a0a0a');
+    setV('splitBgColor2', '#000000');
+    setV('splitNameColor','#ffffff');
+    setV('splitMaxCols',  6);  setT('splitMaxColsVal', '6');
+    setV('splitPhotoShape','rect');
+    setV('splitDivider',  'line');
+    setV('splitNamePos',  'bottom');
+    setV('accentColor',   '#d4af37');
+    // CHAP blok = sinf rahbari → o'qituvchi rasmini yuklash kerak (split bo'lsa ham ko'rsatamiz)
+    if (wrap)      wrap.style.display      = 'block';
+    if (splitWrap) splitWrap.style.display = 'none';
   }
 
   // Split-inner shablon uchun maxsus defaultlar
@@ -781,6 +785,7 @@ function renderPreview() {
       allStudents:    students,
       ownerIndex:     idx,
       leftImg:        student.img || null,           // o'quvchining o'zi = chap portret
+      teacherImg:     window.AppState.teacherImg,     // poster shabloni chap blok uchun
       bgImg:          window.AppState.splitBgImg || null,
       transforms:     window.AppState.transforms,    // free-transform
       faces:          window.AppState.faces,
