@@ -148,6 +148,15 @@ window.TEMPLATES = [
         photoOffsetY = 0,
       } = cfg;
 
+      // Ustki (muqova) matnlari — editordan tahrirlanadi (cfg.cover*),
+      // bo'lmasa classInfo (data) dan olinadi.
+      const ovTitle     = (cfg.coverTitle != null && cfg.coverTitle !== '') ? cfg.coverTitle : 'BITIRUVCHI ALBOM';
+      const ovSchoolNum = (cfg.coverSchoolNum != null && cfg.coverSchoolNum !== '') ? cfg.coverSchoolNum : (data.schoolNumber || '');
+      const ovYear      = (cfg.coverYear != null && cfg.coverYear !== '') ? cfg.coverYear : (data.schoolYear || '');
+      const ovCity      = (cfg.coverCity != null && cfg.coverCity !== '') ? cfg.coverCity : (data.cityName || '');
+      const ovClass     = (cfg.coverClass != null) ? cfg.coverClass : (data.className || '');
+      const ovType      = cfg.coverType || 'school';   // 'school' | 'uni'
+
       // ── 1. QORA FON (gradient) ─────────────────────────────
       const bg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
       bg.addColorStop(0, bgColor2);
@@ -157,7 +166,7 @@ window.TEMPLATES = [
 
       // ── 2. VATERMARK (orqa fonda yirik raqamlar/№) ─────────
       // Maktab raqamidan vatermark hosil qilamiz: "№65" yoki kerak bo'lsa yil
-      const wmText = (data.schoolNumber || '№65')
+      const wmText = (ovSchoolNum || '№65')
         .replace(/maktab|школа|school|umumiy.*/gi, '')
         .trim() || '№';
 
@@ -192,7 +201,7 @@ window.TEMPLATES = [
       ctx.font = `300 ${Math.round(h * 0.038)}px 'Inter', 'Helvetica Neue', sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      drawSpacedText(ctx, 'BITIRUVCHI ALBOM', w / 2, titleY, Math.round(h * 0.012));
+      drawSpacedText(ctx, ovTitle, w / 2, titleY, Math.round(h * 0.012));
 
       // ── 4. RASM TO'RTBURCHAK ───────────────────────────────
       const photoTop    = Math.round(h * 0.14);
@@ -238,7 +247,7 @@ window.TEMPLATES = [
       ctx.restore();
 
       // ── 5. YIL "2 0 2 6" (yirik, ingichka) ─────────────────
-      const yearText = (data.schoolYear || '2026').split('-')[0].trim();
+      const yearText = (ovYear || '2026').split('-')[0].trim();
       const yearY    = photoY + photoH + Math.round(h * 0.06);
 
       ctx.fillStyle = nameColor;
@@ -248,7 +257,7 @@ window.TEMPLATES = [
       drawSpacedText(ctx, yearText.split('').join(' '), w / 2, yearY, Math.round(h * 0.005));
 
       // ── 6. TUMAN (chiziqlar bilan) ─────────────────────────
-      const districtText = (data.cityName || '').toUpperCase();
+      const districtText = (ovCity || '').toUpperCase();
       const districtY    = yearY + Math.round(h * 0.052);
 
       if (districtText) {
@@ -281,7 +290,7 @@ window.TEMPLATES = [
       }
 
       // ── 7. MAKTAB № (yirik, tantanali) ─────────────────────
-      const schoolText = (data.schoolNumber || '№ MAKTAB').toUpperCase();
+      const schoolText = (ovSchoolNum || '№ MAKTAB').toUpperCase();
       const schoolY    = districtY + Math.round(h * 0.045);
 
       ctx.fillStyle = nameColor;
@@ -290,15 +299,16 @@ window.TEMPLATES = [
       ctx.textBaseline = 'middle';
       drawSpacedText(ctx, schoolText, w / 2, schoolY, Math.round(h * 0.003));
 
-      // ── 8. SINF (kichik) ───────────────────────────────────
-      const classText = (data.className || '').toUpperCase();
+      // ── 8. SINF / GURUH (kichik) ───────────────────────────
+      const classRaw  = (ovClass || '').toUpperCase().trim();
+      const classWord = ovType === 'uni' ? 'GURUH' : 'SINF';
       const classY    = schoolY + Math.round(h * 0.034);
 
-      if (classText) {
+      if (classRaw) {
         ctx.fillStyle = schoolColor;
         ctx.font = `400 ${Math.round(h * 0.018)}px 'Inter', sans-serif`;
         drawSpacedText(ctx,
-          classText.includes('SINF') ? classText : classText + ' SINF',
+          (classRaw.includes('SINF') || classRaw.includes('GURUH')) ? classRaw : classRaw + ' ' + classWord,
           w / 2, classY, Math.round(h * 0.003));
       }
     }
