@@ -80,18 +80,26 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 > shusiz sudrash ishlamasdi. `runAutoFit` (avto-yuz) va Portret-filtri kontrollari
 > inner rejimda ko'rinadi, shuning uchun avtomatik ishlaydi.
 >
-> **OCHIQ (keyingi qadam) — poster shablonga split-inning 100% kontrollari:**
-> foydalanuvchi talabi: poster `split-inner` bilan FAQAT ko'rinishi farq qilsin,
-> qolgan barcha funksiya/kontrol bir xil bo'lsin. Hali ko'chirilmagan kontrollar
-> (`splitControlsCard`dagi): fon turi (rang/gradient/rasm + fon rasm yuklash),
-> o'rtadagi ajratgich turi, ism joylashuvi (pastda/ustida/ustiga/yo'q), maksimal
-> ustunlar soni, o'quvchi rasmi shakli (yumaloq/to'rtburchak/doira/oval), ism/ramka
-> rangi, chap yozuv (leftLabel). Eng ishonchli yo'l — poster `type`ini
-> `'split-inner'` ga o'tkazish (shunda editor render shoxi, `splitControlsCard` va
-> `_renderSplitInner` AVTOMATIK ulanadi); so'ng `draw()`ni shu cfg'larni hisobga
-> oladigan qilib poster ko'rinishida yozish + chap blokda o'qituvchi rasmini
-> ko'rsatish uchun `teacherImg`ni split render shoxi va `_renderSplitInner`ga uzatish,
-> hamda shu `id` uchun `teacherUploadWrap`ni ko'rsatish.
+> **POSTER = SPLIT-INNER 100% (qilindi):** Foydalanuvchi talabi — poster `split-inner`
+> bilan FAQAT ko'rinishi farq qilsin, qolgan barcha funksiya/kontrol bir xil bo'lsin.
+> Yechim: `bitiruvchi-poster-inner` `type`i `'split-inner'` ga o'tkazildi → editor
+> render shoxi, `splitControlsCard` (barcha kontrollar) va `_renderSplitInner`
+> AVTOMATIK ulanadi. `draw()` endi shu cfg'larni hisobga oladi: **fon turi**
+> (rang/gradient/rasm + overlay), **maksimal ustunlar soni** (`maxCols`), **o'quvchi
+> rasmi shakli** (rect/rounded/circle/oval — `shapePath`), **ism joylashuvi**
+> (none/over/bottom/top), **ism rangi**, **o'rtadagi ajratgich** (line), **chap yozuv**
+> (`leftLabel` → o'qituvchi ostidagi matn), hamda free-transform / auto-yuz / retush
+> (`drawImgT`). Faqat KO'RINISH poster bo'lib qoladi (chap o'qituvchi + xat, markaz
+> katta sinf raqami + vertikal yozuvlar, o'ng grid, o'ng chekka shior + yil).
+> - `editor.js`: `selectTemplate`da shu `id` uchun split kontrol defaultlari
+>   (1280×960, qora fon, 6 ustun, rect, gold aksent) + `teacherUploadWrap` KO'RSATILADI
+>   (chap blok = sinf rahbari), `leftPhotoUploadWrap` yashiriladi. Split preview
+>   render shoxiga `teacherImg` qo'shildi.
+> - `generator.js` `_renderSplitInner` `...config` ni tarqatadi → `teacherImg`
+>   generatsiyada ham yetib boradi (startGeneration `teacherImg` uzatadi).
+> - Chap katta rasm = O'QITUVCHI (`teacherImg`), grid = barcha o'quvchilar (egasi
+>   1-o'rinda). O'qituvchi fotosi kaliti `'T'` (qo'lda transform; u o'quvchi
+>   bo'lmagani uchun yuz/retush yo'q).
 
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
