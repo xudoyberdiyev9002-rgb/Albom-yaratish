@@ -56,6 +56,19 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 
 ## Qabul qilingan qarorlar / ishlar tarixi
 
+> **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
+> uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
+> (vinyetka, default `bitiruvchi-cover`). Oqim: 1 Shablon → 2 Yuklash →
+> 3 **Ichki** tahrirlash → 4 **Ustki** tahrirlash → 5 Export.
+> - Bitta editor oynasi qayta ishlatiladi; `switchEditPart('inner'|'outer')`
+>   `selectedTemplate`ni almashtiradi. `AppState`: `innerTemplate`, `outerTemplate`,
+>   `editPart`, `_tf{inner,outer}` (transformlar alohida), `cfgInner/cfgOuter`
+>   (kontrol qiymatlari snapshot). `faces`/`retouchMap` UMUMIY (bir xil retush yuz).
+> - `Generator.generate(...opts{append,folder})` ikkala qismni `Generator.canvases`ga
+>   yig'adi; `downloadZip` ZIPда `albom/ichki/` va `albom/tashqi/` papkalariga ajratadi.
+> - Ustki shabloni hozir default; chooser keyin qo'shiladi.
+
+
 > **MUHIM (joriy holat):** Gemini AI retush funksiyasi QAYTA YOQILDI va faol.
 > (Photoshop/Evoto yo'li vaqtincha pauza qilindi.) Gemini UI, modallar va
 > `<script src="gemini.js">` `index.html`da tiklangan.
