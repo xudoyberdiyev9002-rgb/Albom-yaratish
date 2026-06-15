@@ -117,6 +117,13 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 >   qo'shildi. `generator._renderOne` endi `faceIdx`(=o'quvchi indeksi) uzatadi →
 >   preview va generatsiyada bir xil `cover<idx>` transform.
 
+> **POSTER GRID — markazlash + yolg'iz o'quvchi tuzatildi (qilindi):** poster grid
+> endi `buildRows(count, cols)` ishlatadi: oxirgi to'lmagan qator MARKAZGA
+> tekislanadi; `rem===1` bo'lsa (mas. 31 o'quvchi, 6 ustun) yolg'iz qolmasin deb
+> oxirgi qator `COLS+1` (7) bo'ladi; `rem>=2` da oxirgi qator `rem` ta (markazda).
+> Katak o'lchami `maxItems` (eng keng qator) bo'yicha hisoblanadi → barcha qatorlar
+> sig'adi. Egasi (1-o'rin) `sIdx===0`.
+
 > **ICHKI + USTKI ikki bosqichli tahrirlash (qilindi):** Albom endi har o'quvchi
 > uchun IKKI qism chiqaradi — **ichki** (tanlangan inner shablon) va **ustki**
 > (vinyetka, default `bitiruvchi-cover`). Oqim: 1 Shablon → 2 Yuklash →

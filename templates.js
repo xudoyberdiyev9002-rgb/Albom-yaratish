@@ -1619,15 +1619,64 @@ window.TEMPLATES = [
       const gridBot = Math.round(h * 0.965);
       const gridW   = gridR - gridX;
 
-      const ROWS    = Math.max(4, Math.ceil((order.length || 1) / COLS));
+      // Qatorlarni tuzish: oxirgi to'lmagan qator MARKAZGA tekislanadi;
+      // 1 ta ortib qolsa (yolg'iz qolmasligi uchun) — oxirgi qator COLS+1 bo'ladi.
+      function buildRows(count, cols) {
+        if (count <= 0) return [];
+        if (count <= cols) return [count];
+        const fullRows = Math.floor(count / cols);
+        const rem = count % cols;
+        if (rem === 0) return Array(fullRows).fill(cols);
+        if (rem === 1) return [...Array(fullRows - 1).fill(cols), cols + 1];
+        return [...Array(fullRows).fill(cols), rem];
+      }
+      const rows     = buildRows(order.length || 1, COLS);
+      const rowCount = rows.length || 1;
+      const maxItems = Math.max(1, ...rows);
       const cellGapX = Math.round(gridW * 0.018);
-      const cellW    = Math.floor((gridW - cellGapX * (COLS - 1)) / COLS);
+      const cellW    = Math.floor((gridW - cellGapX * (maxItems - 1)) / maxItems);
       const rowGap   = Math.round((gridBot - gridTop) * 0.018);
-      const rowH     = Math.floor((gridBot - gridTop - rowGap * (ROWS - 1)) / ROWS);
+      const rowH     = Math.floor((gridBot - gridTop - rowGap * (rowCount - 1)) / rowCount);
       const pW       = cellW;
       const hasName  = (namePos !== 'none');
       const pH       = Math.round(rowH * (hasName ? 0.78 : 0.96));
       const nameFS   = Math.max(8, Math.round(rowH * 0.085));
+
+      // Bitta ism (1-2 qator) — namePos kontroliga ko'ra
+      function drawGridName(nm, cx, cyy) {
+        if (!hasName || !nm) return;
+        const parts = nm.split(/\s+/);
+        const l1 = parts[0] || '';
+        const l2 = parts.length >= 2 ? parts.slice(1).join(' ') : '';
+        ctx.save();
+        ctx.font = `300 ${nameFS}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        if (namePos === 'over') {
+          ctx.save();
+          shapePath(cx + 1, cyy + 1, pW - 2, pH - 2, photoShape);
+          ctx.clip();
+          const ovH = Math.round(pH * 0.3);
+          const og = ctx.createLinearGradient(0, cyy + pH - ovH, 0, cyy + pH);
+          og.addColorStop(0, 'rgba(0,0,0,0)'); og.addColorStop(1, 'rgba(0,0,0,0.72)');
+          ctx.fillStyle = og; ctx.fillRect(cx, cyy + pH - ovH, pW, ovH);
+          ctx.restore();
+          ctx.fillStyle = nameColor;
+          ctx.textBaseline = 'bottom';
+          if (l2) {
+            ctx.fillText(l1, cx + pW / 2, cyy + pH - Math.round(nameFS * 1.15) - 3);
+            ctx.fillText(l2, cx + pW / 2, cyy + pH - 3);
+          } else {
+            ctx.fillText(l1, cx + pW / 2, cyy + pH - 3);
+          }
+        } else {
+          ctx.fillStyle = nameColor;
+          ctx.textBaseline = 'top';
+          const nameY = cyy + pH + Math.round(rowH * 0.04);
+          ctx.fillText(l1, cx + pW / 2, nameY);
+          if (l2) ctx.fillText(l2, cx + pW / 2, nameY + nameFS * 1.15);
+        }
+        ctx.restore();
+      }
 
       // O'rtadagi ajratgich (split-inner divider kontroli)
       if (divider === 'line') {
@@ -1641,52 +1690,21 @@ window.TEMPLATES = [
         ctx.restore();
       }
 
-      order.forEach((origIndex, idx) => {
-        const st  = allStudents[origIndex] || null;
-        const col = idx % COLS;
-        const row = Math.floor(idx / COLS);
-        const cx  = gridX + col * (cellW + cellGapX);
-        const cyy = gridTop + row * (rowH + rowGap);
-
-        // Foto: free-transform + auto-yuz + retush (kalit = asl indeks) + foto shakli
-        drawPortrait(st?.img || null, cx, cyy, pW, pH, idx === 0, `g${origIndex}`, origIndex, 0.55, photoShape);
-
-        // Ism (split-inner namePos kontroli: none/over/bottom/top)
-        const nm = (st?.name || '').trim();
-        if (hasName && nm) {
-          const parts = nm.split(/\s+/);
-          const l1 = parts[0] || '';
-          const l2 = parts.length >= 2 ? parts.slice(1).join(' ') : '';
-          ctx.save();
-          ctx.font      = `300 ${nameFS}px Inter, sans-serif`;
-          ctx.textAlign = 'center';
-          if (namePos === 'over') {
-            // Foto pastiga qoramtir overlay + ism
-            ctx.save();
-            shapePath(cx + 1, cyy + 1, pW - 2, pH - 2, photoShape);
-            ctx.clip();
-            const ovH = Math.round(pH * 0.3);
-            const og = ctx.createLinearGradient(0, cyy + pH - ovH, 0, cyy + pH);
-            og.addColorStop(0, 'rgba(0,0,0,0)'); og.addColorStop(1, 'rgba(0,0,0,0.72)');
-            ctx.fillStyle = og; ctx.fillRect(cx, cyy + pH - ovH, pW, ovH);
-            ctx.restore();
-            ctx.fillStyle = nameColor;
-            ctx.textBaseline = 'bottom';
-            if (l2) {
-              ctx.fillText(l1, cx + pW / 2, cyy + pH - Math.round(nameFS * 1.15) - 3);
-              ctx.fillText(l2, cx + pW / 2, cyy + pH - 3);
-            } else {
-              ctx.fillText(l1, cx + pW / 2, cyy + pH - 3);
-            }
-          } else {
-            // 'bottom' (default) yoki 'top' — foto ostida
-            ctx.fillStyle = nameColor;
-            ctx.textBaseline = 'top';
-            const nameY = cyy + pH + Math.round(rowH * 0.04);
-            ctx.fillText(l1, cx + pW / 2, nameY);
-            if (l2) ctx.fillText(l2, cx + pW / 2, nameY + nameFS * 1.15);
-          }
-          ctx.restore();
+      let sIdx = 0;
+      rows.forEach((colsInRow, rowI) => {
+        const rowW      = colsInRow * cellW + (colsInRow - 1) * cellGapX;
+        const rowStartX = gridX + Math.round((gridW - rowW) / 2);   // qatorni markazga tekislash
+        const cyy       = gridTop + rowI * (rowH + rowGap);
+        for (let c = 0; c < colsInRow; c++) {
+          const origIndex = order[sIdx];
+          if (origIndex == null) { sIdx++; continue; }
+          const st = allStudents[origIndex] || null;
+          const cx = rowStartX + c * (cellW + cellGapX);
+          // Foto: free-transform + auto-yuz + retush (kalit = asl indeks) + foto shakli
+          drawPortrait(st?.img || null, cx, cyy, pW, pH, sIdx === 0, `g${origIndex}`, origIndex, 0.55, photoShape);
+          // Ism (namePos: none/over/bottom/top)
+          drawGridName((st?.name || '').trim(), cx, cyy);
+          sIdx++;
         }
       });
 
