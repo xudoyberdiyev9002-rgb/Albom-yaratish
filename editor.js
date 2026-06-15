@@ -1009,6 +1009,10 @@ function switchEditPart(part) {
   if (st._tf) st._tf[st.editPart] = st.transforms;
 
   st.editPart = part;
+  if (part === 'outer' && !st.outerTemplate) {
+    st.outerTemplate = (window.TEMPLATES || []).find(t => t.id === 'bitiruvchi-cover')
+                    || (window.TEMPLATES || []).find(t => t.type === 'vinyetka') || null;
+  }
   const tpl = part === 'inner' ? st.innerTemplate : st.outerTemplate;
   st.selectedTemplate = tpl;
   if (st._tf) { st._tf[part] = st._tf[part] || {}; st.transforms = st._tf[part]; }
@@ -1020,9 +1024,10 @@ function switchEditPart(part) {
     if (part === 'outer') seedOuterTexts();   // muqova matnlarini classInfo dan to'ldirish
   }
 
-  // inner-only / outer-only kontrollarni ko'rsat/yashir
-  document.querySelectorAll('.inner-only').forEach(el => el.style.display = part === 'inner' ? '' : 'none');
-  document.querySelectorAll('.outer-only').forEach(el => el.style.display = part === 'outer' ? '' : 'none');
+  // USTKI qadamda ham ICHKI qadamdagi barcha panellar ko'rinadi (yuz/retush umumiy).
+  // Faqat ustki-maxsus panel (muqova matnlari) ustki qadamda qo'shimcha chiqadi.
+  document.querySelectorAll('.inner-only').forEach(el => { el.style.display = ''; });
+  document.querySelectorAll('.outer-only').forEach(el => { el.style.display = part === 'outer' ? '' : 'none'; });
   updateOvClassLabel();
 
   // qism sarlavhasi
