@@ -9,17 +9,24 @@
 
 // ===== GLOBAL STATE =====
 window.AppState = {
-  selectedTemplate:    null,
+  selectedTemplate:    null,  // joriy tahrirlanayotgan shablon (ichki yoki ustki)
+  innerTemplate:       null,  // ICHKI qism shabloni (1-qadamda tanlanadi)
+  outerTemplate:       null,  // USTKI qism shabloni (default: Bitiruvchi Albom)
+  editPart:            'inner',// 'inner' | 'outer'
+  generateOuter:       true,  // ustki qism ham generatsiya qilinsinmi
+  _tf:                 null,  // { inner:{}, outer:{} } — transformlar alohida
+  cfgInner:            null,  // ichki kontrol qiymatlari snapshot
+  cfgOuter:            null,  // ustki kontrol qiymatlari snapshot
   students:            [],   // [{ name, img, url }]
   classInfo:           {},
   teacherImg:          null, // sinf rahbari rasmi
   leftImg:             null, // split-inner chap portret rasmi
   splitBgImg:          null, // split-inner fon rasmi
-  transforms:          {},   // free-transform: key -> {scale, ox, oy}
+  transforms:          {},   // free-transform: key -> {scale, ox, oy} (faol qism)
   _regions:            [],   // joriy preview dagi rasm hududlari (hit-test uchun)
   previewZoom:         1,     // tahrirlash oynasi masshtabi
-  faces:               {},    // {studentIdx: {cx,cy,fh}} yuz aniqlash natijasi
-  retouchMap:          {},    // {studentIdx: {smooth,warmth,brightness,contrast,saturation,vignette}}
+  faces:               {},    // {studentIdx: {cx,cy,fh}} yuz aniqlash natijasi (umumiy)
+  retouchMap:          {},    // {studentIdx: {...}} retush (umumiy — bir xil yuz)
   currentPreviewIdx:   0,
 };
 
@@ -30,6 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initTeacherUpload();
   initEditorControls();
   initNavigation();
+
+  // Ichki/ustki uchun alohida transform xotirasi
+  window.AppState._tf = { inner: window.AppState.transforms, outer: {} };
+  // Ustki (vinyetka) shabloni — default: Bitiruvchi Albom (mavjud bo'lsa)
+  const outer = (window.TEMPLATES || []).find(t => t.id === 'bitiruvchi-cover')
+            || (window.TEMPLATES || []).find(t => t.type === 'vinyetka');
+  window.AppState.outerTemplate = outer || null;
 });
 
 // ============================================================
@@ -125,6 +139,10 @@ function selectTemplate(card, tpl) {
   document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
   card.classList.add('selected');
   window.AppState.selectedTemplate = tpl;
+  window.AppState.innerTemplate    = tpl;   // ICHKI qism shabloni
+  window.AppState.editPart         = 'inner';
+  window.AppState.cfgInner         = null;  // yangi shablon -> snapshotni tozalaymiz
+  if (window.AppState._tf) { window.AppState._tf.inner = {}; window.AppState.transforms = window.AppState._tf.inner; }
 
   // Sinf rahbari upload blokini ko'rsat/yashir
   const wrap = document.getElementById('teacherUploadWrap');
@@ -918,6 +936,75 @@ async function runAutoRetouch() {
   }
 }
 
+// ============================================================
+// ICHKI / USTKI qism o'rtasida almashish
+// ============================================================
+const CFG_CONTROL_IDS = [
+  'canvasW','canvasH','bgColor1','bgColor2','accentColor','nameColor','schoolColor',
+  'nameFontSize','schoolFontSize','photoScale','photoOffsetY','photoShape',
+  'splitBgColor','splitBgColor2','splitNameColor','splitPhotoShape','splitBorderColor',
+  'splitDivider','splitNamePos','splitMaxCols','leftLabel','splitBgType',
+];
+const CFG_LABEL_SFX = { nameFontSize:'px', schoolFontSize:'px', photoScale:'%', photoOffsetY:'px' };
+
+function snapshotControls() {
+  const o = {};
+  CFG_CONTROL_IDS.forEach(id => { const el = document.getElementById(id); if (el) o[id] = el.value; });
+  return o;
+}
+function restoreControls(o) {
+  if (!o) return;
+  CFG_CONTROL_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && o[id] !== undefined) {
+      el.value = o[id];
+      const lbl = document.getElementById(id + 'Val');
+      if (lbl) lbl.textContent = o[id] + (CFG_LABEL_SFX[id] || '');
+    }
+  });
+}
+// Shablon defaultlarini kontrollarga qo'yish (birinchi marta ochilganda)
+function seedTemplateDefaults(tpl) {
+  if (!tpl) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el != null && v != null) el.value = v; };
+  set('canvasW', tpl.defaultW); set('canvasH', tpl.defaultH);
+  set('bgColor1', tpl.bgColor1); set('bgColor2', tpl.bgColor2);
+  set('accentColor', tpl.accentColor); set('nameColor', tpl.nameColor);
+  set('schoolColor', tpl.schoolColor);
+  if (tpl.type === 'vinyetka') set('photoShape', 'circle');
+}
+
+// Tahrirlash qismini almashtirish ('inner' yoki 'outer')
+function switchEditPart(part) {
+  const st = window.AppState;
+  // joriy qism holatini saqlash
+  if (st.editPart === 'inner') st.cfgInner = snapshotControls();
+  else st.cfgOuter = snapshotControls();
+  if (st._tf) st._tf[st.editPart] = st.transforms;
+
+  st.editPart = part;
+  const tpl = part === 'inner' ? st.innerTemplate : st.outerTemplate;
+  st.selectedTemplate = tpl;
+  if (st._tf) { st._tf[part] = st._tf[part] || {}; st.transforms = st._tf[part]; }
+
+  const saved = part === 'inner' ? st.cfgInner : st.cfgOuter;
+  if (saved) restoreControls(saved);
+  else seedTemplateDefaults(tpl);   // birinchi marta
+
+  // qism sarlavhasi
+  const titleEl = document.getElementById('editPartTitle');
+  if (titleEl) titleEl.textContent = part === 'inner' ? '✏️ Ichki qism' : '🎓 Ustki qism (vinyetka)';
+
+  // tugma matnlari
+  const nextBtn = document.getElementById('editorNext');
+  const backBtn = document.getElementById('editorBack');
+  if (nextBtn) {
+    nextBtn.textContent = part === 'inner' ? 'Keyingi: Ustki →' : '⚡ Generatsiya';
+    nextBtn.classList.toggle('btn-generate', part === 'outer');
+  }
+  if (backBtn) backBtn.textContent = part === 'inner' ? '← Yuklash' : '← Ichki';
+}
+
 function getEditorConfig() {
   const tpl = window.AppState.selectedTemplate;
   const isSplit = tpl?.type === 'split-inner';
@@ -971,13 +1058,21 @@ function collectClassInfo() {
 }
 
 // ============================================================
-// STEP 4 – GENERATSIYA
+// STEP 5 – GENERATSIYA (ICHKI + USTKI)
 // ============================================================
 async function startGeneration() {
-  const tpl      = window.AppState.selectedTemplate;
   const students = window.AppState.students;
-  const cfg      = getEditorConfig();
   collectClassInfo();
+
+  // joriy faol qism holatini saqlab qo'yamiz
+  if (window.AppState.editPart === 'inner') window.AppState.cfgInner = snapshotControls();
+  else window.AppState.cfgOuter = snapshotControls();
+  if (window.AppState._tf) window.AppState._tf[window.AppState.editPart] = window.AppState.transforms;
+
+  const parts = [{ part: 'inner', folder: 'ichki', tpl: window.AppState.innerTemplate, snap: window.AppState.cfgInner }];
+  if (window.AppState.generateOuter && window.AppState.outerTemplate) {
+    parts.push({ part: 'outer', folder: 'tashqi', tpl: window.AppState.outerTemplate, snap: window.AppState.cfgOuter });
+  }
 
   const progressCard  = document.getElementById('progressCard');
   const exportDone    = document.getElementById('exportDone');
@@ -990,95 +1085,135 @@ async function startGeneration() {
   exportDone.style.display   = 'none';
   thumbGrid.innerHTML        = '';
   progressBar.style.width    = '0%';
-  progressTitle.textContent  = (tpl.type === 'inner' || tpl.type === 'split-inner' || tpl.type === 'poster-inner')
-    ? 'Albom sahifalari generatsiya qilinmoqda...'
-    : 'Vinyetkalar generatsiya qilinmoqda...';
+  progressTitle.textContent  = 'Albom sahifalari generatsiya qilinmoqda (ichki + ustki)...';
 
-  await Generator.generate(
-    students, tpl,
-    { ...cfg, ...window.AppState.classInfo, teacherImg: window.AppState.teacherImg },
-    (current, total) => {
-      progressBar.style.width = Math.round(current / total * 100) + '%';
-      progressText.textContent = `${current} / ${total} tayyor`;
+  Generator.canvases = [];
+  const totalAll = students.length * parts.length;
+  let doneAll = 0;
 
-      // Thumbnail qo'shish
-      const item = Generator.canvases[current - 1];
-      if (item) {
-        const div = document.createElement('div');
-        div.className = 'thumb-item';
-        const img = document.createElement('img');
-        img.src = item.canvas.toDataURL('image/png', 0.4);
-        const p = document.createElement('p');
-        p.textContent = item.name;
-        div.append(img, p);
-        thumbGrid.appendChild(div);
-        // Auto-scroll oxirgi thumbga
-        thumbGrid.scrollLeft = thumbGrid.scrollWidth;
-      }
-    },
-    canvases => {
-      progressCard.style.display = 'none';
-      exportDone.style.display   = 'block';
-      const kind = (tpl.type === 'inner' || tpl.type === 'split-inner' || tpl.type === 'poster-inner') ? 'albom sahifasi' : 'vinyetka';
-      document.getElementById('doneCount').textContent =
-        `${canvases.length} ta ${kind} muvaffaqiyatli yaratildi`;
-    }
-  );
+  for (const p of parts) {
+    if (!p.tpl) continue;
+    // shu qism kontrol/transformlarini tiklab, cfg quramiz
+    window.AppState.selectedTemplate = p.tpl;
+    window.AppState.transforms = (window.AppState._tf && window.AppState._tf[p.part]) || {};
+    if (p.snap) restoreControls(p.snap); else seedTemplateDefaults(p.tpl);
+    const cfg = getEditorConfig();
+
+    await Generator.generate(
+      students, p.tpl,
+      { ...cfg, ...window.AppState.classInfo, teacherImg: window.AppState.teacherImg },
+      () => {
+        doneAll++;
+        progressBar.style.width = Math.round(doneAll / totalAll * 100) + '%';
+        progressText.textContent = `${doneAll} / ${totalAll} tayyor`;
+        const item = Generator.canvases[Generator.canvases.length - 1];
+        if (item && item.canvas) {
+          const div = document.createElement('div');
+          div.className = 'thumb-item';
+          const img = document.createElement('img');
+          img.src = item.canvas.toDataURL('image/png', 0.4);
+          const cap = document.createElement('p');
+          cap.textContent = (p.folder === 'tashqi' ? '🎓 ' : '✏️ ') + item.name;
+          div.append(img, cap);
+          thumbGrid.appendChild(div);
+          thumbGrid.scrollLeft = thumbGrid.scrollWidth;
+        }
+      },
+      null,
+      { append: true, folder: p.folder }
+    );
+  }
+
+  progressCard.style.display = 'none';
+  exportDone.style.display   = 'block';
+  const partTxt = parts.length > 1 ? 'ichki + ustki' : 'ichki';
+  document.getElementById('doneCount').textContent =
+    `${Generator.canvases.length} ta sahifa yaratildi (${partTxt})`;
 }
 
 // ============================================================
 // NAVIGATSIYA
 // ============================================================
 function initNavigation() {
-  const secs  = {
-    1: document.getElementById('step-template'),
-    2: document.getElementById('step-upload'),
-    3: document.getElementById('step-editor'),
-    4: document.getElementById('step-export'),
-  };
+  const secTemplate = document.getElementById('step-template');
+  const secUpload   = document.getElementById('step-upload');
+  const secEditor   = document.getElementById('step-editor');
+  const secExport   = document.getElementById('step-export');
   const steps = {
     1: document.getElementById('sb-1'),
     2: document.getElementById('sb-2'),
     3: document.getElementById('sb-3'),
     4: document.getElementById('sb-4'),
+    5: document.getElementById('sb-5'),
   };
 
   function goTo(n) {
-    Object.values(secs).forEach(s  => s.classList.remove('active-section'));
-    secs[n].classList.add('active-section');
+    [secTemplate, secUpload, secEditor, secExport].forEach(s => s && s.classList.remove('active-section'));
+    if (n === 1) secTemplate.classList.add('active-section');
+    else if (n === 2) secUpload.classList.add('active-section');
+    else if (n === 3 || n === 4) secEditor.classList.add('active-section');
+    else if (n === 5) secExport.classList.add('active-section');
+
     Object.entries(steps).forEach(([k, el]) => {
+      if (!el) return;
       el.classList.remove('active', 'done');
       const num = +k;
-      if (num < n)  el.classList.add('done');
+      if (num < n) el.classList.add('done');
       if (num === n) el.classList.add('active');
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+  window._goTo = goTo;
 
   document.getElementById('toStep2').addEventListener('click', () => goTo(2));
 
+  // 2 -> 3 (ICHKI tahrirlash)
   document.getElementById('toStep3').addEventListener('click', () => {
     collectClassInfo();
     window.AppState.currentPreviewIdx = 0;
+    switchEditPart('inner');
     goTo(3);
     setTimeout(renderPreview, 120);
   });
 
-  document.getElementById('toStep4').addEventListener('click', () => {
-    goTo(4);
-    setTimeout(startGeneration, 200);
+  // Editor "Keyingi" — ichki bo'lsa ustkiga, ustki bo'lsa generatsiyaga
+  document.getElementById('editorNext').addEventListener('click', () => {
+    if (window.AppState.editPart === 'inner') {
+      switchEditPart('outer');
+      goTo(4);
+      setTimeout(renderPreview, 120);
+    } else {
+      goTo(5);
+      setTimeout(startGeneration, 200);
+    }
   });
 
-  document.getElementById('backToStep1').addEventListener('click', () => goTo(1));
-  document.getElementById('backToStep2').addEventListener('click', () => goTo(2));
+  // Editor "Orqaga" — ustki bo'lsa ichkiga, ichki bo'lsa yuklashga
+  document.getElementById('editorBack').addEventListener('click', () => {
+    if (window.AppState.editPart === 'outer') {
+      switchEditPart('inner');
+      goTo(3);
+      setTimeout(renderPreview, 120);
+    } else {
+      goTo(2);
+    }
+  });
+
+  const b1 = document.getElementById('backToStep1');
+  if (b1) b1.addEventListener('click', () => goTo(1));
 
   document.getElementById('restartBtn').addEventListener('click', () => {
     window.AppState.students          = [];
     window.AppState.selectedTemplate  = null;
+    window.AppState.innerTemplate     = null;
+    window.AppState.editPart          = 'inner';
     window.AppState.teacherImg        = null;
     window.AppState.leftImg           = null;
     window.AppState.splitBgImg        = null;
     window.AppState.transforms        = {};
+    window.AppState._tf               = { inner: window.AppState.transforms, outer: {} };
+    window.AppState.cfgInner          = null;
+    window.AppState.cfgOuter          = null;
     window.AppState._regions          = [];
     window.AppState.faces             = {};
     window.AppState.previewZoom       = 1;
@@ -1086,7 +1221,6 @@ function initNavigation() {
     renderStudentsList();
     document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
     document.getElementById('toStep2').disabled = true;
-    // Rahbar preview reset
     const previewDiv  = document.getElementById('teacherPreviewImg');
     const placeholder = document.getElementById('teacherPlaceholder');
     if (previewDiv)  previewDiv.style.display  = 'none';
@@ -1108,11 +1242,13 @@ function initNavigation() {
 
   // Steps bar orqali navigatsiya
   Object.entries(steps).forEach(([n, el]) => {
+    if (!el) return;
     el.addEventListener('click', () => {
-      if (el.classList.contains('done') || el.classList.contains('active')) {
-        goTo(+n);
-        if (+n === 3) setTimeout(renderPreview, 120);
-      }
+      if (!(el.classList.contains('done') || el.classList.contains('active'))) return;
+      const num = +n;
+      if (num === 3) { switchEditPart('inner'); goTo(3); setTimeout(renderPreview, 120); }
+      else if (num === 4) { switchEditPart('outer'); goTo(4); setTimeout(renderPreview, 120); }
+      else goTo(num);
     });
   });
 }
