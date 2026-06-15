@@ -206,11 +206,14 @@ window.TEMPLATES = [
       // ── 4. RASM TO'RTBURCHAK ───────────────────────────────
       const photoTop    = Math.round(h * 0.14);
       const photoBottom = Math.round(h * 0.65);
-      // Rasm o'lchamlari (foiz scale bilan)
-      const photoH = Math.round((photoBottom - photoTop) * (photoScale / 100));
+      // Rasm ramkasi o'lchami: generic photoScale * coverScale (albom bo'ylab katta-kichik).
+      // Markazdan o'sadi (scale=1 da avvalgi joyida turadi).
+      const cvFrame  = (cfg.coverScale != null ? cfg.coverScale : 1);
+      const photoH = Math.round((photoBottom - photoTop) * (photoScale / 100) * cvFrame);
       const photoW = Math.round(photoH * 0.72); // 3:4 nisbat
       const photoX = Math.round(w / 2 - photoW / 2);
-      const photoY = photoTop + photoOffsetY;
+      const photoCenterY = (photoTop + photoBottom) / 2;
+      const photoY = Math.round(photoCenterY - photoH / 2) + photoOffsetY;
 
       // Yengil oq border
       ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -246,8 +249,7 @@ window.TEMPLATES = [
           const face = cvFaces[cvFi];
           const tf = (cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft : 0.42);
           const vy = (cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft : 0.43);
-          const cvScale = (cfg.coverScale != null ? cfg.coverScale : 1);   // slayder zoom
-          if (face && cvScale <= 1.001) {
+          if (face) {
             const fhPx = Math.max(1, face.fh * ih), fcx = face.cx * iw, fcy = face.cy * ih;
             s = Math.max(1, Math.min(8, (tf * photoH) / (fhPx * sc0)));
             const dw = iw * sc0 * s, dh = ih * sc0 * s;
@@ -256,8 +258,7 @@ window.TEMPLATES = [
             const mOx = (dw - photoW) / (2 * photoW), mOy = (dh - photoH) / (2 * photoH);
             ox = Math.max(-mOx, Math.min(mOx, ox)); oy = Math.max(-mOy, Math.min(mOy, oy));
           } else {
-            // Slayder bilan kattalashtirish (qatorlar yo'q — zoom sifatida)
-            s = Math.max(1, Math.min(8, cvScale));
+            s = Math.max(1, Math.min(8, tf / 0.27));
             const dw = iw * sc0 * s, dh = ih * sc0 * s;
             const mOy = (dh - photoH) / (2 * photoH);
             const t = (vy - 0.25) / 0.40;
