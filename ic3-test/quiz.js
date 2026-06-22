@@ -2,7 +2,8 @@
 (function(){
   'use strict';
 
-  var ALL = window.IC3_QUESTIONS || [];
+  var BANKS = { '1': window.IC3_QUESTIONS || [], '2': window.IC3_QUESTIONS_2 || [] };
+  var ALL = BANKS['1'];
   var state = {
     questions: [],   // joriy sessiya savollari
     answers: {},     // qId -> javob (tipi savolga bog'liq)
@@ -35,10 +36,21 @@
   };
 
   /* ---------- START ---------- */
-  $('totalQs').textContent = ALL.length;
-  $('qTo').setAttribute('placeholder', ALL.length);
-  $('qFrom').setAttribute('max', ALL.length);
-  $('qTo').setAttribute('max', ALL.length);
+  function updatePartUI(){
+    $('totalQs').textContent = ALL.length;
+    $('qTo').setAttribute('placeholder', ALL.length);
+    $('qFrom').setAttribute('max', ALL.length);
+    $('qTo').setAttribute('max', ALL.length);
+  }
+  updatePartUI();
+
+  $('partSel').addEventListener('change', function(){
+    ALL = BANKS[this.value] || BANKS['1'];
+    // qism almashganda oraliqni tozalaymiz
+    $('qFrom').value = '';
+    $('qTo').value = '';
+    updatePartUI();
+  });
 
   $('startBtn').addEventListener('click', function(){
     var qs = gatherSessionQuestions();
