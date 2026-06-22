@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IC3 GS6 — Level 3 Test</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ====== START EKRANI ====== -->
+  <section id="startScreen" class="screen active">
+    <div class="card start-card">
+      <div class="brand">IC3 <span>GS6</span></div>
+      <h1>Digital Literacy Certification</h1>
+      <p class="subtitle">Level 3 — Practice Exam</p>
+
+      <div class="start-info">
+        <div class="info-box">
+          <div class="info-num" id="totalQs">0</div>
+          <div class="info-lbl">Savollar</div>
+        </div>
+        <div class="info-box">
+          <div class="info-num" id="timeShow">50:00</div>
+          <div class="info-lbl">Vaqt</div>
+        </div>
+        <div class="info-box">
+          <div class="info-num">700</div>
+          <div class="info-lbl">O'tish bali</div>
+        </div>
+      </div>
+
+      <div class="opts">
+        <label class="opt-row">
+          <span>Savollar oralig'i (dan – gacha)</span>
+          <span class="range-inputs">
+            <input type="number" id="qFrom" min="1" placeholder="1" style="width:70px">
+            <span style="color:var(--muted)">–</span>
+            <input type="number" id="qTo" min="1" placeholder="145" style="width:70px">
+          </span>
+        </label>
+        <label class="opt-row">
+          <span>Savollar sonini cheklash</span>
+          <select id="qCount">
+            <option value="0">Hammasi</option>
+            <option value="20">20 ta</option>
+            <option value="30">30 ta</option>
+            <option value="50">50 ta</option>
+          </select>
+        </label>
+        <label class="opt-row">
+          <span>Savollarni aralashtirish</span>
+          <input type="checkbox" id="shuffleQ" checked>
+        </label>
+        <label class="opt-row">
+          <span>Har savoldan keyin javobni ko'rsatish</span>
+          <input type="checkbox" id="instantFb" checked>
+        </label>
+        <label class="opt-row">
+          <span>Vaqt chegarasi (daqiqa)</span>
+          <input type="number" id="timeLimit" value="50" min="0" style="width:80px">
+        </label>
+      </div>
+
+      <button class="btn-primary" id="startBtn">Testni boshlash</button>
+      <button class="btn-study" id="studyBtn">🎯 Yodlash + mashq (oraliq bo'yicha)</button>
+      <button class="btn-ghost btn-flash-open" id="openFlash">🃏 Fleshkartalar bilan yodlash</button>
+      <p class="hint">IC3 GS6 imtihon uslubidagi mashq. 0 vaqt = cheksiz.</p>
+    </div>
+  </section>
+
+  <!-- ====== TEST EKRANI ====== -->
+  <section id="examScreen" class="screen">
+    <header class="exam-top">
+      <div class="brand sm">IC3 <span>GS6</span></div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div id="progressFill"></div></div>
+        <span id="progressTxt">1 / 0</span>
+      </div>
+      <div class="timer" id="timer">50:00</div>
+    </header>
+
+    <main class="exam-body">
+      <div class="q-card">
+        <div class="q-head">
+          <span class="q-num" id="qNum">Question 1</span>
+          <span class="q-type" id="qType"></span>
+        </div>
+        <div class="q-text" id="qText"></div>
+        <div class="q-answer" id="qAnswer"></div>
+      </div>
+    </main>
+
+    <footer class="exam-foot">
+      <button class="btn-ghost" id="prevBtn">‹ Oldingi</button>
+      <button class="btn-ghost" id="flagBtn">⚑ Belgilash</button>
+      <button class="btn-ghost" id="navToggle">▦ Savollar</button>
+      <button class="btn-check" id="checkBtn">✓ Tekshirish</button>
+      <button class="btn-primary" id="nextBtn">Keyingi ›</button>
+      <button class="btn-finish" id="finishBtn">Yakunlash</button>
+    </footer>
+
+    <!-- savollar paneli -->
+    <div class="nav-overlay" id="navOverlay">
+      <div class="nav-panel">
+        <div class="nav-panel-head">
+          <h3>Savollar</h3>
+          <button id="navClose">✕</button>
+        </div>
+        <div class="nav-grid" id="navGrid"></div>
+        <div class="nav-legend">
+          <span><i class="dot answered"></i> javob berilgan</span>
+          <span><i class="dot flagged"></i> belgilangan</span>
+          <span><i class="dot"></i> bo'sh</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== NATIJA EKRANI ====== -->
+  <section id="resultScreen" class="screen">
+    <div class="card result-card">
+      <div class="score-ring" id="scoreRing">
+        <div class="score-center">
+          <div class="score-pct" id="scorePct">0%</div>
+          <div class="score-sub" id="scoreSub">0 / 0</div>
+        </div>
+      </div>
+      <h2 id="passLabel">Natija</h2>
+      <p class="result-meta" id="resultMeta"></p>
+      <div class="result-actions">
+        <button class="btn-primary" id="reviewBtn">Javoblarni ko'rish</button>
+        <button class="btn-ghost" id="restartBtn">Qayta boshlash</button>
+      </div>
+      <button class="btn-study" id="studyWrongBtn" style="display:none;margin-top:12px">🃏 Xato savollarni fleshkarta bilan takrorlash</button>
+    </div>
+    <div class="review-list" id="reviewList"></div>
+  </section>
+
+  <!-- ====== FLESHKARTALAR EKRANI ====== -->
+  <section id="flashScreen" class="screen">
+    <header class="flash-top">
+      <button class="btn-ghost flash-back" id="flashBack">‹ Ortga</button>
+      <div class="brand sm">🃏 Fleshkartalar</div>
+      <div class="flash-counter" id="flashCounter">0 / 0</div>
+    </header>
+
+    <div class="flash-controls">
+      <select id="flashCat"><option value="">Barcha kategoriyalar</option></select>
+      <button class="btn-ghost" id="flashShuffle">🔀 Aralashtirish</button>
+    </div>
+
+    <main class="flash-body">
+      <div class="flashcard" id="flashcard" tabindex="0">
+        <div class="fc-inner">
+          <div class="fc-face fc-front">
+            <span class="fc-cat" id="fcCat"></span>
+            <div class="fc-text" id="fcFront"></div>
+            <span class="fc-tap">javobni ko'rish uchun bosing</span>
+          </div>
+          <div class="fc-face fc-back">
+            <span class="fc-cat">Javob</span>
+            <div class="fc-text" id="fcBack"></div>
+            <span class="fc-tap">savolga qaytish uchun bosing</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="flash-foot">
+      <button class="btn-ghost" id="fcPrev">‹ Oldingi</button>
+      <button class="btn-primary" id="fcFlip">Aylantirish</button>
+      <button class="btn-ghost" id="fcNext">Keyingi ›</button>
+      <button class="btn-study" id="fcDone" style="display:none">✓ Testni boshlash</button>
+    </footer>
+  </section>
+
+  <script src="questions.js"></script>
+  <script src="flashcards.js"></script>
+  <script src="quiz.js"></script>
+  <script src="flashcards-ui.js"></script>
+</body>
+</html>
+
