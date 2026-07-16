@@ -5,9 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>VinyetkaLab – Maktab Albom & Vinyetka Generator</title>
   <link rel="stylesheet" href="style.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Coiny&family=Oswald:wght@200..700&display=swap" rel="stylesheet"/>
 </head>
 <body>
+
+<!-- ========== BACKGROUND FX ========== -->
+<div class="bg-fx" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 
 <!-- ========== HEADER ========== -->
 <header class="header">
@@ -26,38 +31,15 @@
       <a href="#step-template" class="nav-link">Shablonlar</a>
       <a href="#step-upload" class="nav-link">Yuklash</a>
       <a href="#step-editor" class="nav-link">Tahrirlash</a>
-      <a href="ic3-test/index.html" class="nav-link nav-cta">🎓 IC3 Test</a>
+      <a href="kanal-invert.html" class="nav-link" target="_blank" rel="noopener">🎵 Kanal Invert</a>
     </nav>
   </div>
 </header>
 
-<!-- ========== HERO ========== -->
-<section class="hero">
-  <div class="hero-content">
-    <div class="hero-badge">✨ Avtomatik Vinyetka Generator</div>
-    <h1>Maktab Albomi &amp; Vinyetkalarini<br/><span class="grad">Soniyalarda Yarating</span></h1>
-    <p>30 ta o'quvchi rasmini yuklang → shablon tanlang → bir tugma bilan 30 ta tayyor vinyetka ZIP fayl sifatida yuklab oling.</p>
-    <a href="#step-template" class="btn-hero">Boshlash <span>→</span></a>
-    <a href="ic3-test/index.html" class="btn-hero-alt">🎓 IC3 GS6 Testni ishlash</a>
-  </div>
-  <div class="hero-visual">
-    <div class="hero-card card-1">
-      <div class="hc-photo"></div>
-      <div class="hc-lines"><div></div><div></div></div>
-    </div>
-    <div class="hero-card card-2">
-      <div class="hc-photo"></div>
-      <div class="hc-lines"><div></div><div></div></div>
-    </div>
-    <div class="hero-card card-3">
-      <div class="hc-photo"></div>
-      <div class="hc-lines"><div></div><div></div></div>
-    </div>
-    <div class="hero-badge-float">
-      <span class="hbf-icon">🎓</span>
-      <div><strong>30 ta rasm</strong><small>Bir vaqtda</small></div>
-    </div>
-  </div>
+<!-- ========== INTRO ========== -->
+<section class="intro-mini">
+  <h1>Maktab Albomi &amp; Vinyetka Generator</h1>
+  <p>Rasmlarni yuklang → shablon tanlang → tahrirlang → ZIP yuklab oling.</p>
 </section>
 
 <!-- ========== STEPS ========== -->
@@ -83,17 +65,13 @@
       <p>Vinyetka turi va dizaynini tanlang</p>
     </div>
 
-    <div class="template-type-tabs">
-      <button class="tab-btn active" data-type="vinyetka">🎓 Vinyetka (tashqi)</button>
-      <button class="tab-btn" data-type="inner">📖 Albom ichki sahifa</button>
-      <button class="tab-btn" data-type="id-card">🪪 ID-Karta</button>
-    </div>
-
     <div class="templates-grid" id="templatesGrid">
       <!-- JS tomonidan to'ldiriladi -->
     </div>
 
     <div class="section-footer">
+      <button class="btn-prev" id="openProjectBtn">📂 Saqlangan loyihani ochish</button>
+      <input type="file" id="projectFileInput" accept=".voy,.vinyetka,.json,application/json" style="display:none"/>
       <button class="btn-next" id="toStep2" disabled>Keyingisi → Rasm yuklash</button>
     </div>
   </section>
@@ -108,18 +86,18 @@
     <div class="upload-layout">
       <!-- CLASS INFO -->
       <div class="upload-card">
-        <h3>🏫 Sinf Ma'lumotlari</h3>
+        <h3 id="classInfoTitle">🏫 Sinf Ma'lumotlari</h3>
         <div class="form-grid">
           <div class="form-group">
-            <label>Maktab nomi</label>
+            <label id="lblSchoolName">Maktab nomi</label>
             <input type="text" id="schoolName" placeholder="1-son umumiy o'rta maktab" />
           </div>
-          <div class="form-group">
+          <div class="form-group" id="fgSchoolNumber">
             <label>Maktab raqami</label>
             <input type="text" id="schoolNumber" placeholder="Maktab №1" />
           </div>
           <div class="form-group">
-            <label>Sinf</label>
+            <label id="lblClassName">Sinf</label>
             <input type="text" id="className" placeholder="11-A" />
           </div>
           <div class="form-group">
@@ -130,7 +108,7 @@
             <label>Shahar / Tuman</label>
             <input type="text" id="cityName" placeholder="Toshkent shahri" />
           </div>
-          <div class="form-group full">
+          <div class="form-group full" id="fgTeacherName">
             <label>Sinf rahbari F.I.O</label>
             <input type="text" id="teacherName" placeholder="Karimova Nodira Aliyevna" />
           </div>
@@ -164,6 +142,33 @@
           <p class="upload-hint">📐 <strong>Split Ichki Sahifa</strong>: har bir o'quvchi uchun alohida sahifa yaratiladi — o'quvchining o'zi <strong>chapdagi katta rasm</strong> bo'ladi va o'ng tarafdagi ro'yxatda <strong>birinchi o'rinda</strong> turadi. Dizayn sozlamalari keyingi <strong>Tahrirlash</strong> bosqichida jonli ko'rinadi.</p>
         </div>
 
+        <!-- BOG'CHA shabloni: xodimlar (ichki tepa) + guruh rasmlari (muqova chap) -->
+        <div class="teacher-upload-wrap" id="bogchaUploadWrap" style="display:none">
+          <p class="upload-hint" style="margin-bottom:8px">🧸 <strong>Bog'cha shabloni</strong>: xodimlar ichki sahifa tepasida, guruh rasmlari esa muqovaning chap tomonida kollaj bo'lib chiqadi.</p>
+
+          <label style="font-size:12px;color:#a9a9d5;display:block;margin-bottom:4px">👩‍🏫 Bog'cha xodimlari (4 tagacha)</label>
+          <div class="teacher-drop-zone" id="staffDropZone" style="min-height:60px">
+            <div id="staffPlaceholder">
+              <span>👩‍🏫</span>
+              <p>Xodim rasmlari</p>
+              <small>Bir nechta tanlang yoki tashlang</small>
+            </div>
+            <input type="file" id="staffFileInput" accept="image/*" multiple hidden/>
+          </div>
+          <div id="staffThumbs" style="margin-top:6px"></div>
+
+          <label style="font-size:12px;color:#a9a9d5;display:block;margin:10px 0 4px">📸 Guruh rasmlari (4–5 ta · muqova uchun)</label>
+          <div class="teacher-drop-zone" id="groupDropZone" style="min-height:60px">
+            <div id="groupPlaceholder">
+              <span>📸</span>
+              <p>Guruh faoliyati rasmlari</p>
+              <small>Bir nechta tanlang yoki tashlang</small>
+            </div>
+            <input type="file" id="groupFileInput" accept="image/*" multiple hidden/>
+          </div>
+          <div id="groupThumbs" style="margin-top:6px"></div>
+        </div>
+
         <div class="drop-zone" id="dropZone">
           <div class="drop-icon">📁</div>
           <p>Rasmlarni bu yerga tashlang yoki bosing</p>
@@ -184,6 +189,7 @@
 
     <div class="section-footer">
       <button class="btn-prev" id="backToStep1">← Orqaga</button>
+      <button class="btn-prev" id="saveProjectBtn">💾 Loyihani faylga saqlash</button>
       <button class="btn-next" id="toStep3" disabled>Keyingisi → Tahrirlash</button>
     </div>
   </section>
@@ -377,6 +383,129 @@
             <input type="text" id="leftLabel" placeholder="(bo'sh = o'quvchi ismi)"/>
           </div>
 
+          <!-- BOG'CHA: xodimlar yonidagi yon yozuvlar (faqat bogcha-inner uchun) -->
+          <div id="bogchaTextCard" style="display:none">
+            <h4 style="margin-top:14px">🧸 Bog'cha yon yozuvlari (xodimlar yonida)</h4>
+            <div class="ctrl-group">
+              <label>Ichki joylashuv turi</label>
+              <select id="innerLayoutMode">
+                <option value="maktab">Maktab (yangi — xodimlar o'ng-tepada)</option>
+                <option value="bogcha">Bog'cha (eski — xodimlar markazda tepada)</option>
+              </select>
+            </div>
+            <div class="ctrl-group">
+              <label>Chap yozuv — bog'cha nomi</label>
+              <input type="text" id="bogInnerLeft" placeholder="(bo'sh = muassasa nomi)"/>
+            </div>
+            <div class="ctrl-group">
+              <label>O'ng yozuv — guruh nomi</label>
+              <input type="text" id="bogInnerRight" placeholder="(bo'sh = guruh nomi)"/>
+            </div>
+            <div class="ctrl-group">
+              <label>Muqova kollaj sarlavhasi (Ustki)</label>
+              <input type="text" id="bogCollageTitle" placeholder="(bo'sh = BIZNING GURUH)"/>
+            </div>
+            <div class="ctrl-group">
+              <label>Tuman·yil yozuvi rangi</label>
+              <input type="color" id="bogBottomColor" value="#173a5e"/>
+            </div>
+            <div class="ctrl-group">
+              <label>Muqova guruh rasmlari (Ustki qadamda)</label>
+              <button id="frameLockBtn" class="btn-refresh-preview" type="button">🔓 Ramka rejimi (ko'chirish/o'lcham)</button>
+              <button id="equalizeFramesBtn" class="btn-refresh-preview" type="button" style="margin-top:6px">↔️ Tekislash — bir xil o'lcham</button>
+              <button id="frameSwapBtn" class="btn-refresh-preview" type="button" style="margin-top:6px">🔀 Rasm joyini almashtirish</button>
+              <small style="color:#7a7aa5;font-size:11px;display:block;margin-top:4px;line-height:1.5">Sudrash — ramkani ko'chiradi · burchak nuqta — eni/bo'yi (<b>Shift</b> = nisbatni saqlab bir xil) · g'ildirak — o'lcham · 2 marta bosish — tiklash. <b>Tekislash</b>: 3 ta yuqori va 2 ta pastki rasmni bir xil o'lchamga + bir sathga keltiradi. Qulf tugmasi: ramka ↔ ichki rasm.</small>
+            </div>
+          </div>
+
+          <div class="ec-card" id="customTextCard">
+            <h4 style="margin-top:0">✍️ Matn qo'shish (sichqoncha bilan joylashtiring)</h4>
+            <button id="ctAddBtn" class="btn-refresh-preview" type="button" style="width:100%">➕ Yangi matn</button>
+            <div id="ctEditor" style="display:none;margin-top:8px">
+              <div class="ctrl-group">
+                <label>Matn</label>
+                <textarea id="ctText" rows="2" style="width:100%;resize:vertical"></textarea>
+              </div>
+              <div class="ctrl-group">
+                <label>Shrift</label>
+                <select id="ctFamily">
+                  <option value="Oswald, sans-serif">Oswald</option>
+                  <option value="Coiny, cursive">Coiny</option>
+                  <option value="Inter, sans-serif">Inter</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="'Times New Roman', serif">Times</option>
+                  <option value="'Courier New', monospace">Courier</option>
+                  <option value="Arial, sans-serif">Arial</option>
+                </select>
+              </div>
+              <div class="ctrl-group">
+                <label>Rang</label>
+                <input type="color" id="ctColor" value="#173a5e"/>
+              </div>
+              <div class="ctrl-group">
+                <label>Kattaligi <span id="ctSizeVal">4</span>%</label>
+                <input type="range" id="ctSize" min="1" max="20" step="0.2" value="4"/>
+              </div>
+              <div class="ctrl-group">
+                <label>Qiyaligi (burilish, °)</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input type="range" id="ctRot" min="-180" max="180" step="1" value="0" style="flex:1"/>
+                  <input type="number" id="ctRotNum" min="-180" max="180" step="1" value="0" style="width:64px"/>
+                </div>
+              </div>
+              <div class="ctrl-group">
+                <label>Tekislash</label>
+                <select id="ctAlign">
+                  <option value="center">Markaz</option>
+                  <option value="left">Chap</option>
+                  <option value="right">O'ng</option>
+                </select>
+              </div>
+              <div class="ctrl-group" style="display:flex;gap:14px;align-items:center">
+                <label style="margin:0"><input type="checkbox" id="ctBold"/> Qalin</label>
+                <label style="margin:0"><input type="checkbox" id="ctItalic"/> Kursiv</label>
+                <label style="margin:0"><input type="checkbox" id="ctStroke"/> Kontur</label>
+              </div>
+              <div class="ctrl-group">
+                <label>Kontur rangi</label>
+                <input type="color" id="ctStrokeColor" value="#ffffff"/>
+              </div>
+              <button id="ctDelBtn" class="btn-refresh-preview" type="button" style="width:100%;background:#e53e3e;color:#fff">🗑 Matnni o'chirish</button>
+              <small style="color:#7a7aa5;font-size:11px;display:block;margin-top:6px;line-height:1.5">Matnni sudrab ko'chiring · 2 marta bosib matnni tahrirlang · g'ildirak = kattalashtirish. Har bir qism (ichki/ustki) uchun alohida saqlanadi.</small>
+            </div>
+          </div>
+
+          <div class="ec-card" id="iconCard">
+            <h4 style="margin-top:0">🖼 PNG ikon / stiker qo'shish</h4>
+            <button id="icAddBtn" class="btn-refresh-preview" type="button" style="width:100%">➕ PNG rasm yuklash</button>
+            <input type="file" id="icAddInput" accept="image/png,image/webp,image/*" style="display:none"/>
+            <div id="icEditor" style="display:none;margin-top:8px">
+              <div class="ctrl-group">
+                <label>Kattaligi <span id="icSizeVal">15</span>%</label>
+                <input type="range" id="icSize" min="2" max="120" step="0.5" value="15"/>
+              </div>
+              <div class="ctrl-group">
+                <label>Aylanish burchagi (°)</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input type="range" id="icRot" min="-180" max="180" step="1" value="0" style="flex:1"/>
+                  <input type="number" id="icRotNum" min="-180" max="180" step="1" value="0" style="width:64px"/>
+                </div>
+              </div>
+              <div class="ctrl-group">
+                <label>Shaffoflik <span id="icOpacityVal">100</span>%</label>
+                <input type="range" id="icOpacity" min="10" max="100" step="1" value="100"/>
+              </div>
+              <button id="icDelBtn" class="btn-refresh-preview" type="button" style="width:100%;background:#e53e3e;color:#fff">🗑 Ikonni o'chirish</button>
+              <small style="color:#7a7aa5;font-size:11px;display:block;margin-top:6px;line-height:1.5">Ikonni sudrab ko'chiring · g'ildirak = kattalashtirish. Har bir qism uchun alohida saqlanadi.</small>
+            </div>
+          </div>
+
+          <div class="ec-card" id="layersCard">
+            <h4 style="margin-top:0">🗂 Qatlamlar (matn + PNG overlay)</h4>
+            <div id="layersList" style="display:flex;flex-direction:column;gap:5px"></div>
+            <small style="color:#7a7aa5;font-size:11px;display:block;margin-top:6px;line-height:1.5">Eng ustdagi qator = eng oldindagi qatlam. <b>+</b> oldinga / <b>−</b> orqaga suradi · nomiga bosib tanlang.</small>
+          </div>
+
           <div id="outerControlsCard" class="outer-only" style="display:none">
             <h4 style="margin-top:14px">🖼 Muqova rasmi</h4>
             <div class="ctrl-group">
@@ -424,7 +553,7 @@
           </div>
           <button id="gmpBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px">🔍 Joriy rasmda dog'larni aniqlash</button>
           <button id="gmpAiBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px;background:#7c3aed;color:#fff">🪄 AI Retush (Gemini — studio sifat)</button>
-          <button id="gmpBatchBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px;background:#9333ea;color:#fff">🚀 Hammasini avtomatik retush (toza yuzlar o'tkaziladi)</button>
+          <button id="gmpBatchBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px;background:#9333ea;color:#fff">🚀 Hammasiga AI retush (har bir o'quvchiga birdek)</button>
           <button id="gmpMoleBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:8px;background:#0f766e;color:#fff">🟢 Saqlanadigan hollarni belgilash</button>
           <button id="gmpRevertBtn" class="btn-refresh-preview" style="width:100%;margin-bottom:14px">↩︎ Asl rasmni qaytarish</button>
 
@@ -465,9 +594,10 @@
       </div>
     </div>
 
-    <div class="section-footer">
+    <div class="section-footer" id="editorFooter">
       <button class="btn-prev" id="editorBack">← Orqaga</button>
       <span id="editPartTitle" style="align-self:center;color:#a855f7;font-weight:600;font-size:14px"></span>
+      <button class="btn-prev" id="saveProjectBtn2">💾 Faylga saqlash</button>
       <button class="btn-next" id="editorNext">Keyingi: Ustki →</button>
     </div>
   </section>
