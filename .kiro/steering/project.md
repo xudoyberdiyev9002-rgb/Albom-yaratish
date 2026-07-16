@@ -711,3 +711,11 @@ Foydalanuvchi bilan o'zbek tilida muloqot qilinadi.
   (`dst[i] = -src[i]`), waveform preview + original/invert solishtirib tinglash +
   WAV eksport. To'liq Web Audio API, brauzerda, server yo'q.
 - `index.html` header-nav ga "🎵 Kanal Invert" havolasi qo'shildi (`target="_blank"`).
+
+## Kanal Invert — MP3 eksport (iPhone/Safari uchun)
+
+- WAV faqat kompyuterda ochilardi (iPhone Safari WAV o'ynatmaydi/hajmi katta) →
+  `lamejs` (CDN, `lame.min.js`) bilan MP3 (192kbps) eksport qo'shildi. `encodeMp3`
+  kerak bo'lsa `OfflineAudioContext` orqali 44100Hz'ga resample qiladi (LAME talabi),
+  `Mp3Encoder.encodeBuffer` blok-blok (1152 sample) + `setTimeout` bilan UI bloklanmaydi.
+  Tugmalar: `downloadMp3Btn` (asosiy, iPhone'da ochiladi) va `downloadWavBtn` (original sifat).

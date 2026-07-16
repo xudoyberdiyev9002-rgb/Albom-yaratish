@@ -252,15 +252,20 @@
     </p>
 
     <div class="download-row">
-      <button class="btn-primary" id="downloadBtn" type="button">⬇️ Invert qilingan faylni yuklab olish (WAV)</button>
+      <button class="btn-primary" id="downloadMp3Btn" type="button">⬇️ MP3 qilib yuklab olish (iPhone'da ham ochiladi)</button>
+      <button class="btn-secondary" id="downloadWavBtn" type="button">WAV (original sifat)</button>
+    </div>
+    <div class="download-row">
       <button class="btn-secondary" id="resetBtn" type="button">↺ Boshqa fayl yuklash</button>
     </div>
+    <p class="note" id="mp3Progress"></p>
   </div>
 
 </div>
 
 <footer>Barcha ishlov brauzer ichida (Web Audio API) amalga oshadi. Fayllar hech qayerga yuborilmaydi.</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
 <script>
 (function(){
   'use strict';
@@ -294,7 +299,9 @@
   var curTimeEl = document.getElementById('curTime');
   var totTimeEl = document.getElementById('totTime');
   var seekEl = document.getElementById('seek');
-  var downloadBtn = document.getElementById('downloadBtn');
+  var downloadMp3Btn = document.getElementById('downloadMp3Btn');
+  var downloadWavBtn = document.getElementById('downloadWavBtn');
+  var mp3ProgressEl = document.getElementById('mp3Progress');
   var resetBtn = document.getElementById('resetBtn');
 
   function setStatus(msg, type){
@@ -380,11 +387,13 @@
     if (buffer.numberOfChannels < 2){
       setStatus('Diqqat: bu fayl MONO (bitta kanal). O\'ng kanal mavjud emas, shuning uchun invert qilib bo\'lmaydi.', 'err');
       modeProcBtn.disabled = true;
-      downloadBtn.disabled = true;
+      downloadMp3Btn.disabled = true;
+      downloadWavBtn.disabled = true;
     } else {
       setStatus('Fayl muvaffaqiyatli yuklandi. Rejimni tanlab tinglang.', 'ok');
       modeProcBtn.disabled = false;
-      downloadBtn.disabled = false;
+      downloadMp3Btn.disabled = false;
+      downloadWavBtn.disabled = false;
     }
 
     setMode('original');
@@ -633,30 +642,135 @@
     for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   }
 
-  downloadBtn.addEventListener('click', function(){
+  function triggerDownload(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  downloadWavBtn.addEventListener('click', function(){
     if (!processedBuffer || processedBuffer.numberOfChannels < 2) return;
     setStatus('WAV fayl tayyorlanmoqda...', '');
-    downloadBtn.disabled = true;
+    downloadWavBtn.disabled = true;
     // Katta faylda biroz kutish kerak bo'lishi mumkin — keyingi freymga o'tkazamiz
     setTimeout(function(){
       try {
         var blob = bufferToWav(processedBuffer);
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
         var baseName = (infoName.textContent || 'audio').replace(/\.[^.]+$/, '');
-        a.href = url;
-        a.download = baseName + '-R-invert.wav';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+        triggerDownload(blob, baseName + '-R-invert.wav');
         setStatus('WAV fayl yuklab olindi.', 'ok');
       } catch(e){
         setStatus('Eksport qilishda xatolik: ' + e.message, 'err');
       } finally {
-        downloadBtn.disabled = false;
+        downloadWavBtn.disabled = false;
       }
     }, 30);
+  });
+
+  // ---------- MP3 eksport (lamejs) — iPhone/Safari/Android hammasida ochiladi ----------
+
+  // Kerak bo'lsa buffer'ni 44100 Hz stereo'ga qayta diskretlaydi (LAME barcha
+  // sample rate'larni qo'llamaydi, 44100 eng universal va ishonchli variant).
+  function resampleTo44100(buffer){
+    var targetRate = 44100;
+    if (buffer.sampleRate === targetRate) return Promise.resolve(buffer);
+    var OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    var frames = Math.ceil(buffer.duration * targetRate);
+    var offlineCtx = new OfflineCtx(buffer.numberOfChannels, frames, targetRate);
+    var src = offlineCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(offlineCtx.destination);
+    src.start(0);
+    return offlineCtx.startRendering();
+  }
+
+  function floatTo16Bit(input){
+    var out = new Int16Array(input.length);
+    for (var i = 0; i < input.length; i++){
+      var s = Math.max(-1, Math.min(1, input[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return out;
+  }
+
+  // Asosiy encode: AudioBuffer -> MP3 Blob. onProgress(0..1) ixtiyoriy.
+  function encodeMp3(buffer, onProgress){
+    return resampleTo44100(buffer).then(function(buf){
+      return new Promise(function(resolve, reject){
+        try {
+          if (typeof lamejs === 'undefined'){
+            reject(new Error('MP3 kodlovchi kutubxona yuklanmadi (internet aloqasini tekshiring).'));
+            return;
+          }
+          var channels = buf.numberOfChannels;
+          var sampleRate = buf.sampleRate;
+          var kbps = 192;
+          var encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+          var left16 = floatTo16Bit(buf.getChannelData(0));
+          var right16 = channels > 1 ? floatTo16Bit(buf.getChannelData(1)) : null;
+
+          var blockSize = 1152;
+          var totalBlocks = Math.ceil(left16.length / blockSize);
+          var chunks = [];
+          var blockIdx = 0;
+
+          function step(){
+            var start = blockIdx * blockSize;
+            var end = Math.min(start + blockSize, left16.length);
+            if (start >= left16.length){
+              var endBuf = encoder.flush();
+              if (endBuf.length > 0) chunks.push(new Uint8Array(endBuf));
+              resolve(new Blob(chunks, { type: 'audio/mpeg' }));
+              return;
+            }
+            var leftChunk = left16.subarray(start, end);
+            var mp3buf;
+            if (right16){
+              var rightChunk = right16.subarray(start, end);
+              mp3buf = encoder.encodeBuffer(leftChunk, rightChunk);
+            } else {
+              mp3buf = encoder.encodeBuffer(leftChunk);
+            }
+            if (mp3buf.length > 0) chunks.push(new Uint8Array(mp3buf));
+            blockIdx++;
+            if (onProgress) onProgress(blockIdx / totalBlocks);
+            // UI muzlab qolmasligi uchun har bir blokdan keyin navbatdagi freymga o'tkazamiz
+            setTimeout(step, 0);
+          }
+          step();
+        } catch(e){
+          reject(e);
+        }
+      });
+    });
+  }
+
+  downloadMp3Btn.addEventListener('click', function(){
+    if (!processedBuffer || processedBuffer.numberOfChannels < 2) return;
+    downloadMp3Btn.disabled = true;
+    downloadWavBtn.disabled = true;
+    setStatus('MP3 kodlanmoqda...', '');
+    mp3ProgressEl.textContent = 'Tayyorlanmoqda... 0%';
+
+    encodeMp3(processedBuffer, function(progress){
+      mp3ProgressEl.textContent = 'Tayyorlanmoqda... ' + Math.round(progress * 100) + '%';
+    }).then(function(blob){
+      var baseName = (infoName.textContent || 'audio').replace(/\.[^.]+$/, '');
+      triggerDownload(blob, baseName + '-R-invert.mp3');
+      setStatus('MP3 fayl yuklab olindi. iPhone/Android/kompyuterda ochiladi.', 'ok');
+      mp3ProgressEl.textContent = '';
+    }).catch(function(e){
+      setStatus('MP3 kodlashda xatolik: ' + e.message, 'err');
+      mp3ProgressEl.textContent = '';
+    }).finally(function(){
+      downloadMp3Btn.disabled = false;
+      downloadWavBtn.disabled = false;
+    });
   });
 
   resetBtn.addEventListener('click', function(){
