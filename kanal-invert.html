@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanal Polarity Invert — o'ng kanalni teskari qutblash</title>
+<style>
+  :root{
+    --bg:#0b0d14;
+    --panel:#141824;
+    --panel2:#1b2130;
+    --ink:#e8eaf0;
+    --muted:#8a90a6;
+    --accent:#6366f1;
+    --accent2:#a855f7;
+    --line:#2a3040;
+    --good:#22c55e;
+    --warn:#f59e0b;
+    --danger:#ef4444;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(1200px 800px at 20% -10%, rgba(99,102,241,.18), transparent 60%),
+               radial-gradient(1000px 700px at 100% 0%, rgba(168,85,247,.14), transparent 60%),
+               var(--bg);
+    color:var(--ink);
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+  header{text-align:center;margin-bottom:28px;}
+  header h1{
+    font-size:1.7rem;margin:0 0 8px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  header p{color:var(--muted);margin:0;font-size:.95rem;}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:22px;
+    margin-bottom:20px;
+  }
+
+  .dropzone{
+    border:2px dashed var(--line);
+    border-radius:14px;
+    padding:36px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .2s, background .2s;
+    background:var(--panel2);
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--accent);
+    background:rgba(99,102,241,.08);
+  }
+  .dropzone .icon{font-size:2.2rem;margin-bottom:8px;}
+  .dropzone .hint{color:var(--muted);font-size:.85rem;margin-top:6px;}
+  input[type=file]{display:none;}
+
+  .status{margin-top:14px;font-size:.9rem;color:var(--muted);min-height:1.2em;}
+  .status.err{color:var(--danger);}
+  .status.ok{color:var(--good);}
+
+  .info-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-top:16px;
+  }
+  .info-item{
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+  }
+  .info-item .label{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;}
+  .info-item .value{font-size:1.02rem;margin-top:2px;font-weight:600;}
+
+  .hidden{display:none !important;}
+
+  canvas{
+    width:100%;
+    height:130px;
+    display:block;
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  .legend{display:flex;gap:16px;margin-top:8px;font-size:.8rem;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+  .mode-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin:16px 0 4px;
+  }
+  .mode-btn{
+    padding:9px 18px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--panel2);
+    color:var(--ink);
+    cursor:pointer;
+    font-size:.9rem;
+    transition:all .2s;
+  }
+  .mode-btn.active{
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    border-color:transparent;
+    color:#fff;
+    font-weight:600;
+  }
+  .mode-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:18px;
+  }
+  button.ctrl{
+    background:var(--panel2);
+    border:1px solid var(--line);
+    color:var(--ink);
+    border-radius:10px;
+    padding:10px 14px;
+    cursor:pointer;
+    font-size:1rem;
+    display:flex;align-items:center;justify-content:center;
+    min-width:44px;
+  }
+  button.ctrl:hover{border-color:var(--accent);}
+  button.ctrl:disabled{opacity:.4;cursor:not-allowed;}
+
+  input[type=range]{
+    flex:1;
+    accent-color:var(--accent);
+    height:6px;
+  }
+
+  .time{font-size:.82rem;color:var(--muted);min-width:96px;text-align:center;}
+
+  .download-row{
+    display:flex;
+    gap:12px;
+    margin-top:20px;
+    flex-wrap:wrap;
+  }
+  .btn-primary, .btn-secondary{
+    flex:1;
+    min-width:200px;
+    padding:13px 18px;
+    border-radius:12px;
+    border:none;
+    font-size:.95rem;
+    font-weight:600;
+    cursor:pointer;
+    transition:transform .15s, opacity .15s;
+  }
+  .btn-primary{
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    color:#fff;
+  }
+  .btn-secondary{
+    background:var(--panel2);
+    color:var(--ink);
+    border:1px solid var(--line);
+  }
+  .btn-primary:hover, .btn-secondary:hover{transform:translateY(-1px);}
+  .btn-primary:disabled, .btn-secondary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+  .note{
+    font-size:.82rem;
+    color:var(--muted);
+    line-height:1.5;
+    margin-top:6px;
+  }
+  .note b{color:var(--ink);}
+
+  footer{
+    text-align:center;
+    color:var(--muted);
+    font-size:.8rem;
+    margin-top:30px;
+  }
+
+  @media (max-width:520px){
+    .btn-primary,.btn-secondary{min-width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Kanal Polarity Invert</h1>
+    <p>Musiqaning O'NG kanalini qutblab (+ &harr; −) qayta yig'ib beradi. To'liq brauzerda ishlaydi, fayl serverga yuborilmaydi.</p>
+  </header>
+
+  <!-- YUKLASH -->
+  <div class="card">
+    <label class="dropzone" id="dropzone" for="fileInput" tabindex="0">
+      <div class="icon">🎵</div>
+      <div>Audio faylni shu yerga tashlang yoki bosib tanlang</div>
+      <div class="hint">MP3, WAV, OGG, M4A va boshqa brauzer qo'llaydigan formatlar</div>
+      <input type="file" id="fileInput" accept="audio/*">
+    </label>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <div class="info-grid hidden" id="infoGrid">
+      <div class="info-item"><div class="label">Fayl</div><div class="value" id="infoName">—</div></div>
+      <div class="info-item"><div class="label">Davomiyligi</div><div class="value" id="infoDuration">—</div></div>
+      <div class="info-item"><div class="label">Sample rate</div><div class="value" id="infoRate">—</div></div>
+      <div class="info-item"><div class="label">Kanallar</div><div class="value" id="infoChannels">—</div></div>
+    </div>
+  </div>
+
+  <!-- WAVEFORM + PLAYER -->
+  <div class="card hidden" id="playerCard">
+    <canvas id="waveCanvas" width="800" height="130"></canvas>
+    <div class="legend">
+      <span><span class="dot" style="background:#6366f1"></span> Chap kanal (L)</span>
+      <span><span class="dot" style="background:#f472b6"></span> O'ng kanal (R)</span>
+    </div>
+
+    <div class="mode-row">
+      <button class="mode-btn active" id="modeOrigBtn" type="button">🎧 Original</button>
+      <button class="mode-btn" id="modeProcBtn" type="button">🔄 Invert qilingan</button>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl" id="playBtn" type="button" aria-label="Ijro / pauza">▶️</button>
+      <button class="ctrl" id="stopBtn" type="button" aria-label="To'xtatish">⏹️</button>
+      <span class="time" id="curTime">00:00</span>
+      <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Pozitsiya">
+      <span class="time" id="totTime">00:00</span>
+    </div>
+
+    <p class="note">
+      <b>Original</b> — yuklangan faylning o'zi. <b>Invert qilingan</b> — o'ng kanal polarity
+      teskarilangan (musbat qiymat manfiyga, manfiy musbatga aylanadi), chap kanal o'zgarmaydi.
+      Ijro paytida ham rejimni almashtirib solishtirishingiz mumkin.
+    </p>
+
+    <div class="download-row">
+      <button class="btn-primary" id="downloadMp3Btn" type="button">⬇️ MP3 qilib yuklab olish (iPhone'da ham ochiladi)</button>
+      <button class="btn-secondary" id="downloadWavBtn" type="button">WAV (original sifat)</button>
+    </div>
+    <div class="download-row">
+      <button class="btn-secondary" id="resetBtn" type="button">↺ Boshqa fayl yuklash</button>
+    </div>
+    <p class="note" id="mp3Progress"></p>
+  </div>
+
+</div>
+
+<footer>Barcha ishlov brauzer ichida (Web Audio API) amalga oshadi. Fayllar hech qayerga yuborilmaydi.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // ---------- Holat ----------
+  var audioCtx = null;
+  var originalBuffer = null;   // AudioBuffer — asl fayl
+  var processedBuffer = null;  // AudioBuffer — o'ng kanal invert qilingan
+  var currentMode = 'original'; // 'original' | 'processed'
+  var currentSource = null;
+  var isPlaying = false;
+  var startedAtCtxTime = 0;    // audioCtx.currentTime playback boshlanganda
+  var pausedAtOffset = 0;      // sekundlarda, pauza qilingan joy
+  var rafId = null;
+
+  // ---------- DOM ----------
+  var dropzone = document.getElementById('dropzone');
+  var fileInput = document.getElementById('fileInput');
+  var statusEl = document.getElementById('status');
+  var infoGrid = document.getElementById('infoGrid');
+  var infoName = document.getElementById('infoName');
+  var infoDuration = document.getElementById('infoDuration');
+  var infoRate = document.getElementById('infoRate');
+  var infoChannels = document.getElementById('infoChannels');
+  var playerCard = document.getElementById('playerCard');
+  var waveCanvas = document.getElementById('waveCanvas');
+  var modeOrigBtn = document.getElementById('modeOrigBtn');
+  var modeProcBtn = document.getElementById('modeProcBtn');
+  var playBtn = document.getElementById('playBtn');
+  var stopBtn = document.getElementById('stopBtn');
+  var curTimeEl = document.getElementById('curTime');
+  var totTimeEl = document.getElementById('totTime');
+  var seekEl = document.getElementById('seek');
+  var downloadMp3Btn = document.getElementById('downloadMp3Btn');
+  var downloadWavBtn = document.getElementById('downloadWavBtn');
+  var mp3ProgressEl = document.getElementById('mp3Progress');
+  var resetBtn = document.getElementById('resetBtn');
+
+  function setStatus(msg, type){
+    statusEl.textContent = msg || '';
+    statusEl.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function formatTime(sec){
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+  }
+
+  function getAudioCtx(){
+    if (!audioCtx){
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new Ctx();
+    }
+    return audioCtx;
+  }
+
+  // ---------- Fayl yuklash ----------
+  dropzone.addEventListener('click', function(e){
+    // label allaqachon inputni ochadi, lekin klaviatura/Enter uchun qo'shimcha
+  });
+  dropzone.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileInput.click(); }
+  });
+  ['dragenter','dragover'].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.add('drag');
+    });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.remove('drag');
+    });
+  });
+  dropzone.addEventListener('drop', function(e){
+    var files = e.dataTransfer.files;
+    if (files && files[0]) handleFile(files[0]);
+  });
+  fileInput.addEventListener('change', function(){
+    if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file){
+    stopPlayback();
+    setStatus('Fayl o\'qilmoqda...', '');
+    playerCard.classList.add('hidden');
+    infoGrid.classList.add('hidden');
+
+    var reader = new FileReader();
+    reader.onerror = function(){
+      setStatus('Faylni o\'qishda xatolik yuz berdi.', 'err');
+    };
+    reader.onload = function(){
+      var ctx = getAudioCtx();
+      ctx.decodeAudioData(reader.result.slice(0), function(buffer){
+        onDecoded(file, buffer);
+      }, function(err){
+        setStatus('Audio faylni ochib bo\'lmadi. Format qo\'llanmasligi mumkin.', 'err');
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function onDecoded(file, buffer){
+    originalBuffer = buffer;
+    processedBuffer = buildProcessedBuffer(buffer);
+    currentMode = 'original';
+    pausedAtOffset = 0;
+
+    infoName.textContent = file.name;
+    infoDuration.textContent = formatTime(buffer.duration);
+    infoRate.textContent = buffer.sampleRate + ' Hz';
+    infoChannels.textContent = buffer.numberOfChannels + (buffer.numberOfChannels === 1 ? ' (mono)' : buffer.numberOfChannels === 2 ? ' (stereo)' : '');
+    infoGrid.classList.remove('hidden');
+
+    if (buffer.numberOfChannels < 2){
+      setStatus('Diqqat: bu fayl MONO (bitta kanal). O\'ng kanal mavjud emas, shuning uchun invert qilib bo\'lmaydi.', 'err');
+      modeProcBtn.disabled = true;
+      downloadMp3Btn.disabled = true;
+      downloadWavBtn.disabled = true;
+    } else {
+      setStatus('Fayl muvaffaqiyatli yuklandi. Rejimni tanlab tinglang.', 'ok');
+      modeProcBtn.disabled = false;
+      downloadMp3Btn.disabled = false;
+      downloadWavBtn.disabled = false;
+    }
+
+    setMode('original');
+    seekEl.max = String(Math.max(1, Math.floor(buffer.duration * 100)));
+    seekEl.value = '0';
+    totTimeEl.textContent = formatTime(buffer.duration);
+    curTimeEl.textContent = '00:00';
+
+    drawWaveform(currentBuffer());
+    playerCard.classList.remove('hidden');
+  }
+
+  // ---------- O'ng kanalni invert qilib yangi buffer yasash ----------
+  function buildProcessedBuffer(buffer){
+    var ctx = getAudioCtx();
+    var out = ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+    for (var ch = 0; ch < buffer.numberOfChannels; ch++){
+      var src = buffer.getChannelData(ch);
+      var dst = out.getChannelData(ch);
+      if (ch === 1){
+        // O'NG KANAL: polarity invert — plus bo'lsa minus, minus bo'lsa plus
+        for (var i = 0; i < src.length; i++) dst[i] = -src[i];
+      } else {
+        dst.set(src);
+      }
+    }
+    return out;
+  }
+
+  function currentBuffer(){
+    return currentMode === 'processed' ? processedBuffer : originalBuffer;
+  }
+
+  // ---------- Rejim almashtirish (ijro paytida ham) ----------
+  function setMode(mode){
+    if (mode === 'processed' && (!processedBuffer || processedBuffer.numberOfChannels < 2)) return;
+    var wasPlaying = isPlaying;
+    var offset = getElapsed();
+    currentMode = mode;
+    modeOrigBtn.classList.toggle('active', mode === 'original');
+    modeProcBtn.classList.toggle('active', mode === 'processed');
+    drawWaveform(currentBuffer());
+    if (wasPlaying){
+      stopSourceOnly();
+      startPlayback(offset);
+    } else {
+      pausedAtOffset = offset;
+    }
+  }
+
+  modeOrigBtn.addEventListener('click', function(){ setMode('original'); });
+  modeProcBtn.addEventListener('click', function(){ setMode('processed'); });
+
+  // ---------- Waveform chizish ----------
+  function drawWaveform(buffer){
+    if (!buffer) return;
+    var ctx2d = waveCanvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var w = waveCanvas.clientWidth || 800;
+    var h = waveCanvas.clientHeight || 130;
+    waveCanvas.width = w * dpr;
+    waveCanvas.height = h * dpr;
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx2d.clearRect(0, 0, w, h);
+
+    var mid = h / 2;
+    var left = buffer.getChannelData(0);
+    drawChannelLine(ctx2d, left, w, h, mid, 'rgba(99,102,241,0.85)');
+
+    if (buffer.numberOfChannels > 1){
+      var right = buffer.getChannelData(1);
+      drawChannelLine(ctx2d, right, w, h, mid, 'rgba(244,114,182,0.7)');
+    }
+
+    ctx2d.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx2d.beginPath();
+    ctx2d.moveTo(0, mid);
+    ctx2d.lineTo(w, mid);
+    ctx2d.stroke();
+  }
+
+  function drawChannelLine(ctx2d, data, w, h, mid, color){
+    var step = Math.max(1, Math.ceil(data.length / w));
+    ctx2d.fillStyle = color;
+    for (var x = 0; x < w; x++){
+      var idx = x * step;
+      var min = 1, max = -1;
+      var end = Math.min(idx + step, data.length);
+      for (var i = idx; i < end; i++){
+        var v = data[i];
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      if (max < min){ max = 0; min = 0; }
+      var y1 = mid - max * mid;
+      var y2 = mid - min * mid;
+      ctx2d.fillRect(x, Math.min(y1, y2), 1, Math.max(1, Math.abs(y2 - y1)));
+    }
+  }
+
+  // ---------- Ijro (playback) ----------
+  function getElapsed(){
+    if (isPlaying){
+      return pausedAtOffset + (getAudioCtx().currentTime - startedAtCtxTime);
+    }
+    return pausedAtOffset;
+  }
+
+  function startPlayback(offset){
+    var buffer = currentBuffer();
+    if (!buffer) return;
+    var ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    var source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    var safeOffset = Math.max(0, Math.min(offset, buffer.duration - 0.001));
+    source.start(0, safeOffset);
+    source.onended = function(){
+      if (currentSource === source){
+        isPlaying = false;
+        pausedAtOffset = 0;
+        playBtn.textContent = '▶️';
+        cancelAnimationFrame(rafId);
+        seekEl.value = '0';
+        curTimeEl.textContent = '00:00';
+      }
+    };
+
+    currentSource = source;
+    startedAtCtxTime = ctx.currentTime;
+    pausedAtOffset = safeOffset;
+    isPlaying = true;
+    playBtn.textContent = '⏸️';
+    tickProgress();
+  }
+
+  function stopSourceOnly(){
+    if (currentSource){
+      currentSource.onended = null;
+      try { currentSource.stop(); } catch(e){}
+      currentSource = null;
+    }
+    cancelAnimationFrame(rafId);
+  }
+
+  function stopPlayback(){
+    stopSourceOnly();
+    isPlaying = false;
+    pausedAtOffset = 0;
+    playBtn.textContent = '▶️';
+    seekEl.value = '0';
+    curTimeEl.textContent = '00:00';
+  }
+
+  function tickProgress(){
+    if (!isPlaying) return;
+    var buffer = currentBuffer();
+    var elapsed = getElapsed();
+    if (buffer){
+      seekEl.value = String(Math.min(Number(seekEl.max), Math.floor(elapsed * 100)));
+      curTimeEl.textContent = formatTime(elapsed);
+      if (elapsed >= buffer.duration){
+        stopPlayback();
+        return;
+      }
+    }
+    rafId = requestAnimationFrame(tickProgress);
+  }
+
+  playBtn.addEventListener('click', function(){
+    if (!currentBuffer()) return;
+    if (isPlaying){
+      // pauza
+      pausedAtOffset = getElapsed();
+      stopSourceOnly();
+      isPlaying = false;
+      playBtn.textContent = '▶️';
+    } else {
+      startPlayback(pausedAtOffset);
+    }
+  });
+
+  stopBtn.addEventListener('click', function(){
+    stopPlayback();
+  });
+
+  seekEl.addEventListener('input', function(){
+    var buffer = currentBuffer();
+    if (!buffer) return;
+    var offset = Number(seekEl.value) / 100;
+    curTimeEl.textContent = formatTime(offset);
+    if (isPlaying){
+      stopSourceOnly();
+      startPlayback(offset);
+    } else {
+      pausedAtOffset = offset;
+    }
+  });
+
+  // ---------- WAV eksport ----------
+  function bufferToWav(buffer){
+    var numChannels = buffer.numberOfChannels;
+    var sampleRate = buffer.sampleRate;
+    var bitDepth = 16;
+    var bytesPerSample = bitDepth / 8;
+    var blockAlign = numChannels * bytesPerSample;
+    var numFrames = buffer.length;
+    var dataSize = numFrames * blockAlign;
+
+    var arrayBuffer = new ArrayBuffer(44 + dataSize);
+    var view = new DataView(arrayBuffer);
+
+    writeStr(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeStr(view, 8, 'WAVE');
+    writeStr(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);           // fmt chunk size
+    view.setUint16(20, 1, true);            // PCM
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    writeStr(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    var channelData = [];
+    for (var ch = 0; ch < numChannels; ch++) channelData.push(buffer.getChannelData(ch));
+
+    var offset = 44;
+    for (var i = 0; i < numFrames; i++){
+      for (var c = 0; c < numChannels; c++){
+        var sample = Math.max(-1, Math.min(1, channelData[c][i]));
+        sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+        view.setInt16(offset, sample, true);
+        offset += 2;
+      }
+    }
+
+    return new Blob([view], { type: 'audio/wav' });
+  }
+
+  function writeStr(view, offset, str){
+    for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+
+  function triggerDownload(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  downloadWavBtn.addEventListener('click', function(){
+    if (!processedBuffer || processedBuffer.numberOfChannels < 2) return;
+    setStatus('WAV fayl tayyorlanmoqda...', '');
+    downloadWavBtn.disabled = true;
+    // Katta faylda biroz kutish kerak bo'lishi mumkin — keyingi freymga o'tkazamiz
+    setTimeout(function(){
+      try {
+        var blob = bufferToWav(processedBuffer);
+        var baseName = (infoName.textContent || 'audio').replace(/\.[^.]+$/, '');
+        triggerDownload(blob, baseName + '-R-invert.wav');
+        setStatus('WAV fayl yuklab olindi.', 'ok');
+      } catch(e){
+        setStatus('Eksport qilishda xatolik: ' + e.message, 'err');
+      } finally {
+        downloadWavBtn.disabled = false;
+      }
+    }, 30);
+  });
+
+  // ---------- MP3 eksport (lamejs) — iPhone/Safari/Android hammasida ochiladi ----------
+
+  // Kerak bo'lsa buffer'ni 44100 Hz stereo'ga qayta diskretlaydi (LAME barcha
+  // sample rate'larni qo'llamaydi, 44100 eng universal va ishonchli variant).
+  function resampleTo44100(buffer){
+    var targetRate = 44100;
+    if (buffer.sampleRate === targetRate) return Promise.resolve(buffer);
+    var OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    var frames = Math.ceil(buffer.duration * targetRate);
+    var offlineCtx = new OfflineCtx(buffer.numberOfChannels, frames, targetRate);
+    var src = offlineCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(offlineCtx.destination);
+    src.start(0);
+    return offlineCtx.startRendering();
+  }
+
+  function floatTo16Bit(input){
+    var out = new Int16Array(input.length);
+    for (var i = 0; i < input.length; i++){
+      var s = Math.max(-1, Math.min(1, input[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return out;
+  }
+
+  // Asosiy encode: AudioBuffer -> MP3 Blob. onProgress(0..1) ixtiyoriy.
+  function encodeMp3(buffer, onProgress){
+    return resampleTo44100(buffer).then(function(buf){
+      return new Promise(function(resolve, reject){
+        try {
+          if (typeof lamejs === 'undefined'){
+            reject(new Error('MP3 kodlovchi kutubxona yuklanmadi (internet aloqasini tekshiring).'));
+            return;
+          }
+          var channels = buf.numberOfChannels;
+          var sampleRate = buf.sampleRate;
+          var kbps = 192;
+          var encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+          var left16 = floatTo16Bit(buf.getChannelData(0));
+          var right16 = channels > 1 ? floatTo16Bit(buf.getChannelData(1)) : null;
+
+          var blockSize = 1152;
+          var totalBlocks = Math.ceil(left16.length / blockSize);
+          var chunks = [];
+          var blockIdx = 0;
+
+          function step(){
+            var start = blockIdx * blockSize;
+            var end = Math.min(start + blockSize, left16.length);
+            if (start >= left16.length){
+              var endBuf = encoder.flush();
+              if (endBuf.length > 0) chunks.push(new Uint8Array(endBuf));
+              resolve(new Blob(chunks, { type: 'audio/mpeg' }));
+              return;
+            }
+            var leftChunk = left16.subarray(start, end);
+            var mp3buf;
+            if (right16){
+              var rightChunk = right16.subarray(start, end);
+              mp3buf = encoder.encodeBuffer(leftChunk, rightChunk);
+            } else {
+              mp3buf = encoder.encodeBuffer(leftChunk);
+            }
+            if (mp3buf.length > 0) chunks.push(new Uint8Array(mp3buf));
+            blockIdx++;
+            if (onProgress) onProgress(blockIdx / totalBlocks);
+            // UI muzlab qolmasligi uchun har bir blokdan keyin navbatdagi freymga o'tkazamiz
+            setTimeout(step, 0);
+          }
+          step();
+        } catch(e){
+          reject(e);
+        }
+      });
+    });
+  }
+
+  downloadMp3Btn.addEventListener('click', function(){
+    if (!processedBuffer || processedBuffer.numberOfChannels < 2) return;
+    downloadMp3Btn.disabled = true;
+    downloadWavBtn.disabled = true;
+    setStatus('MP3 kodlanmoqda...', '');
+    mp3ProgressEl.textContent = 'Tayyorlanmoqda... 0%';
+
+    encodeMp3(processedBuffer, function(progress){
+      mp3ProgressEl.textContent = 'Tayyorlanmoqda... ' + Math.round(progress * 100) + '%';
+    }).then(function(blob){
+      var baseName = (infoName.textContent || 'audio').replace(/\.[^.]+$/, '');
+      triggerDownload(blob, baseName + '-R-invert.mp3');
+      setStatus('MP3 fayl yuklab olindi. iPhone/Android/kompyuterda ochiladi.', 'ok');
+      mp3ProgressEl.textContent = '';
+    }).catch(function(e){
+      setStatus('MP3 kodlashda xatolik: ' + e.message, 'err');
+      mp3ProgressEl.textContent = '';
+    }).finally(function(){
+      downloadMp3Btn.disabled = false;
+      downloadWavBtn.disabled = false;
+    });
+  });
+
+  resetBtn.addEventListener('click', function(){
+    stopPlayback();
+    originalBuffer = null;
+    processedBuffer = null;
+    fileInput.value = '';
+    playerCard.classList.add('hidden');
+    infoGrid.classList.add('hidden');
+    setStatus('', '');
+  });
+
+  window.addEventListener('resize', function(){
+    if (currentBuffer()) drawWaveform(currentBuffer());
+  });
+
+})();
+</script>
+</body>
+</html>

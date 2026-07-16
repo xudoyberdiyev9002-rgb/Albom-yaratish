@@ -269,3 +269,12 @@ Til: interfeys o'zbekcha. Kod izohlari ham asosan o'zbekcha.
 ## Eslatma
 
 Foydalanuvchi bilan o'zbek tilida muloqot qilinadi.
+
+## Kanal Invert vositasi (alohida sahifa, mainга kiritildi)
+
+- Yangi `kanal-invert.html` — mustaqil vosita (albom oqimiga aloqasi yo'q). Audio
+  faylni yuklab, O'NG kanalning polarity'sini invert qiladi (`dst[i] = -src[i]`),
+  waveform preview + original/invert solishtirib tinglash. Eksport: **MP3** (192kbps,
+  `lamejs` CDN — iPhone/Safari/Android hammasida ochiladi, asosiy tugma) va **WAV**
+  (original sifat, ikkinchi variant). To'liq Web Audio API, brauzerda, server yo'q.
+- `index.html` header-nav ga "🎵 Kanal Invert" havolasi qo'shildi (`target="_blank"`).
