@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reka Raskroy Kalkulyatori</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar no-print">
+    <h1>📏 Reka Raskroy Kalkulyatori</h1>
+    <p class="sub">Rekalarni eng kam qoldiq bilan kesish uchun hisoblang</p>
+  </header>
+
+  <!-- SOZLAMALAR -->
+  <section class="card settings no-print">
+    <h3>Sozlamalar</h3>
+    <div class="fld-grid">
+      <div class="fld">
+        <label for="barLength">Reka uzunligi (mm)</label>
+        <input type="number" id="barLength" value="4000">
+      </div>
+      <div class="fld">
+        <label for="kerf">Arra qalinligi (mm)</label>
+        <input type="number" id="kerf" value="3">
+      </div>
+    </div>
+  </section>
+
+  <!-- DETAL QO'SHISH -->
+  <section class="card no-print">
+    <h3>Detal qo'shish</h3>
+    <div class="add-row">
+      <div class="fld">
+        <label for="size">Uzunligi (mm)</label>
+        <input type="number" id="size" placeholder="Masalan: 850">
+      </div>
+      <div class="fld">
+        <label for="count">Soni</label>
+        <input type="number" id="count" placeholder="Masalan: 4">
+      </div>
+      <button class="btn btn-primary" onclick="addItem()">+ Qo'shish</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="itemsTable">
+        <tr>
+          <th>Uzunligi</th>
+          <th>Soni</th>
+          <th></th>
+        </tr>
+      </table>
+      <p id="emptyHint" class="empty-hint">Hozircha detal qo'shilmagan</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-success" onclick="calculate()">📊 Hisoblash</button>
+      <button class="btn btn-ghost" onclick="printResult()">🖨️ Chop etish</button>
+      <button class="btn btn-danger" onclick="clearAll()">🗑 Tozalash</button>
+    </div>
+  </section>
+
+  <div id="graphResult"></div>
+  <div id="result"></div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
