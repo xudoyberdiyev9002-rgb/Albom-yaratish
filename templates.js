@@ -114,6 +114,392 @@ function rtSpotHeal(img, tw, th, amount) {
   }
 }
 
+// ── UMUMIY YORDAMCHILAR (yangi shablonlar uchun) ─────────────────────
+// roundRect yo'li
+function bRoundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+// grid qatorlari (oxirgi qatorni markazlash + yolg'iz qolmaslik)
+function bBuildRows(count, cols) {
+  if (count <= 0) return [];
+  if (count <= cols) return [count];
+  const full = Math.floor(count / cols), rem = count % cols;
+  if (rem === 0) return Array(full).fill(cols);
+  if (rem === 1) return [cols + 1, ...Array(full - 1).fill(cols)];
+  return [rem, ...Array(full).fill(cols)];
+}
+// grid qatorlari — to'liq ustunlar, qoldiq PASTKI qatorda (markazlanadi)
+function bBuildRowsBottom(count, cols) {
+  if (count <= 0) return [];
+  if (count <= cols) return [count];
+  const rows = []; let left = count;
+  while (left > cols) { rows.push(cols); left -= cols; }
+  rows.push(left);
+  return rows;
+}
+// Matnni maxW ga sig'adigan eng katta shriftni topish (bitta qator)
+function bFitFont(ctx, text, maxW, startFS, minFS, family, weight) {
+  let fs = startFS;
+  while (fs > minFS) {
+    ctx.font = `${weight} ${fs}px ${family}`;
+    if (ctx.measureText(text).width <= maxW) break;
+    fs--;
+  }
+  return fs;
+}
+// Matnni so'zlar bo'yicha qatorlarga bo'lish (joriy ctx.font bilan)
+function bWrapText(ctx, text, maxW) {
+  const words = (text || '').split(/\s+/).filter(Boolean);
+  const lines = []; let cur = '';
+  for (const w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(t).width <= maxW || !cur) cur = t;
+    else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+// maxW×maxH ga sig'adigan shrift + qatorlar (wrap)
+function bFitWrap(ctx, text, maxW, maxH, maxFS, minFS, family, weight) {
+  let fs = maxFS;
+  while (fs >= minFS) {
+    ctx.font = `${weight} ${fs}px ${family}`;
+    const lines = bWrapText(ctx, text, maxW);
+    const lh = fs * 1.16;
+    if (lines.length * lh <= maxH && lines.every(l => ctx.measureText(l).width <= maxW))
+      return { fs, lines, lh };
+    fs--;
+  }
+  ctx.font = `${weight} ${minFS}px ${family}`;
+  return { fs: minFS, lines: bWrapText(ctx, text, maxW), lh: minFS * 1.16 };
+}
+// ism-familiyani 2 qatorga bo'lish
+function bSplitName(nm) {
+  const p = (nm || '').trim().split(/\s+/);
+  if (p.length <= 1) return [p[0] || ''];
+  return [p[0], p.slice(1).join(' ')];
+}
+function bHexA(hex, a) {
+  const n = parseInt((hex || '#000').replace('#', ''), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+// FON chizish (rang / gradient / rasm + overlay) — bog'cha shablonlari uchun
+function bDrawBg(ctx, cfg, W, H) {
+  const bgType = cfg.bgType || 'color', bgImg = cfg.bgImg || null;
+  const bgOverlay = cfg.bgOverlay != null ? cfg.bgOverlay : 0.10;
+  const bgOvColor = cfg.bgOvColor || '#ffffff';
+  if (bgType === 'image' && bgImg) {
+    const iw = bgImg.naturalWidth, ih = bgImg.naturalHeight, sc = Math.max(W / iw, H / ih);
+    ctx.drawImage(bgImg, (W - iw * sc) / 2, (H - ih * sc) / 2, iw * sc, ih * sc);
+    if (bgOverlay > 0.01) { ctx.fillStyle = bHexA(bgOvColor, bgOverlay); ctx.fillRect(0, 0, W, H); }
+  } else if (bgType === 'gradient') {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, cfg.bgColor1 || '#cfe0f2'); g.addColorStop(1, cfg.bgColor2 || '#eaf3fb');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = cfg.bgColor1 || '#dce9f7'; ctx.fillRect(0, 0, W, H);
+  }
+}
+function bDrawOneText(ctx, t, W, H, hit) {
+  {
+    if (t == null) return;
+    const fs = Math.max(6, (t.size || 0.03) * W);
+    const x = (t.xf != null ? t.xf : 0.5) * W, y = (t.yf != null ? t.yf : 0.5) * H;
+    const lines = String(t.text == null ? '' : t.text).split('\n');
+    const lh = fs * 1.22;
+    ctx.save();
+    ctx.translate(x, y);
+    if (t.rot) ctx.rotate(t.rot * Math.PI / 180);
+    ctx.font = `${t.italic ? 'italic ' : ''}${t.bold ? '700' : '400'} ${fs}px ${t.family || 'Oswald, sans-serif'}`;
+    ctx.fillStyle = t.color || '#173a5e';
+    ctx.textAlign = t.align || 'center';
+    ctx.textBaseline = 'middle';
+    if (t.stroke && t.strokeColor) { ctx.lineWidth = Math.max(1, fs * 0.06); ctx.strokeStyle = t.strokeColor; ctx.lineJoin = 'round'; }
+    let maxW = 1;
+    const startY = -(lines.length - 1) * lh / 2;
+    lines.forEach((ln, i) => {
+      maxW = Math.max(maxW, ctx.measureText(ln).width);
+      if (t.stroke && t.strokeColor) ctx.strokeText(ln, 0, startY + i * lh);
+      ctx.fillText(ln, 0, startY + i * lh);
+    });
+    ctx.restore();
+    if (hit) {
+      const w = maxW, h = lines.length * lh;
+      const ax = t.align === 'left' ? x : (t.align === 'right' ? x - w : x - w / 2);
+      hit.push({ key: 'ct:' + t.id, custom: true, id: t.id, x: ax, y: y - h / 2, w, h });
+    }
+  }
+}
+function bDrawCustomTexts(ctx, cfg, W, H) {
+  const hit = cfg.hitRegions || null;
+  (cfg.customTexts || []).forEach(t => bDrawOneText(ctx, t, W, H, hit));
+}
+window.bDrawCustomTexts = bDrawCustomTexts;
+function bDrawOneIcon(ctx, o, W, H, hit) {
+  {
+    const im = o && o.img;
+    if (!im || !(im.naturalWidth || im.width)) return;
+    const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+    const w = Math.max(4, (o.size != null ? o.size : 0.15) * W);
+    const h = w * (ih / iw);
+    const x = (o.xf != null ? o.xf : 0.5) * W, y = (o.yf != null ? o.yf : 0.5) * H;
+    ctx.save();
+    ctx.translate(x, y);
+    if (o.rot) ctx.rotate(o.rot * Math.PI / 180);
+    if (o.opacity != null) ctx.globalAlpha = o.opacity;
+    ctx.drawImage(im, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    if (hit) hit.push({ key: 'ic:' + o.id, icon: true, id: o.id, x: x - w / 2, y: y - h / 2, w, h });
+  }
+}
+function bDrawIcons(ctx, cfg, W, H) {
+  const hit = cfg.hitRegions || null;
+  (cfg.icons || []).forEach(o => bDrawOneIcon(ctx, o, W, H, hit));
+}
+window.bDrawIcons = bDrawIcons;
+function bDrawOverlays(ctx, cfg, W, H) {
+  const hit = cfg.hitRegions || null;
+  const merged = [];
+  (cfg.icons || []).forEach(o => { if (o) merged.push({ z: o.z || 0, kind: 'i', o }); });
+  (cfg.customTexts || []).forEach(o => { if (o) merged.push({ z: o.z || 0, kind: 't', o }); });
+  merged.sort((a, b) => (a.z - b.z) || 0);
+  merged.forEach(m => m.kind === 'i' ? bDrawOneIcon(ctx, m.o, W, H, hit) : bDrawOneText(ctx, m.o, W, H, hit));
+}
+window.bDrawOverlays = bDrawOverlays;
+window.bDrawOneIcon = bDrawOneIcon;
+window.bDrawOneText = bDrawOneText;
+
+// ─────────────────────────────────────────────────────────────
+// QATLAM KOMPOZITSIYASI (layered shablonlar uchun — bog'cha)
+// Bazaviy qatlarni (bg/cardbg/photo) va qo'shilgan elementlarni (icon/text)
+// tanlangan z tartibida alohida offscreen orqali birlashtiradi.
+//   destCtx    : nishon kontekst (preview yoki generator — masshtablangan bo'lishi mumkin)
+//   destCanvas : nishon canvas (piksel o'lchami)
+//   template   : layerPass ni qo'llovchi shablon (draw(ctx,data,cfg))
+//   drawCfg    : draw uchun to'liq cfg (w/h = mantiqiy o'lcham, blz, icons, customTexts...)
+//   hit        : hit-region massivi (preview) yoki null (generator)
+// ─────────────────────────────────────────────────────────────
+function compositeLayers(destCtx, destCanvas, template, data, drawCfg, hit) {
+  const lw = drawCfg.w, lh = drawCfg.h;                 // mantiqiy o'lcham (draw ishlatadi)
+  const pw = destCanvas.width, ph = destCanvas.height;  // piksel o'lcham
+  const sx = pw / lw, sy = ph / lh;                     // masshtab (sifat koeffitsienti)
+  const blz = drawCfg.blz || { bg: 0, cardbg: 1, photo: 2 };
+  const entries = [
+    { base: 'bg', z: blz.bg != null ? blz.bg : 0 },
+    { base: 'cardbg', z: blz.cardbg != null ? blz.cardbg : 1 },
+    { base: 'photo', z: blz.photo != null ? blz.photo : 2 },
+  ];
+  (drawCfg.icons || []).forEach(o => { if (o) entries.push({ icon: true, obj: o, z: o.z || 0 }); });
+  (drawCfg.customTexts || []).forEach(o => { if (o) entries.push({ text: true, obj: o, z: o.z || 0 }); });
+  entries.sort((a, b) => (a.z || 0) - (b.z || 0));   // past→ust
+
+  entries.forEach(e => {
+    if (e.base) {
+      const off = document.createElement('canvas');
+      off.width = pw; off.height = ph;
+      const octx = off.getContext('2d');
+      octx.imageSmoothingEnabled = true; octx.imageSmoothingQuality = 'high';
+      octx.setTransform(sx, 0, 0, sy, 0, 0);
+      template.draw(octx, data, Object.assign({}, drawCfg, { layerPass: e.base, hitRegions: hit }));
+      destCtx.save();
+      destCtx.setTransform(1, 0, 0, 1, 0, 0);
+      destCtx.drawImage(off, 0, 0);
+      destCtx.restore();
+    } else if (e.icon) {
+      bDrawOneIcon(destCtx, e.obj, lw, lh, hit);
+    } else {
+      bDrawOneText(destCtx, e.obj, lw, lh, hit);
+    }
+  });
+}
+window.compositeLayers = compositeLayers;
+// Rasmni free-transform (qo'lda sudrash/zoom) + avto-yuz kadrlash + retush bilan chizish.
+// split-inner dagi drawImgT mantig'i — yangi shablonlar shu bilan BARCHA featurelarni oladi.
+//  key      : transform/hit-region kaliti (mas. `g5`, `staff0`, `L0`)
+//  faceIdx  : avto-yuz/retush uchun o'quvchi indeksi (null bo'lsa avto-yuz yo'q)
+//  isLeft   : katta chap/portret rasm (chap slayderlar ishlatiladi)
+function drawImgTransformed(ctx, img, x, y, w, h, key, faceIdx, cfg, targetFrac, isLeft) {
+  const iw = (img && (img.naturalWidth || img.width)) || 0;
+  const ih = (img && (img.naturalHeight || img.height)) || 0;
+  if (!(iw > 0 && ih > 0)) return false;
+  const transforms = cfg.transforms || {};
+  const hitRegions = cfg.hitRegions || null;
+  const faces = cfg.faces || {};
+  if (hitRegions) hitRegions.push({ key, x, y, w, h });
+
+  const sc0 = Math.max(w / iw, h / ih);
+  const store = transforms[key];
+  let s, ox, oy;
+  if (store && store.src === 'manual') {
+    s = Math.max(1, Math.min(8, store.scale || 1));
+    const scs0 = sc0 * s, dw0 = iw * scs0, dh0 = ih * scs0;
+    const mOx = (dw0 - w) / (2 * w), mOy = (dh0 - h) / (2 * h);
+    ox = Math.max(-mOx, Math.min(mOx, store.ox || 0));
+    oy = Math.max(-mOy, Math.min(mOy, store.oy || 0));
+    store.scale = s; store.ox = ox; store.oy = oy;
+  } else {
+    const face = faces[faceIdx];
+    if (face) {
+      const tf = isLeft
+        ? (cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft : (targetFrac || 0.27))
+        : (cfg.autoFaceFrac != null ? cfg.autoFaceFrac : (targetFrac || 0.30));
+      const fhPx = Math.max(1, face.fh * ih);
+      const fcxPx = face.cx * iw, fcyPx = face.cy * ih;
+      s = Math.max(1, Math.min(8, (tf * h) / (fhPx * sc0)));
+      const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
+      ox = (0.5 * w - (w - dw) / 2 - fcxPx * scs) / w;
+      const vy = isLeft
+        ? (cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft : 0.43)
+        : (cfg.autoFaceY != null ? cfg.autoFaceY : 0.43);
+      oy = (vy * h - (h - dh) / 2 - fcyPx * scs) / h;
+      const mOx = (dw - w) / (2 * w), mOy = (dh - h) / (2 * h);
+      ox = Math.max(-mOx, Math.min(mOx, ox));
+      oy = Math.max(-mOy, Math.min(mOy, oy));
+    } else if (isLeft) {
+      // Katta rasm, yuz aniqlanmagan — "Katta rasm" slayderlari zoom + vertikal pan
+      const tf = cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft : 0.27;
+      s = Math.max(1, Math.min(8, tf / 0.27));
+      const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
+      const vy = cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft : 0.43;
+      const mOy = (dh - h) / (2 * h);
+      ox = 0;
+      oy = Math.max(-mOy, Math.min(mOy, mOy * (1 - 2 * vy)));
+    } else {
+      s = 1; const scs = sc0, dw = iw * scs, dh = ih * scs;
+      const mOy = (dh - h) / (2 * h); ox = 0; oy = Math.max(-mOy, Math.min(mOy, -0.06));
+    }
+    transforms[key] = { scale: s, ox, oy, src: 'auto' };
+  }
+  const scs = sc0 * s, dw = iw * scs, dh = ih * scs;
+  const dx = x + (w - dw) / 2 + ox * w, dy = y + (h - dh) / 2 + oy * h;
+
+  const R = (cfg.retouchMap && cfg.retouchMap[faceIdx]) || {};
+  const hasColor = (R.brightness || R.contrast || R.saturation || R.warmth > 0);
+  if (hasColor) {
+    const sepia = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
+    ctx.filter =
+      `brightness(${1 + (R.brightness || 0) / 100}) contrast(${1 + (R.contrast || 0) / 100}) ` +
+      `saturate(${1 + (R.saturation || 0) / 100}) sepia(${sepia})`;
+  }
+  let smoothed = null;
+  if (R.smooth > 0) smoothed = rtSpotHeal(img, dw, dh, R.smooth);
+  if (smoothed) ctx.drawImage(smoothed, dx, dy, dw, dh);
+  else ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.filter = 'none';
+  if (R.warmth < 0) {
+    ctx.save(); ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = (-R.warmth) / 100 * 0.18; ctx.fillStyle = '#3a6ea5';
+    ctx.fillRect(x, y, w, h); ctx.restore();
+  }
+  if (R.vignette > 0) {
+    const g = ctx.createRadialGradient(x + w / 2, y + h / 2, Math.min(w, h) * 0.35, x + w / 2, y + h / 2, Math.max(w, h) * 0.72);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${(R.vignette / 100) * 0.6})`);
+    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  }
+  return true;
+}
+
+// RAMKA free-transform: butun katakcha (oq ramka + rasm) BIRGA ko'chadi/masshtablanadi.
+// (rasmni ichida emas, ELEMENTNI o'zini sudrash/zoom.) store: {ox,oy,scale} —
+// ox/oy = baseW/baseH ga nisbatan siljish, scale = ramka o'lchami koeffitsienti.
+// initFreeTransform (editor.js) ayni shu transforms[key] ni yangilaydi.
+function drawFrameT(ctx, item, baseX, baseY, baseW, baseH, key, cfg, accent, faceIdx, innerKey) {
+  const transforms = cfg.transforms || {};
+  const hit = cfg.hitRegions || null;
+  const _pass = cfg.layerPass || null;
+  const F_card = !_pass || _pass === 'cardbg';   // oq ramka (fon)
+  const F_photo = !_pass || _pass === 'photo';    // rasm
+  const store = transforms[key] || {};                 // RAMKA (ox,oy,sx,sy) — umumiy bo'lishi mumkin
+  const iStore = transforms[innerKey || key] || {};    // ICHKI (iox,ioy,iscale,iSrc) — alohida
+  const sx = Math.max(0.3, Math.min(4, store.sx != null ? store.sx : (store.scale || 1)));
+  const sy = Math.max(0.3, Math.min(4, store.sy != null ? store.sy : (store.scale || 1)));
+  const ox = store.ox || 0, oy = store.oy || 0;
+  const w = baseW * sx, h = baseH * sy;
+  const x = baseX + ox * baseW, y = baseY + oy * baseH;
+  if (F_photo && hit) hit.push({ key, innerKey: innerKey || key, x, y, w, h, frame: true });
+
+  const rad = Math.round(Math.min(w, h) * 0.06);
+  if (F_card) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.22)'; ctx.shadowBlur = Math.round(baseW * 0.06); ctx.shadowOffsetY = 2;
+    ctx.fillStyle = '#ffffff';
+    bRoundRect(ctx, x, y, w, h, rad); ctx.fill();
+    ctx.restore();
+  }
+
+  const ip = Math.round(Math.min(w, h) * 0.03);
+  const px = x + ip, py = y + ip, pw = w - 2 * ip, ph = h - 2 * ip;
+  if (!F_photo) return true;   // rasm passidan tashqarida — faqat oq ramka chizildi
+  ctx.save();
+  bRoundRect(ctx, px, py, pw, ph, Math.round(Math.min(pw, ph) * 0.05)); ctx.clip();
+  const im = (item && item.img) ? item.img : item;
+  const iw = (im && (im.naturalWidth || im.width)) || 0;
+  const ih = (im && (im.naturalHeight || im.height)) || 0;
+  if (iw > 0 && ih > 0) {
+    const sc0 = Math.max(pw / iw, ph / ih);
+    const face = (faceIdx != null && cfg.faces) ? cfg.faces[faceIdx] : null;
+    let dw, dh, dx, dy;
+    if (iStore.iSrc !== 'manual' && face && face.fh) {
+      // AVTOMATIK yuz kadrlash ("Katta rasm" slayderlari afFaceLeft/afFaceYLeft)
+      const tf = cfg.autoFaceFracLeft != null ? cfg.autoFaceFracLeft
+               : (cfg.autoFaceFrac != null ? cfg.autoFaceFrac : 0.42);
+      const fhPx = Math.max(1, face.fh * ih);
+      const s = Math.max(1, Math.min(8, (tf * ph) / (fhPx * sc0)));
+      dw = iw * sc0 * s; dh = ih * sc0 * s;
+      const fcxPx = face.cx * iw, fcyPx = face.cy * ih;
+      const vy = cfg.autoFaceYLeft != null ? cfg.autoFaceYLeft
+               : (cfg.autoFaceY != null ? cfg.autoFaceY : 0.43);
+      let ox2 = (0.5 * pw - (pw - dw) / 2 - fcxPx * sc0 * s) / pw;
+      let oy2 = (vy * ph - (ph - dh) / 2 - fcyPx * sc0 * s) / ph;
+      const mOx = (dw - pw) / (2 * pw), mOy = (dh - ph) / (2 * ph);
+      ox2 = Math.max(-mOx, Math.min(mOx, ox2)); oy2 = Math.max(-mOy, Math.min(mOy, oy2));
+      dx = px + (pw - dw) / 2 + ox2 * pw; dy = py + (ph - dh) / 2 + oy2 * ph;
+    } else {
+      // cover-fit + ichki zoom (iscale) + ichki pan (iox/ioy — qulflangan rejim)
+      const iscale = Math.max(1, Math.min(6, iStore.iscale || 1));
+      dw = iw * sc0 * iscale; dh = ih * sc0 * iscale;
+      const mOx = (dw - pw) / (2 * pw), mOy = (dh - ph) / (2 * ph);
+      const cx = Math.max(-mOx, Math.min(mOx, iStore.iox || 0));
+      const cy = Math.max(-mOy, Math.min(mOy, iStore.ioy || 0));
+      dx = px + (pw - dw) / 2 + cx * pw; dy = py + (ph - dh) / 2 + cy * ph;
+    }
+    // RETUSH — portret: retouchMap[faceIdx]; guruh rasmi: item.rt
+    const R = (faceIdx != null && cfg.retouchMap && cfg.retouchMap[faceIdx]) || (item && item.rt) || {};
+    const hasColor = (R.brightness || R.contrast || R.saturation || R.warmth > 0);
+    if (hasColor) {
+      const sepia = (R.warmth > 0) ? (R.warmth / 100 * 0.5) : 0;
+      ctx.filter = `brightness(${1 + (R.brightness || 0) / 100}) contrast(${1 + (R.contrast || 0) / 100}) ` +
+                   `saturate(${1 + (R.saturation || 0) / 100}) sepia(${sepia})`;
+    }
+    const sm = (R.smooth > 0) ? rtSpotHeal(im, dw, dh, R.smooth) : null;
+    ctx.drawImage(sm || im, dx, dy, dw, dh);
+    ctx.filter = 'none';
+    if (R.warmth < 0) {
+      ctx.save(); ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = (-R.warmth) / 100 * 0.18; ctx.fillStyle = '#3a6ea5';
+      ctx.fillRect(px, py, pw, ph); ctx.restore();
+    }
+    if (R.vignette > 0) {
+      const g = ctx.createRadialGradient(px + pw / 2, py + ph / 2, Math.min(pw, ph) * 0.35, px + pw / 2, py + ph / 2, Math.max(pw, ph) * 0.72);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${(R.vignette / 100) * 0.6})`);
+      ctx.fillStyle = g; ctx.fillRect(px, py, pw, ph);
+    }
+  } else {
+    ctx.fillStyle = bHexA(accent, 0.14); ctx.fillRect(px, py, pw, ph);
+    ctx.fillStyle = bHexA(accent, 0.5); ctx.font = `${Math.round(pw * 0.18)}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('📸', px + pw / 2, py + ph / 2);
+  }
+  ctx.restore();
+}
+
 window.TEMPLATES = [
   // ============================================================
   // 0. BITIRUVCHI ALBOM MUQOVASI (qora fon, vatermark, elegant)
@@ -391,6 +777,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'classic-blue',
+    hidden: true,
     type: 'vinyetka',
     name: 'Klassik Ko\'k',
     desc: 'An\'anaviy maktab vinyetkasi',
@@ -472,6 +859,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'pastel-purple',
+    hidden: true,
     type: 'vinyetka',
     name: 'Pastel Binafsha',
     desc: 'Yumshoq rang, zamonaviy',
@@ -548,6 +936,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'modern-white',
+    hidden: true,
     type: 'vinyetka',
     name: 'Zamonaviy Oq',
     desc: 'Minimal, professional',
@@ -616,6 +1005,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'green-nature',
+    hidden: true,
     type: 'vinyetka',
     name: 'Yashil Tabiat',
     desc: 'Yashil gradient',
@@ -686,6 +1076,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'album-inner',
+    hidden: true,
     type: 'inner',
     name: 'Albom Ichki',
     desc: 'O\'qituvchi katta + bola 1-o\'rinda',
@@ -1760,6 +2151,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'split-inner',
+    hidden: true,
     type: 'split-inner',
     name: 'Split Ichki Sahifa',
     desc: 'Chap: 1 portret · O\'ng: avtomatik grid',
@@ -2169,6 +2561,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'poster-split',
+    hidden: true,
     type: 'poster-inner',
     name: 'Poster 400×305 (albom)',
     desc: 'Landscape · chap katta · o\'ng dinamik grid',
@@ -2293,8 +2686,577 @@ window.TEMPLATES = [
   // ============================================================
   // 9. QIZIL – Bayram vinyetkasi
   // ============================================================
+  // ============================================================
+  // BOG'CHA — ICHKI (30.5×40, portret). Tepada 4 xodim (kattaroq),
+  // ostida 25–35 bola grid ismlari bilan. Egasi 1-o'rinda (amber ramka).
+  // type: split-inner → drag/zoom/yuz/retush/generatsiya AVTOMATIK.
+  // ============================================================
+  {
+    id: 'bogcha-inner',
+    type: 'split-inner',
+    name: 'Bog\'cha Ichki',
+    desc: 'Albom (landscape, buklanadi) · 4 xodim + bolalar',
+    emoji: '🧸',
+    defaultW: 1200,
+    defaultH: 915,
+    printW: 4724,          // 40cm (eni) @ 300 dpi
+    printH: 3602,          // 30.5cm (bo'yi) @ 300 dpi
+    exportFormat: 'jpeg',
+    jpegQuality: 1.0,      // maksimal sifat
+    bgColor1: '#d3e4f6',
+    bgColor2: '#eef5fc',
+    accentColor: '#5b8def',
+    nameColor: '#173a5e',
+    schoolColor: '#3a5a7a',
+    pairedOuter: 'bogcha-cover',
+    layered: true,   // qatlam tizimi (fon/card oq foni/rasm) — cfg.layerPass bilan
+
+    // ICHKI TOMON (buklangan albomning ichi, ochilgan landscape).
+    // Tepada 4 xodim, ostida bolalar grid. O'rtada vertikal buklanish chizig'i.
+    draw(ctx, data, cfg) {
+      const W = cfg.w || cfg.canvasW || 1220;
+      const H = cfg.h || cfg.canvasH || 800;
+      const _pass = cfg.layerPass || null;         // qatlam o'tishi: null=hammasi
+      const LP_bg = !_pass || _pass === 'bg';       // orqa fon
+      const LP_card = !_pass || _pass === 'cardbg'; // card oq foni + matnlar
+      const LP_photo = !_pass || _pass === 'photo'; // rasmlar
+      if (LP_bg) bDrawBg(ctx, cfg, W, H);
+
+      const P = Math.round(H * 0.05);
+      const accent = cfg.accentColor || '#5b8def';
+      const nameColor = cfg.nameColor || '#173a5e';
+      const foldX = W / 2;   // buklanish o'qi (chiziq YO'Q, lekin yuzlar bunga tushmasin)
+
+      // ═══════ ESKI (BOG'CHA) JOYLASHUV — markazda 4 xodim + pastda grid ═══════
+      if ((cfg.innerLayoutMode || 'maktab') === 'bogcha') {
+        const staff = cfg.staffImgs || [];
+        const staffCount = staff.filter(s => s && s.img).length;
+        const staffN = staffCount > 0 ? staffCount : 4;
+        const sGap = Math.round(W * 0.016);
+        const sNameFS = Math.max(9, Math.round(W * 0.013));
+        const sRoleFS = Math.max(8, Math.round(W * 0.011));
+        const sTextH = Math.round(sNameFS * 1.15 + sRoleFS * 1.2 + 6);
+        const sCardH = Math.round(H * 0.205);
+        const sCardW = Math.round((sCardH - sTextH) / 1.12);
+        const staffRowW = staffN * sCardW + (staffN - 1) * sGap;
+        const sStartX = Math.round((W - staffRowW) / 2);
+        const leftText  = (cfg.innerLeftText  && cfg.innerLeftText.trim())  || data.schoolName || '';
+        const rightText = (cfg.innerRightText && cfg.innerRightText.trim()) ||
+                          ((cfg.coverClass || data.className) ? ((cfg.coverClass || data.className) + '-guruh') : '');
+        let sY;
+        if (cfg.cornerMode) {
+          const cMaxW = Math.round(W * 0.42), cMaxFS = Math.round(W * 0.032), cMaxH = Math.round(H * 0.14);
+          let cornerBottom = P;
+          const drawCorner = (txt, align, col) => {
+            if (!txt) return;
+            const fit = bFitWrap(ctx, txt, cMaxW, cMaxH, cMaxFS, 12, 'Coiny, cursive', '400');
+            ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = 'top';
+            const x = (align === 'left') ? P : (W - P);
+            fit.lines.forEach((ln, li) => { ctx.font = `400 ${fit.fs}px Coiny, cursive`; if (LP_card) ctx.fillText(ln, x, P + li * fit.lh); });
+            cornerBottom = Math.max(cornerBottom, P + fit.lines.length * fit.lh);
+          };
+          drawCorner(leftText, 'left', nameColor);
+          drawCorner(rightText, 'right', accent);
+          sY = Math.round(cornerBottom + H * 0.02);
+        } else {
+          sY = Math.round(H * 0.06);
+          const sideMaxFS = Math.round(W * 0.034);
+          const drawSide = (txt, ax, aw, col) => {
+            if (!txt || aw < 30) return;
+            const fit = bFitWrap(ctx, txt, aw, sCardH, sideMaxFS, 12, 'Coiny, cursive', '400');
+            ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            const cx = ax + aw / 2;
+            const startY = sY + sCardH / 2 - (fit.lines.length - 1) * fit.lh / 2;
+            fit.lines.forEach((ln, li) => { ctx.font = `400 ${fit.fs}px Coiny, cursive`; if (LP_card) ctx.fillText(ln, cx, startY + li * fit.lh); });
+          };
+          const sideGapX = Math.round(W * 0.02);
+          drawSide(leftText, P, sStartX - P - sideGapX, nameColor);
+          const rAX = sStartX + staffRowW + sideGapX;
+          drawSide(rightText, rAX, (W - P) - rAX, accent);
+        }
+        for (let i = 0; i < staffN; i++) {
+          const cx = sStartX + i * (sCardW + sGap);
+          if (LP_card) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = Math.round(W * 0.012); ctx.shadowOffsetY = 2;
+            ctx.fillStyle = '#ffffff';
+            bRoundRect(ctx, cx, sY, sCardW, sCardH, Math.round(sCardW * 0.08)); ctx.fill();
+            ctx.restore();
+          }
+          const ip = Math.round(sCardW * 0.05);
+          const px = cx + ip, py = sY + ip, pw = sCardW - 2 * ip;
+          const ph = sCardH - 2 * ip - sTextH;
+          if (LP_photo) {
+            ctx.save();
+            bRoundRect(ctx, px, py, pw, ph, Math.round(pw * 0.06)); ctx.clip();
+            const sImg = staff[i] && staff[i].img;
+            if (!drawImgTransformed(ctx, sImg || null, px, py, pw, ph, `staff${i}`, `staff${i}`, cfg, 0.5, true)) {
+              ctx.fillStyle = bHexA(accent, 0.16); ctx.fillRect(px, py, pw, ph);
+              ctx.fillStyle = bHexA(accent, 0.55); ctx.font = `${Math.round(pw * 0.4)}px serif`;
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillText('👩‍🏫', px + pw / 2, py + ph / 2);
+            }
+            ctx.restore();
+          }
+          if (LP_card) {
+            const sName = (staff[i] && staff[i].name) || '';
+            const sRole = (staff[i] && staff[i].role) || '';
+            const textMaxW = sCardW - Math.round(sCardW * 0.05);
+            let ty = py + ph + Math.round(sNameFS * 0.5);
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            if (sName) {
+              const fs = bFitFont(ctx, sName, textMaxW, sNameFS, 6, 'Oswald, sans-serif', '600');
+              ctx.fillStyle = nameColor; ctx.font = `600 ${fs}px Oswald, sans-serif`;
+              ctx.fillText(sName, cx + sCardW / 2, ty);
+              ty += Math.round(sNameFS * 1.15);
+            }
+            if (sRole) {
+              const fs = bFitFont(ctx, sRole, textMaxW, sRoleFS, 6, 'Oswald, sans-serif', '400');
+              ctx.fillStyle = bHexA(nameColor, 0.72); ctx.font = `400 ${fs}px Oswald, sans-serif`;
+              ctx.fillText(sRole, cx + sCardW / 2, ty);
+            }
+          }
+        }
+        const staffBottom = sY + sCardH;
+
+        const allStudents = cfg.allStudents || [];
+        const ownerIndex = cfg.ownerIndex != null ? cfg.ownerIndex : 0;
+        let order = allStudents.map((_, i) => i);
+        if (order.length > 0 && ownerIndex > 0 && ownerIndex < order.length)
+          order = [ownerIndex, ...order.filter(i => i !== ownerIndex)];
+        const maxCols = cfg.maxCols || 9;
+        const gapX = Math.round(W * 0.008), gapY = Math.round(H * 0.02);
+        const foldGap = Math.round(W * 0.03);
+        const gridTop = staffBottom + Math.round(H * 0.03);
+        const gridBot = H - P;
+        const gridH = gridBot - gridTop;
+        const count = order.length || 1;
+        const rows = bBuildRowsBottom(count, maxCols);
+        const rowCount = rows.length, maxItems = Math.max(...rows);
+        const CR = 1.58;
+        const totalGapY = gapY * (rowCount - 1);
+        const cardW_byH = ((gridH - totalGapY) / rowCount) / CR;
+        const ceilCols = Math.ceil(maxItems / 2);
+        const halfAvail = W / 2 - P - foldGap / 2;
+        const cardW_byW = (halfAvail - (ceilCols - 1) * gapX) / ceilCols;
+        let cardW = Math.floor(Math.min(cardW_byH, cardW_byW));
+        cardW = Math.min(cardW, sCardW);
+        const cardH = Math.round(cardW * CR);
+        const pad = Math.max(1, Math.round(cardW * 0.03));
+        const nameFS = Math.max(7, Math.round(cardW * 0.1));
+        const lineH = Math.round(nameFS * 1.12), gapInner = Math.round(nameFS * 0.25);
+        const photoW = cardW - 2 * pad;
+        const photoH = Math.round(photoW * 4 / 3);
+        const totalGridH = rowCount * cardH + totalGapY;
+        const gridStartY = gridTop + Math.max(0, Math.round((gridH - totalGridH) / 2));
+        let sIdx = 0;
+        rows.forEach((cols, rowI) => {
+          const cardY = gridStartY + rowI * (cardH + gapY);
+          const leftN = Math.floor(cols / 2);
+          const leftW = leftN * cardW + Math.max(0, leftN - 1) * gapX;
+          const leftStart = foldX - foldGap / 2 - leftW;
+          const rightStart = foldX + foldGap / 2;
+          for (let col = 0; col < cols; col++) {
+            const cardX = (col < leftN)
+              ? leftStart + col * (cardW + gapX)
+              : rightStart + (col - leftN) * (cardW + gapX);
+            const origIndex = order[sIdx];
+            const student = allStudents[origIndex] || null;
+            const isOwner = (sIdx === 0);
+            if (LP_card) {
+              ctx.save();
+              ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = Math.max(2, Math.round(cardW * 0.05)); ctx.shadowOffsetY = 2;
+              ctx.fillStyle = '#ffffff';
+              bRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(cardW * 0.08)); ctx.fill();
+              ctx.restore();
+              if (isOwner) {
+                ctx.save(); ctx.strokeStyle = accent; ctx.lineWidth = Math.max(2, Math.round(cardW * 0.03));
+                bRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(cardW * 0.08)); ctx.stroke(); ctx.restore();
+              }
+            }
+            const ipx = cardX + pad, ipy = cardY + pad;
+            if (LP_photo) {
+              ctx.save();
+              bRoundRect(ctx, ipx, ipy, photoW, photoH, Math.round(photoW * 0.06)); ctx.clip();
+              if (!drawImgTransformed(ctx, student ? student.img : null, ipx, ipy, photoW, photoH, `g${origIndex}`, origIndex, cfg, 0.55, false)) {
+                ctx.fillStyle = bHexA(accent, 0.14); ctx.fillRect(ipx, ipy, photoW, photoH);
+              }
+              ctx.restore();
+            }
+            if (LP_card && student && student.name) {
+              const lines = bSplitName(student.name);
+              const nameMaxW = cardW - Math.round(cardW * 0.06);
+              const areaTop = ipy + photoH, areaBot = cardY + cardH - Math.round(cardW * 0.04);
+              const availH = Math.max(nameFS, areaBot - areaTop);
+              let bigFS = Math.min(Math.round(cardW * 0.2), Math.floor(availH / (lines.length * 1.18)));
+              bigFS = Math.max(nameFS, bigFS);
+              const bigLH = Math.round(bigFS * 1.18);
+              const blockH = lines.length * bigLH;
+              let ny = areaTop + (availH - blockH) / 2 + bigFS * 0.5;
+              ctx.fillStyle = nameColor;
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              lines.forEach((ln, li) => {
+                const fs = bFitFont(ctx, ln, nameMaxW, bigFS, 6, 'Oswald, sans-serif', '500');
+                ctx.font = `500 ${fs}px Oswald, sans-serif`;
+                ctx.fillText(ln, cardX + cardW / 2, ny + li * bigLH);
+              });
+            }
+            sIdx++;
+          }
+        });
+        return;
+      }
+
+      // ══════════ YANGI JOYLASHUV: 8 ustunli grid (4 chap + 4 o'ng) ══════════
+      // Xodimlar O'NG-TEPADA (1 ta bo'lsa katta), sarlavha burchakda, bolalar
+      // qolgan kataklarga tartib bilan (egasi 1-o'rinda), pastki qator to'lmasa bo'sh qoladi.
+      const staff = (cfg.staffImgs || []).filter(s => s && s.img);
+      const ns = staff.length;
+      const allStudents = cfg.allStudents || [];
+      const ownerIndex = cfg.ownerIndex != null ? cfg.ownerIndex : 0;
+      let order = allStudents.map((_, i) => i);
+      if (order.length > 0 && ownerIndex > 0 && ownerIndex < order.length)
+        order = [ownerIndex, ...order.filter(i => i !== ownerIndex)];
+      const childCount = order.length;
+
+      const perHalf = 4, totalCols = perHalf * 2;
+      const foldGap = Math.round(W * 0.03);
+      const gapX = Math.round(W * 0.008), gapY = Math.round(H * 0.02);
+      const gridTop = P + Math.round(H * 0.015);
+      const gridBot = H - P;
+      const gridH = gridBot - gridTop;
+
+      const CR = 1.6;   // 3×4 foto + ism
+      const halfAvail = W / 2 - P - foldGap / 2;
+      let cardW = Math.floor((halfAvail - (perHalf - 1) * gapX) / perHalf);
+      let cardH = Math.round(cardW * CR);
+
+      // Zaxira (band) kataklar: sarlavha + xodimlar (o'ng yarim tepasi)
+      const rk = (r, c) => r + ',' + c;
+      const titleCells = [[0, totalCols - 2], [0, totalCols - 1]];
+      let staffCells = [], bigStaff = null;
+      if (ns === 1) {
+        bigStaff = { row: 0, col: perHalf, wCells: 2, hCells: 2 };   // 1 ta KATTA
+        staffCells = [[0, perHalf], [0, perHalf + 1], [1, perHalf], [1, perHalf + 1]];
+      } else if (ns > 1) {
+        const seq = [[0, perHalf], [0, perHalf + 1],
+                     [1, perHalf], [1, perHalf + 1], [1, perHalf + 2], [1, perHalf + 3]];
+        staffCells = seq.slice(0, Math.min(ns, 6));
+      }
+      const staffRows = staffCells.length ? (staffCells.reduce((m, c) => Math.max(m, c[0]), 0) + 1) : 0;
+      const reserved = {};
+      titleCells.forEach(c => reserved[rk(c[0], c[1])] = 'title');
+      staffCells.forEach(c => reserved[rk(c[0], c[1])] = 'staff');
+      const reservedCount = Object.keys(reserved).length;
+
+      const rows = Math.max(staffRows, Math.ceil((childCount + reservedCount) / totalCols)) || 1;
+
+      // Balandlikka ham sig'dirish
+      const maxCardH = Math.floor((gridH - (rows - 1) * gapY) / rows);
+      if (cardH > maxCardH) { cardH = maxCardH; cardW = Math.floor(cardH / CR); }
+
+      const pad = Math.max(1, Math.round(cardW * 0.03));
+      const photoW = cardW - 2 * pad, photoH = Math.round(photoW * 4 / 3);
+      const nameFS = Math.max(7, Math.round(cardW * 0.1));
+      const lineH = Math.round(nameFS * 1.12), gapInner = Math.round(nameFS * 0.25);
+
+      const totalGridH = rows * cardH + (rows - 1) * gapY;
+      const startY = gridTop + Math.max(0, Math.round((gridH - totalGridH) / 2));
+      const leftBlockW = perHalf * cardW + (perHalf - 1) * gapX;
+      const leftStartX = (foldX - foldGap / 2) - leftBlockW;
+      const rightStartX = foldX + foldGap / 2;
+      const cellX = (col) => (col < perHalf)
+        ? leftStartX + col * (cardW + gapX)
+        : rightStartX + (col - perHalf) * (cardW + gapX);
+      const cellY = (row) => startY + row * (cardH + gapY);
+
+      // ── SARLAVHA (o'ng-tepa burchak): bog'cha nomi + guruh / default ──
+      if (LP_card) (function () {
+        const tx = cellX(titleCells[0][1]);
+        const tW = 2 * cardW + gapX;
+        const tH = (ns === 1 ? 2 : 1) * cardH + (ns === 1 ? gapY : 0);
+        const cx = tx + tW / 2, cyc = cellY(0) + tH / 2;
+        const l1 = (cfg.innerLeftText  && cfg.innerLeftText.trim())  || 'BIZNING';
+        const l2 = (cfg.innerRightText && cfg.innerRightText.trim()) || 'TARBIYACHILAR';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const fs1 = bFitFont(ctx, l1, tW * 0.94, Math.round(cardW * 0.44), 10, 'Coiny, cursive', '400');
+        ctx.fillStyle = nameColor; ctx.font = `400 ${fs1}px Coiny, cursive`;
+        ctx.fillText(l1, cx, cyc - fs1 * 0.6);
+        const fs2 = bFitFont(ctx, l2, tW * 0.94, Math.round(cardW * 0.34), 9, 'Coiny, cursive', '400');
+        ctx.fillStyle = accent; ctx.font = `400 ${fs2}px Coiny, cursive`;
+        ctx.fillText(l2, cx, cyc + fs2 * 0.75);
+      })();
+
+      // ── XODIM kartasi ──
+      const drawStaffCard = (cx, cy, cw, ch, i) => {
+        const s = staff[i];
+        const sNameFS = Math.max(8, Math.round(cw * 0.09));
+        const sRoleFS = Math.max(7, Math.round(cw * 0.075));
+        const sTextH = Math.round(sNameFS * 1.15 + sRoleFS * 1.2 + 6);
+        if (LP_card) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = Math.round(cw * 0.05); ctx.shadowOffsetY = 2;
+          ctx.fillStyle = '#ffffff';
+          bRoundRect(ctx, cx, cy, cw, ch, Math.round(cw * 0.07)); ctx.fill();
+          ctx.restore();
+        }
+        const ip = Math.round(cw * 0.05);
+        const px = cx + ip, py = cy + ip, pw = cw - 2 * ip, ph = ch - 2 * ip - sTextH;
+        if (LP_photo) {
+          ctx.save();
+          bRoundRect(ctx, px, py, pw, ph, Math.round(pw * 0.06)); ctx.clip();
+          if (!drawImgTransformed(ctx, s ? s.img : null, px, py, pw, ph, `staff${i}`, `staff${i}`, cfg, 0.5, true)) {
+            ctx.fillStyle = bHexA(accent, 0.16); ctx.fillRect(px, py, pw, ph);
+            ctx.fillStyle = bHexA(accent, 0.55); ctx.font = `${Math.round(pw * 0.4)}px serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('👩‍🏫', px + pw / 2, py + ph / 2);
+          }
+          ctx.restore();
+        }
+        if (LP_card) {
+          const sName = (s && s.name) || '', sRole = (s && s.role) || '';
+          const tMaxW = cw - Math.round(cw * 0.05);
+          let ty = py + ph + Math.round(sNameFS * 0.5);
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          if (sName) {
+            const fs = bFitFont(ctx, sName, tMaxW, sNameFS, 6, 'Oswald, sans-serif', '600');
+            ctx.fillStyle = nameColor; ctx.font = `600 ${fs}px Oswald, sans-serif`;
+            ctx.fillText(sName, cx + cw / 2, ty); ty += Math.round(sNameFS * 1.15);
+          }
+          if (sRole) {
+            const fs = bFitFont(ctx, sRole, tMaxW, sRoleFS, 6, 'Oswald, sans-serif', '400');
+            ctx.fillStyle = bHexA(nameColor, 0.72); ctx.font = `400 ${fs}px Oswald, sans-serif`;
+            ctx.fillText(sRole, cx + cw / 2, ty);
+          }
+        }
+      };
+
+      if (ns === 1 && bigStaff) {
+        const bw = bigStaff.wCells * cardW + (bigStaff.wCells - 1) * gapX;
+        const bh = bigStaff.hCells * cardH + (bigStaff.hCells - 1) * gapY;
+        drawStaffCard(cellX(bigStaff.col), cellY(bigStaff.row), bw, bh, 0);
+      } else {
+        staffCells.forEach((c, i) => drawStaffCard(cellX(c[1]), cellY(c[0]), cardW, cardH, i));
+      }
+
+      // ── BOLA kartasi ──
+      const drawChildCard = (cardX, cardY, sIdx) => {
+        const origIndex = order[sIdx];
+        const student = allStudents[origIndex] || null;
+        const isOwner = (sIdx === 0);
+        if (LP_card) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = Math.max(2, Math.round(cardW * 0.05)); ctx.shadowOffsetY = 2;
+          ctx.fillStyle = '#ffffff';
+          bRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(cardW * 0.08)); ctx.fill();
+          ctx.restore();
+          if (isOwner) {
+            ctx.save(); ctx.strokeStyle = accent; ctx.lineWidth = Math.max(2, Math.round(cardW * 0.03));
+            bRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(cardW * 0.08)); ctx.stroke(); ctx.restore();
+          }
+        }
+        const ipx = cardX + pad, ipy = cardY + pad;
+        if (LP_photo) {
+          ctx.save();
+          bRoundRect(ctx, ipx, ipy, photoW, photoH, Math.round(photoW * 0.06)); ctx.clip();
+          if (!drawImgTransformed(ctx, student ? student.img : null, ipx, ipy, photoW, photoH, `g${origIndex}`, origIndex, cfg, 0.55, false)) {
+            ctx.fillStyle = bHexA(accent, 0.14); ctx.fillRect(ipx, ipy, photoW, photoH);
+          }
+          ctx.restore();
+        }
+        if (LP_card && student && student.name) {
+          const lines = bSplitName(student.name);
+          const nameMaxW = cardW - Math.round(cardW * 0.06);
+          const areaTop = ipy + photoH, areaBot = cardY + cardH - Math.round(cardW * 0.04);
+          const availH = Math.max(nameFS, areaBot - areaTop);
+          let bigFS = Math.min(Math.round(cardW * 0.2), Math.floor(availH / (lines.length * 1.18)));
+          bigFS = Math.max(nameFS, bigFS);
+          const bigLH = Math.round(bigFS * 1.18);
+          const blockH = lines.length * bigLH;
+          const ny = areaTop + (availH - blockH) / 2 + bigFS * 0.5;
+          ctx.fillStyle = nameColor; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          lines.forEach((ln, li) => {
+            const fs = bFitFont(ctx, ln, nameMaxW, bigFS, 6, 'Oswald, sans-serif', '500');
+            ctx.font = `500 ${fs}px Oswald, sans-serif`;
+            ctx.fillText(ln, cardX + cardW / 2, ny + li * bigLH);
+          });
+        }
+      };
+
+      let ci = 0;
+      for (let r = 0; r < rows && ci < childCount; r++) {
+        for (let c = 0; c < totalCols && ci < childCount; c++) {
+          if (reserved[rk(r, c)]) continue;
+          drawChildCard(cellX(c), cellY(r), ci);
+          ci++;
+        }
+      }
+    }
+  },
+
+  // ============================================================
+  // BOG'CHA — USTKI/MUQOVA (30.5×40, portret). O'rtadan ikkiga:
+  // CHAP = guruh rasmlari kollaji (4–5), O'NG = bola portreti (egasi).
+  // Yashirin (pairedOuter sifatida bogcha-inner bilan avtomatik ishlatiladi).
+  // ============================================================
+  {
+    id: 'bogcha-cover',
+    type: 'split-inner',
+    name: 'Bog\'cha Muqova',
+    desc: 'Albom tashqi (buklanadi) · orqa kollaj + old portret',
+    emoji: '🎀',
+    hidden: true,
+    layered: true,   // qatlam tizimi (fon/card oq foni/rasm) — cfg.layerPass bilan
+    defaultW: 1200,
+    defaultH: 915,
+    printW: 4724,          // 40cm (eni) @ 300 dpi
+    printH: 3602,          // 30.5cm (bo'yi) @ 300 dpi
+    exportFormat: 'jpeg',
+    jpegQuality: 1.0,      // maksimal sifat — guruh rasmlaridagi yuzlar siqilishdan buzilmasin
+    bgColor1: '#d3e4f6',
+    bgColor2: '#eef5fc',
+    accentColor: '#5b8def',
+    nameColor: '#173a5e',
+    schoolColor: '#3a5a7a',
+
+    // TASHQI TOMON (buklangan albomning tashqarisi). Vertikal o'rtadan buklanadi:
+    //  O'NG panel = OLD muqova (bola portreti), CHAP panel = ORQA (guruh kollaji).
+    draw(ctx, data, cfg) {
+      const W = cfg.w || cfg.canvasW || 1220;
+      const H = cfg.h || cfg.canvasH || 800;
+      const _pass = cfg.layerPass || null;
+      const LP_bg = !_pass || _pass === 'bg';
+      const LP_card = !_pass || _pass === 'cardbg';
+      const LP_photo = !_pass || _pass === 'photo';
+      if (LP_bg) bDrawBg(ctx, cfg, W, H);
+
+      const P = Math.round(H * 0.05);
+      const accent = cfg.accentColor || '#5b8def';
+      const nameColor = cfg.nameColor || '#173a5e';
+      const halfW = Math.floor(W / 2);
+
+      // ══════════ O'NG PANEL = OLD MUQOVA (bola portreti) ══════════
+      const rInsetX = Math.round(W * 0.03);
+      const rX = halfW + rInsetX;
+      const rW = halfW - rInsetX - P;
+      const rCenterX = rX + rW / 2;
+
+      // Katta rasm tepasida sarlavha. Default = Ustki matnlar (ovTitle);
+      // window.BOGCHA_V9 (cornerMode) yoqilganda — bog'cha nomi + guruh.
+      let title, sub;
+      if (cfg.cornerMode) {
+        title = (cfg.innerLeftText && cfg.innerLeftText.trim()) || data.schoolName || 'BOG\'CHA';
+        sub = (cfg.innerRightText && cfg.innerRightText.trim()) ||
+              ((cfg.coverClass || data.className) ? ((cfg.coverClass || data.className) + '-guruh') : '');
+      } else {
+        title = (cfg.coverTitle && cfg.coverTitle.trim()) || data.schoolName || 'BITIRUVCHI';
+        // "guruh" so'zi olib tashlandi — faqat sinf/guruh nomi (agar kiritilgan bo'lsa)
+        sub = (cfg.coverClass || data.className) || '';
+      }
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = nameColor;
+      ctx.font = `400 ${Math.round(W * 0.03)}px Coiny, cursive`;
+      let ry = P;
+      if (LP_card) ctx.fillText(title.toUpperCase(), rCenterX, ry);
+      ry += Math.round(W * 0.04);
+      if (sub) {
+        ctx.fillStyle = bHexA(nameColor, 0.75);
+        ctx.font = `500 ${Math.round(W * 0.02)}px Oswald, sans-serif`;
+        if (LP_card) ctx.fillText(sub, rCenterX, ry);
+        ry += Math.round(W * 0.03);
+      }
+
+      const pTop = ry + Math.round(H * 0.02);
+      const pBot = H - P - Math.round(H * 0.05);
+      const availH = pBot - pTop, availW = rW;
+      const allStudents = cfg.allStudents || [];
+      const ownerIndex = cfg.ownerIndex != null ? cfg.ownerIndex : 0;
+      let ownerImg = cfg.leftImg || null;
+      if (!ownerImg && allStudents[ownerIndex] && allStudents[ownerIndex].img) ownerImg = allStudents[ownerIndex].img;
+
+      // DEFAULT 3×4 nisbat (eni:bo'yi = 3:4), mavjud joyga sig'dirilib markazlanadi
+      let baseW = availW, baseH = baseW * 4 / 3;
+      if (baseH > availH) { baseH = availH; baseW = baseH * 3 / 4; }
+      const baseX = rX + (availW - baseW) / 2;
+      const baseY = pTop + (availH - baseH) / 2;
+      // Ramka UMUMIY (coverPortraitFrame), ichki pozitsiya/yuz HAR BOLA uchun ALOHIDA
+      if (LP_card || LP_photo) drawFrameT(ctx, ownerImg, baseX, baseY, baseW, baseH, 'coverPortraitFrame', cfg, accent, ownerIndex, `coverPortraitIn${ownerIndex}`);
+
+      // past: shahar · yil (old panel ostida) — vertikal joyi SUDRAB o'zgartiriladi
+      const bottomTxt = [cfg.coverCity || data.cityName || '', cfg.coverYear || data.schoolYear || ''].filter(Boolean).join('   ·   ');
+      if (bottomTxt && LP_card) {
+        const bStore = (cfg.transforms && cfg.transforms['coverBottomTxt']) || {};
+        const btFS = Math.round(W * 0.018);
+        const tyFrac = Math.max(-0.55, Math.min(0.4, bStore.ty || 0));   // eski absolyut qiymatdan himoya
+        const by = (H - Math.round(P * 0.45)) + tyFrac * H;
+        ctx.fillStyle = cfg.coverBottomColor || bHexA(nameColor, 0.72);
+        ctx.font = `500 ${btFS}px Oswald, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(bottomTxt, rCenterX, by);
+        if (cfg.hitRegions) {
+          // ushlash zonasi keng (o'ng panel bo'ylab) — oson sudraladi
+          cfg.hitRegions.push({ key: 'coverBottomTxt', x: rX, y: by - btFS - 12, w: rW, h: btFS + 24, textY: true });
+        }
+      }
+
+      // ══════════ CHAP PANEL = ORQA (kollaj: 2–10 rasm) ══════════
+      const lX = P, lW = halfW - rInsetX - P;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      const collageTitle = (cfg.coverCollageTitle != null && cfg.coverCollageTitle.trim() !== '')
+        ? cfg.coverCollageTitle.trim() : 'BIZNING GURUH';
+      if (collageTitle && LP_card) {
+        ctx.fillStyle = bHexA(nameColor, 0.9);
+        ctx.font = `400 ${Math.round(W * 0.024)}px Coiny, cursive`;
+        ctx.fillText(collageTitle, lX + lW / 2, P);
+      }
+      const cTop = P + Math.round(W * 0.032);
+      const cBot = H - P;
+      const cH = cBot - cTop;
+      const groups = cfg.groupImgs || [];
+      const cGap = Math.round(W * 0.01);
+      // Nechta slot: yuklangan bo'lsa shuncha (10 gacha), aks holda 5 ta namuna
+      const N = groups.length > 0 ? Math.min(10, groups.length) : 5;
+
+      // bitta kollaj katakcha — RAMKA free-transform (ramka+rasm birga ko'chadi/zoom)
+      const drawCell = (item, x, cy2, w2, h2, idx) => {
+        if (LP_card || LP_photo) drawFrameT(ctx, item, x, cy2, w2, h2, `grp${idx}`, cfg, accent);
+      };
+
+      if (N <= 2) {
+        const rh = (cH - (N - 1) * cGap) / N;
+        for (let i = 0; i < N; i++) drawCell(groups[i], lX, cTop + i * (rh + cGap), lW, rh, i);
+      } else {
+        // TEPA keng + O'RTA grid + PAST keng
+        const midCount = N - 2;
+        const midCols = midCount <= 3 ? midCount : 4;
+        const midRows = bBuildRowsBottom(midCount, midCols);
+        const midRowCount = midRows.length;
+        const usable = cH - (midRowCount + 1) * cGap;
+        const topH = Math.round(usable * 0.27);
+        const botH = Math.round(usable * 0.27);
+        const midTotalH = usable - topH - botH;
+        const midCellH = midTotalH / midRowCount;
+
+        let idx = 0;
+        drawCell(groups[idx], lX, cTop, lW, topH, idx); idx++;        // TEPA keng
+        let yy = cTop + topH + cGap;
+        midRows.forEach(cols => {
+          const cellW = (lW - (cols - 1) * cGap) / cols;
+          const rowW = cols * cellW + (cols - 1) * cGap;
+          const sx = lX + (lW - rowW) / 2;
+          for (let c = 0; c < cols; c++) {
+            drawCell(groups[idx], sx + c * (cellW + cGap), yy, cellW, midCellH, idx); idx++;
+          }
+          yy += midCellH + cGap;
+        });
+        drawCell(groups[idx], lX, yy, lW, botH, idx);                 // PAST keng
+      }
+    }
+  },
+
   {
     id: 'festive-red',
+    hidden: true,
     type: 'vinyetka',
     name: 'Bayram Qizil',
     desc: 'Tantanali dizayn',
@@ -2363,6 +3325,7 @@ window.TEMPLATES = [
   // ============================================================
   {
     id: 'id-card',
+    hidden: true,
     type: 'id-card',
     name: 'ID Karta',
     desc: 'Gorizontal, plastik karta',
